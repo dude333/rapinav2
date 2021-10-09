@@ -1,0 +1,9 @@
+*.exe
+*.test
+*.prof
+*.tmp
+*.log
+
+bin/*
+.vscode/*
+tmp

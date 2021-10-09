@@ -1,0 +1,10 @@
+|--cotacao
+  |--repositorio
+      |--b3.go
+  |--apresentacao
+      |--...
+  |--servico
+      |--...
+  |--dominio
+      |--ativo.go
+  |--cotacao.go
