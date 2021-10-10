@@ -1,3 +1,9 @@
+// SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
+//
+// SPDX-License-Identifier: MIT
+
+// serviço define os casos de uso de um "ativo", como leitura da sua cotação em
+// um repositório (banco de dados ou API).
 package serviço
 
 import (
