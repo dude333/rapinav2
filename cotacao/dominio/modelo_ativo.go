@@ -20,9 +20,18 @@ type Ativo struct {
 // Ativos -------------------------------------------------
 type Ativos []Ativo
 
-// RepositórioAtivo --------------------------------------
-type RepositórioAtivo interface {
+// RepositórioLeituraAtivo --------------------------------------
+type RepositórioLeituraAtivo interface {
 	Cotação(ctx context.Context, código string, data Data) (*Ativo, error)
+}
+
+type RepositórioEscritaAtivo interface {
+	Salvar(ctx context.Context, ativo *Ativo) error
+}
+
+type RepositórioLeituraEscritaAtivo interface {
+	RepositórioLeituraAtivo
+	RepositórioEscritaAtivo
 }
 
 // ServiçoAtivo --------------------------------------

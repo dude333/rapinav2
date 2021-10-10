@@ -3,36 +3,56 @@ package serviço
 import (
 	"context"
 	domínio "github.com/dude333/rapinav2/cotacao/dominio"
-	"github.com/pkg/errors"
 )
 
 // ativo é um serviço de busca de informações de um ativo em vários
-// repositório, como banco de dados ou via API.
+// repositórios, como banco de dados ou via API.
 type ativo struct {
-	repos []domínio.RepositórioAtivo
+	bd  domínio.RepositórioLeituraEscritaAtivo
+	api []domínio.RepositórioLeituraAtivo
 }
 
-func Novo(repos []domínio.RepositórioAtivo) domínio.ServiçoAtivo {
+func Novo(
+	bd domínio.RepositórioLeituraEscritaAtivo,
+	api []domínio.RepositórioLeituraAtivo) domínio.ServiçoAtivo {
 	return &ativo{
-		repos: repos,
+		bd:  bd,
+		api: api,
 	}
 }
 
 // Cotação busca a cotação de um ativo em vários repositórios com base
 // no "código" de um ativo de um determinado "dia", retornando o primeiro
-// valor encontado ou o erro de todos os repositórios.
-func (s *ativo) Cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
-	var errs error
-	for i := range s.repos {
-		ativo, err := s.repos[i].Cotação(context.Background(), código, dia)
+// valor encontado ou o erro de todos os repositórios. Caso a cotação seja
+// encontrada via API, ela será armazenada no bando de dados para agilizar a
+// próxima leitura do mesmo código, na mesma data.
+func (a *ativo) Cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
+	atv, err := a.cotação(código, dia)
+	if err != nil {
+		return &domínio.Ativo{}, err
+	}
+
+	if a.bd != nil {
+		_ = a.bd.Salvar(context.Background(), atv)
+	}
+
+	return atv, nil
+}
+
+func (a *ativo) cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
+	if a.bd != nil {
+		atv, err := a.bd.Cotação(context.Background(), código, dia)
 		if err == nil {
-			return ativo, nil
-		}
-		if errs == nil {
-			errs = err
-		} else {
-			errs = errors.Wrap(err, errs.Error()+" :&")
+			return atv, nil
 		}
 	}
-	return &domínio.Ativo{}, errs
+
+	for i := range a.api {
+		atv, err := a.api[i].Cotação(context.Background(), código, dia)
+		if err == nil {
+			return atv, nil
+		}
+	}
+
+	return &domínio.Ativo{}, ErrCotaçãoNãoEncontrada
 }
