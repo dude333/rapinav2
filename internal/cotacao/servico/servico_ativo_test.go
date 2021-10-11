@@ -37,6 +37,7 @@ func init() {
 type apiMockOk struct{}
 
 func (r *apiMockOk) Cotação(ctx context.Context, código string, data domínio.Data) (*domínio.Ativo, error) {
+	_cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
 	return &_ativo1, nil
 }
 

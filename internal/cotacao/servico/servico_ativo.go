@@ -38,10 +38,6 @@ func (a *ativo) Cotação(código string, dia domínio.Data) (*domínio.Ativo, e
 		return &domínio.Ativo{}, err
 	}
 
-	if a.bd != nil {
-		_ = a.bd.Salvar(context.Background(), atv)
-	}
-
 	return atv, nil
 }
 

@@ -17,6 +17,7 @@ import (
 	"strings"
 )
 
+// b3 implementa domínio.RepositórioLeituraAtivo
 type b3 struct {
 	bd domínio.RepositórioEscritaAtivo
 	infra
@@ -105,6 +106,7 @@ func (b *b3) processarSériesHistóricas(arquivo, código string) (*domínio.Ati
 		}
 
 		if b.bd != nil {
+			// Salva no banco de dados
 			_ = b.bd.Salvar(context.Background(), atv)
 		}
 	}
