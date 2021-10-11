@@ -1,0 +1,30 @@
+#!/bin/sh
+
+# git config core.hooksPath .githooks
+
+echo "Running pre-commit checks at `pwd`"
+
+{
+  echo "golangci-lint run ./..."
+	golangci-lint run ./...
+} || {
+	exitStatus=$?
+
+	if [ $exitStatus ]; then
+		printf "\nLint errors in your code, please fix them and try again."
+		exit 1
+	fi
+}
+
+{
+  echo "go test ./..."
+	go test -short -cover ./...
+} || {
+	exitStatus=$?
+
+	if [ $exitStatus ]; then
+		printf "\nTest errors in your code, please fix them and try again."
+		exit 1
+	fi
+}
+
