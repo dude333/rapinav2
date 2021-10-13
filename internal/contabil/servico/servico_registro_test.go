@@ -2,36 +2,44 @@
 //
 // SPDX-License-Identifier: MIT
 
-package serviço
+package serviço_test
 
 import (
 	"context"
 	"fmt"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
-	"reflect"
+	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 	"strconv"
 	"testing"
+	"time"
 )
 
 var (
-	_cache   map[uint32]*contábil.Registro
-	_exemplo = contábil.Registro{
-		CNPJ:         "1234",
-		Empresa:      "Empresa1",
-		Ano:          2021,
-		DataFimExerc: "2021-12-31",
-		Versão:       1,
-		Total: contábil.Dinheiro{
-			Valor:  123.45,
-			Escala: 1000,
-			Moeda:  "R$",
-		},
-	}
+	_cache    map[uint32]*contábil.Registro
+	_exemplos = []*contábil.Registro{}
 )
 
 func init() {
 	_cache = make(map[uint32]*contábil.Registro)
+
+	for i := 1; i <= 10; i++ {
+		r := contábil.Registro{
+			CNPJ:         fmt.Sprintf("%010d", i),
+			Empresa:      fmt.Sprintf("Empresa %02d", i),
+			Ano:          2021,
+			DataFimExerc: "2021-12-31",
+			Versão:       1,
+			Total: contábil.Dinheiro{
+				Valor:  float64(i),
+				Escala: 1000,
+				Moeda:  "R$",
+			},
+		}
+		_exemplos = append(_exemplos, &r)
+	}
 }
+
+// Implementação de repositórios de teste ---
 
 type repoBD struct{}
 
@@ -49,77 +57,52 @@ func (r *repoBD) Salvar(ctx context.Context, e *contábil.Registro) error {
 	return nil
 }
 
-type repoAPI struct {
-	bd contábil.RepositórioEscritaRegistro
+type repoAPI struct{}
+
+func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportação {
+	results := make(chan contábil.ResultadoImportação)
+	go func() {
+		defer close(results)
+
+		for _, r := range _exemplos {
+			result := contábil.ResultadoImportação{
+				Error:    nil,
+				Registro: r,
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case results <- result:
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+
+	}()
+	return results
+
 }
 
-func (r *repoAPI) Importar(ctx context.Context, ano int) error {
-	return r.Salvar(ctx, &_exemplo)
-}
-
-func (r *repoAPI) Salvar(ctx context.Context, e *contábil.Registro) error {
-	if r.bd == nil {
-		return fmt.Errorf("bd não definido")
-	}
-	return r.bd.Salvar(ctx, e)
-}
+// Testes ---
 
 func Test_registro_Importar(t *testing.T) {
-	type fields struct {
-		api contábil.RepositórioImportaçãoRegistro
-		bd  contábil.RepositórioLeituraEscritaRegistro
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
 	}
-	type args struct {
-		cnpj string
-		ano  int
+
+	reg := serviço.NovoRegistro(&repoAPI{}, &repoBD{})
+
+	err := reg.Importar(2021)
+	if err != nil {
+		t.Fatalf("ServiçoRegistro.Importar(): %v", err)
 	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *contábil.Registro
-		wantErr bool
-	}{
-		{
-			name: "não deveria funcionar",
-			fields: fields{
-				api: &repoAPI{},
-				bd:  &repoBD{},
-			},
-			args:    args{"1234", 2021},
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "deveria funcionar",
-			fields: fields{
-				api: &repoAPI{bd: &repoBD{}},
-				bd:  &repoBD{},
-			},
-			args:    args{"1234", 2021},
-			want:    &_exemplo,
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &registro{
-				api: tt.fields.api,
-				bd:  tt.fields.bd,
-			}
-			if err := r.Importar(tt.args.ano); (err != nil) != tt.wantErr {
-				t.Errorf("empresa.Importar() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if tt.wantErr {
-				return
-			}
-			got, err := r.Relatório(tt.args.cnpj, tt.args.ano)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("empresa.Relatório() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ServiçoRegistro.Relatório() = %v, want %v", got, tt.want)
-			}
-		})
+
+	for _, r := range _exemplos {
+		x := fmt.Sprintf("%s%d", r.CNPJ, r.Ano)
+		y, _ := strconv.Atoi(x)
+
+		c := _cache[uint32(y)]
+		if c.Empresa != r.Empresa {
+			t.Fatalf("Valor salvo esperado: %v, recebido: %v", r.Empresa, c.Empresa)
+		}
 	}
 }

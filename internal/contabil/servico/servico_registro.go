@@ -7,6 +7,7 @@ package serviço
 import (
 	"context"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
+	"time"
 )
 
 type registro struct {
@@ -14,8 +15,10 @@ type registro struct {
 	bd  contábil.RepositórioLeituraEscritaRegistro
 }
 
-func Registro() contábil.ServiçoRegistro {
-	return &registro{}
+func NovoRegistro(
+	api contábil.RepositórioImportaçãoRegistro,
+	bd contábil.RepositórioLeituraEscritaRegistro) contábil.ServiçoRegistro {
+	return &registro{api: api, bd: bd}
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
@@ -25,9 +28,23 @@ func (r *registro) Importar(ano int) error {
 		return ErrRepositórioInválido
 	}
 
-	err := r.api.Importar(context.Background(), ano)
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
 
-	return err
+	// result retorna o registro após a leitura de cada linha
+	// do arquivo importado
+	for result := range r.api.Importar(ctx, ano) {
+		if result.Error != nil {
+			return result.Error
+		}
+		err := r.bd.Salvar(context.Background(), result.Registro)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *registro) Relatório(cnpj string, ano int) (*contábil.Registro, error) {

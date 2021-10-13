@@ -30,9 +30,13 @@ func (d Dinheiro) String() string {
 	return fmt.Sprintf(`%s %.2f`, d.Moeda, d.Valor*float64(d.Escala))
 }
 
+type ResultadoImportação struct {
+	Registro *Registro
+	Error    error
+}
+
 type RepositórioImportaçãoRegistro interface {
-	Importar(ctx context.Context, ano int) error
-	RepositórioEscritaRegistro
+	Importar(ctx context.Context, ano int) <-chan ResultadoImportação
 }
 
 type RepositórioLeituraRegistro interface {
