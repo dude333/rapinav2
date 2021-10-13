@@ -8,19 +8,19 @@ package serviço
 
 import (
 	"context"
-	domínio "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	cotação "github.com/dude333/rapinav2/internal/cotacao/dominio"
 )
 
 // ativo é um serviço de busca de informações de um ativo em vários
 // repositórios, como banco de dados ou via API.
 type ativo struct {
-	bd  domínio.RepositórioLeituraEscritaAtivo
-	api []domínio.RepositórioLeituraAtivo
+	bd  cotação.RepositórioLeituraEscritaAtivo
+	api []cotação.RepositórioLeituraEscritaAtivo
 }
 
 func Novo(
-	bd domínio.RepositórioLeituraEscritaAtivo,
-	api []domínio.RepositórioLeituraAtivo) domínio.ServiçoAtivo {
+	bd cotação.RepositórioLeituraEscritaAtivo,
+	api []cotação.RepositórioLeituraEscritaAtivo) cotação.ServiçoAtivo {
 	return &ativo{
 		bd:  bd,
 		api: api,
@@ -32,16 +32,16 @@ func Novo(
 // valor encontado ou o erro de todos os repositórios. Caso a cotação seja
 // encontrada via API, ela será armazenada no bando de dados para agilizar a
 // próxima leitura do mesmo código, na mesma data.
-func (a *ativo) Cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
+func (a *ativo) Cotação(código string, dia cotação.Data) (*cotação.Ativo, error) {
 	atv, err := a.cotação(código, dia)
 	if err != nil {
-		return &domínio.Ativo{}, err
+		return &cotação.Ativo{}, err
 	}
 
 	return atv, nil
 }
 
-func (a *ativo) cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
+func (a *ativo) cotação(código string, dia cotação.Data) (*cotação.Ativo, error) {
 	if a.bd != nil {
 		atv, err := a.bd.Cotação(context.Background(), código, dia)
 		if err == nil {
@@ -56,5 +56,5 @@ func (a *ativo) cotação(código string, dia domínio.Data) (*domínio.Ativo, e
 		}
 	}
 
-	return &domínio.Ativo{}, ErrCotaçãoNãoEncontrada
+	return &cotação.Ativo{}, ErrCotaçãoNãoEncontrada
 }

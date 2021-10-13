@@ -6,60 +6,79 @@ package serviço
 
 import (
 	"context"
-	domínio "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	"fmt"
+	cotação "github.com/dude333/rapinav2/internal/cotacao/dominio"
 	"reflect"
 	"testing"
 )
 
 var (
-	_cache  map[string]domínio.Ativo
-	_ativo1 domínio.Ativo
+	_cache  map[string]cotação.Ativo
+	_ativo1 cotação.Ativo
 )
 
 func init() {
 	const m = "R$"
-	d, _ := domínio.NovaData("2021-10-09")
+	d, _ := cotação.NovaData("2021-10-09")
 
-	_cache = make(map[string]domínio.Ativo)
+	_cache = make(map[string]cotação.Ativo)
 
-	_ativo1 = domínio.Ativo{
+	_ativo1 = cotação.Ativo{
 		Código:       "TEST3",
 		Data:         d,
-		Abertura:     domínio.Dinheiro{Valor: 1, Moeda: m},
-		Máxima:       domínio.Dinheiro{Valor: 2, Moeda: m},
-		Mínima:       domínio.Dinheiro{Valor: 0.8, Moeda: m},
-		Encerramento: domínio.Dinheiro{Valor: 1.6, Moeda: m},
+		Abertura:     cotação.Dinheiro{Valor: 1, Moeda: m},
+		Máxima:       cotação.Dinheiro{Valor: 2, Moeda: m},
+		Mínima:       cotação.Dinheiro{Valor: 0.8, Moeda: m},
+		Encerramento: cotação.Dinheiro{Valor: 1.6, Moeda: m},
 		Volume:       1000000,
 	}
 }
 
 // apiMockOk implementa domínio.RepositórioLeituraAtivo
-type apiMockOk struct{}
+type apiMockOk struct {
+	db cotação.RepositórioLeituraEscritaAtivo
+}
 
-func (r *apiMockOk) Cotação(ctx context.Context, código string, data domínio.Data) (*domínio.Ativo, error) {
+func (r *apiMockOk) Cotação(ctx context.Context, código string, data cotação.Data) (*cotação.Ativo, error) {
 	_cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
 	return &_ativo1, nil
 }
 
-// apiMockFail implementa domínio.RepositórioLeituraAtivo
-type apiMockFail struct{}
+func (r *apiMockOk) Salvar(ctx context.Context, ativo *cotação.Ativo) error {
+	if r.db == nil {
+		return fmt.Errorf("bd inválido")
+	}
+	return r.db.Salvar(ctx, ativo)
+}
 
-func (r *apiMockFail) Cotação(ctx context.Context, código string, data domínio.Data) (*domínio.Ativo, error) {
-	return &domínio.Ativo{}, ErrCotaçãoNãoEncontrada
+// apiMockFail implementa domínio.RepositórioLeituraAtivo
+type apiMockFail struct {
+	db cotação.RepositórioLeituraEscritaAtivo
+}
+
+func (r *apiMockFail) Cotação(ctx context.Context, código string, data cotação.Data) (*cotação.Ativo, error) {
+	return &cotação.Ativo{}, ErrCotaçãoNãoEncontrada
+}
+
+func (r *apiMockFail) Salvar(ctx context.Context, ativo *cotação.Ativo) error {
+	if r.db == nil {
+		return fmt.Errorf("bd inválido")
+	}
+	return r.db.Salvar(ctx, ativo)
 }
 
 // bdMock implementa domínio.RepositórioLeituraEscritaAtivo
 type bdMock struct{}
 
-func (r *bdMock) Cotação(ctx context.Context, código string, data domínio.Data) (*domínio.Ativo, error) {
+func (r *bdMock) Cotação(ctx context.Context, código string, data cotação.Data) (*cotação.Ativo, error) {
 	ativo, ok := _cache[código+data.String()]
 	if !ok {
-		return &domínio.Ativo{}, ErrCotaçãoNãoEncontrada
+		return &cotação.Ativo{}, ErrCotaçãoNãoEncontrada
 	}
 	return &ativo, nil
 }
 
-func (r *bdMock) Salvar(ctx context.Context, ativo *domínio.Ativo) error {
+func (r *bdMock) Salvar(ctx context.Context, ativo *cotação.Ativo) error {
 	_cache[ativo.Código+ativo.Data.String()] = *ativo
 	return nil
 }
@@ -67,31 +86,31 @@ func (r *bdMock) Salvar(ctx context.Context, ativo *domínio.Ativo) error {
 // TESTES -------------------------------------------------
 
 func TestServiçoAtivo_Cotação(t *testing.T) {
-	d1, _ := domínio.NovaData("2021-10-09")
+	d1, _ := cotação.NovaData("2021-10-09")
 
 	type fields struct {
-		api []domínio.RepositórioLeituraAtivo
-		bd  domínio.RepositórioLeituraEscritaAtivo
+		api []cotação.RepositórioLeituraEscritaAtivo
+		bd  cotação.RepositórioLeituraEscritaAtivo
 	}
 	type args struct {
 		código string
-		data   domínio.Data
+		data   cotação.Data
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *domínio.Ativo
+		want    *cotação.Ativo
 		wantErr bool
 	}{
 		{
 			name: "não deveria funcionar",
 			fields: fields{
-				api: []domínio.RepositórioLeituraAtivo{&apiMockFail{}},
+				api: []cotação.RepositórioLeituraEscritaAtivo{&apiMockFail{}},
 				bd:  nil, // testa se o serviço.Cotação ignora o bd caso seja 'nil'
 			},
 			args:    args{"TEST3", d1},
-			want:    &domínio.Ativo{},
+			want:    &cotação.Ativo{},
 			wantErr: true,
 		},
 		{
@@ -101,13 +120,13 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 				bd:  nil, // testa se o serviço.Cotação ignora o bd caso seja 'nil'
 			},
 			args:    args{"TEST3", d1},
-			want:    &domínio.Ativo{},
+			want:    &cotação.Ativo{},
 			wantErr: true,
 		},
 		{
 			name: "deveria funcionar",
 			fields: fields{
-				api: []domínio.RepositórioLeituraAtivo{&apiMockOk{}},
+				api: []cotação.RepositórioLeituraEscritaAtivo{&apiMockOk{}},
 				bd:  &bdMock{},
 			},
 			args:    args{"TEST3", d1},
@@ -117,7 +136,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar com dados do cache",
 			fields: fields{
-				api: []domínio.RepositórioLeituraAtivo{&apiMockFail{}},
+				api: []cotação.RepositórioLeituraEscritaAtivo{&apiMockFail{}},
 				bd:  &bdMock{},
 			},
 			args:    args{"TEST3", d1},
@@ -127,7 +146,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar com um repo bom e um ruim",
 			fields: fields{
-				api: []domínio.RepositórioLeituraAtivo{
+				api: []cotação.RepositórioLeituraEscritaAtivo{
 					&apiMockOk{},
 					&apiMockFail{},
 				},
@@ -140,7 +159,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar com um repo ruim e um bom",
 			fields: fields{
-				api: []domínio.RepositórioLeituraAtivo{
+				api: []cotação.RepositórioLeituraEscritaAtivo{
 					&apiMockFail{},
 					&apiMockOk{},
 				},
