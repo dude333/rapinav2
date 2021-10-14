@@ -24,7 +24,17 @@ type Ativo struct {
 // Ativos -------------------------------------------------
 type Ativos []Ativo
 
-// RepositórioLeituraAtivo --------------------------------------
+// Repositório --------------------------------------------
+
+type ResultadoImportação struct {
+	Ativo *Ativo
+	Error error
+}
+
+type RepositórioImportaçãoAtivo interface {
+	Importar(ctx context.Context, dia Data) <-chan ResultadoImportação
+}
+
 type RepositórioLeituraAtivo interface {
 	Cotação(ctx context.Context, código string, data Data) (*Ativo, error)
 }
@@ -38,7 +48,7 @@ type RepositórioLeituraEscritaAtivo interface {
 	RepositórioEscritaAtivo
 }
 
-// ServiçoAtivo --------------------------------------
+// Serviço ------------------------------------------------
 type ServiçoAtivo interface {
 	Cotação(código string, data Data) (*Ativo, error)
 }
