@@ -207,10 +207,10 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &ativo{
-				api: tt.fields.api,
-				bd:  tt.fields.bd,
-			}
+			s := NovoAtivo(
+				tt.fields.api,
+				tt.fields.bd,
+			)
 			got, err := s.Cotação(tt.args.código, tt.args.data)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ServiçoAtivos.Cotação() error = %v, wantErr %v", err, tt.wantErr)

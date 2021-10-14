@@ -15,16 +15,16 @@ import (
 // ativo é um serviço de busca de informações de um ativo em vários
 // repositórios, como banco de dados ou via API.
 type ativo struct {
-	bd  cotação.RepositórioLeituraEscritaAtivo
 	api []cotação.RepositórioImportaçãoAtivo
+	bd  cotação.RepositórioLeituraEscritaAtivo
 }
 
 func NovoAtivo(
-	bd cotação.RepositórioLeituraEscritaAtivo,
-	api []cotação.RepositórioImportaçãoAtivo) cotação.ServiçoAtivo {
+	api []cotação.RepositórioImportaçãoAtivo,
+	bd cotação.RepositórioLeituraEscritaAtivo) cotação.ServiçoAtivo {
 	return &ativo{
-		bd:  bd,
 		api: api,
+		bd:  bd,
 	}
 }
 
