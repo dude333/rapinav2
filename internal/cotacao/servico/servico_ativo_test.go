@@ -151,8 +151,8 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "não deveria funcionar",
 			fields: fields{
-				api: nil, // testa se o serviço.Cotação ignora a api caso seja 'nil'
-				bd:  nil, // testa se o serviço.Cotação ignora o bd caso seja 'nil'
+				api: nil,
+				bd:  nil,
 			},
 			args:    args{"TEST3", d1},
 			want:    nil,

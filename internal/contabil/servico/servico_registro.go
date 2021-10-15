@@ -38,9 +38,8 @@ func (r *registro) Importar(ano int) error {
 		if result.Error != nil {
 			return result.Error
 		}
-		err := r.bd.Salvar(context.Background(), result.Registro)
-		if err != nil {
-			return err
+		if r.bd != nil {
+			_ = r.bd.Salvar(context.Background(), result.Registro)
 		}
 	}
 

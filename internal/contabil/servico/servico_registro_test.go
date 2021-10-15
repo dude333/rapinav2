@@ -85,24 +85,72 @@ func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.Result
 // Testes ---
 
 func Test_registro_Importar(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
+	type fields struct {
+		api contábil.RepositórioImportaçãoRegistro
+		bd  contábil.RepositórioLeituraEscritaRegistro
 	}
-
-	reg := serviço.NovoRegistro(&repoAPI{}, &repoBD{})
-
-	err := reg.Importar(2021)
-	if err != nil {
-		t.Fatalf("ServiçoRegistro.Importar(): %v", err)
+	type args struct {
+		ano int
 	}
-
-	for _, r := range _exemplos {
-		x := fmt.Sprintf("%s%d", r.CNPJ, r.Ano)
-		y, _ := strconv.Atoi(x)
-
-		c := _cache[uint32(y)]
-		if c.Empresa != r.Empresa {
-			t.Fatalf("Valor salvo esperado: %v, recebido: %v", r.Empresa, c.Empresa)
-		}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "deveria funcionar sem bd",
+			fields: fields{
+				api: &repoAPI{},
+				bd:  nil,
+			},
+			args:    args{},
+			wantErr: false,
+		},
+		{
+			name: "não deveria funcionar sem api e bd",
+			fields: fields{
+				api: nil,
+				bd:  nil,
+			},
+			args:    args{},
+			wantErr: true,
+		},
+		{
+			name: "deveria funcionar",
+			fields: fields{
+				api: &repoAPI{},
+				bd:  &repoBD{},
+			},
+			args:    args{},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := serviço.NovoRegistro(
+				tt.fields.api,
+				tt.fields.bd,
+			)
+			err := r.Importar(tt.args.ano)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("registro.Importar() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil || tt.fields.bd == nil {
+				return
+			}
+			// Verifica se os dados foram salvos no "banco de dados"
+			for _, r := range _exemplos {
+				x := fmt.Sprintf("%s%d", r.CNPJ, r.Ano)
+				y, _ := strconv.Atoi(x)
+				c, ok := _cache[uint32(y)]
+				if !ok {
+					t.Fatal("item não encontrado no cache")
+				}
+				if c.Empresa != r.Empresa {
+					t.Fatalf("valor salvo esperado: %v, recebido: %v", r.Empresa, c.Empresa)
+				}
+			}
+		})
 	}
 }
