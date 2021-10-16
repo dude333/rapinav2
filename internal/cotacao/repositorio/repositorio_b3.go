@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	domínio "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	cotação "github.com/dude333/rapinav2/internal/cotacao/dominio"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 	"os"
@@ -19,55 +19,56 @@ import (
 
 // b3 implementa domínio.RepositórioLeituraAtivo
 type b3 struct {
-	bd domínio.RepositórioEscritaAtivo
 	infra
 }
 
-func B3(
-	bd domínio.RepositórioEscritaAtivo,
-	dirDados string) domínio.RepositórioLeituraAtivo {
+func B3(dirDados string) cotação.RepositórioImportaçãoAtivo {
 	return &b3{
-		bd:    bd,
 		infra: &localInfra{dirDados: dirDados},
 	}
 }
 
 //
-// Cotação baixa o arquivo de cotações de todas as empresas de um determinado
+// Importar baixa o arquivo de cotações de todas as empresas de um determinado
 // dia do site da B3.
 //
-func (b *b3) Cotação(ctx context.Context, código string, dia domínio.Data) (*domínio.Ativo, error) {
-	url, zip, err := arquivoCotação(dia)
-	if err != nil {
-		return &domínio.Ativo{}, err
-	}
+func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.ResultadoImportação {
+	results := make(chan cotação.ResultadoImportação)
 
-	arquivos, err := b.infra.DownloadAndUnzip(url, zip)
-	if err != nil {
-		return &domínio.Ativo{}, err
-	}
-	defer func() {
-		// _ = b.infra.Cleanup(arquivos)
+	go func() {
+		defer close(results)
+
+		url, zip, err := arquivoCotação(dia)
+		if err != nil {
+			results <- cotação.ResultadoImportação{Error: err}
+			return
+		}
+
+		arquivos, err := b.infra.DownloadAndUnzip(url, zip)
+		if err != nil {
+			results <- cotação.ResultadoImportação{Error: err}
+			return
+		}
+		defer func() {
+			_ = b.infra.Cleanup(arquivos)
+		}()
+
+		for _, arquivo := range arquivos {
+			fmt.Println("-", arquivo)
+			b.processarSériesHistóricas(ctx, arquivo, results)
+			select {
+			case <-ctx.Done():
+				results <- cotação.ResultadoImportação{Error: ctx.Err()}
+				return
+			default:
+			}
+		}
 	}()
 
-	var ativo domínio.Ativo
-
-	for _, arquivo := range arquivos {
-		fmt.Println("-", arquivo)
-		atv, err := b.processarSériesHistóricas(arquivo, código)
-		if err == nil && atv.Código == código {
-			ativo = *atv
-		}
-	}
-
-	if ativo == (domínio.Ativo{}) {
-		return &domínio.Ativo{}, ErrAtivoNãoEncontrado
-	}
-
-	return &ativo, nil
+	return results
 }
 
-func arquivoCotação(dia domínio.Data) (url, zip string, err error) {
+func arquivoCotação(dia cotação.Data) (url, zip string, err error) {
 	data := dia.String()
 	if len(data) != len("2021-05-03") {
 		return "", "", ErrDataInválida(data)
@@ -80,17 +81,15 @@ func arquivoCotação(dia domínio.Data) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-// processarSériesHistóricas lê o arquivo de séries históricas baixado da B3,
-// retorna com os valores do ativo selecionado pelo "código" e armazena todos os
-// ativos no banco de dados.
-func (b *b3) processarSériesHistóricas(arquivo, código string) (*domínio.Ativo, error) {
+// processarSériesHistóricas lê o arquivo de séries históricas baixado da B3
+// e envia os valores do ativo para o canal "result".
+func (b *b3) processarSériesHistóricas(ctx context.Context, arquivo string, result chan<- cotação.ResultadoImportação) {
 	fh, err := os.Open(arquivo)
 	if err != nil {
-		return &domínio.Ativo{}, err
+		result <- cotação.ResultadoImportação{Error: err}
+		return
 	}
 	defer fh.Close()
-
-	var ativo domínio.Ativo
 
 	stream := transform.NewReader(fh, charmap.ISO8859_1.NewDecoder())
 	scanner := bufio.NewScanner(stream)
@@ -100,18 +99,14 @@ func (b *b3) processarSériesHistóricas(arquivo, código string) (*domínio.Ati
 		if err != nil {
 			continue
 		}
-
-		if atv.Código == código {
-			ativo = *atv
-		}
-
-		if b.bd != nil {
-			// Salva no banco de dados
-			_ = b.bd.Salvar(context.Background(), atv)
+		select {
+		case <-ctx.Done():
+			result <- cotação.ResultadoImportação{Error: ctx.Err()}
+			return
+		default:
+			result <- cotação.ResultadoImportação{Ativo: atv}
 		}
 	}
-
-	return &ativo, nil
 }
 
 // parseB3Quote parses the line based on this layout:
@@ -137,7 +132,7 @@ func (b *b3) processarSériesHistóricas(arquivo, código string) (*domínio.Ati
 // TPMERC:
 //   010 VISTA
 //   020 FRACIONÁRIO
-func analisarLinha(linha string) (*domínio.Ativo, error) {
+func analisarLinha(linha string) (*cotação.Ativo, error) {
 	if len(linha) != 245 {
 		return nil, errors.New("linha deve conter 245 bytes")
 	}
@@ -158,9 +153,9 @@ func analisarLinha(linha string) (*domínio.Ativo, error) {
 	}
 
 	código := strings.TrimSpace(linha[12:24])
-	data, err := domínio.NovaData(linha[2:6] + "-" + linha[6:8] + "-" + linha[8:10])
+	data, err := cotação.NovaData(linha[2:6] + "-" + linha[6:8] + "-" + linha[8:10])
 	if err != nil {
-		return &domínio.Ativo{}, err
+		return &cotação.Ativo{}, err
 	}
 
 	numRanges := [5]struct {
@@ -176,20 +171,20 @@ func analisarLinha(linha string) (*domínio.Ativo, error) {
 	for i, r := range numRanges {
 		num, err := strconv.Atoi(linha[r.i:r.f])
 		if err != nil {
-			return &domínio.Ativo{}, err
+			return &cotação.Ativo{}, err
 		}
 		vals[i] = float64(num) / 100
 	}
 
 	const r = "R$"
 
-	return &domínio.Ativo{
+	return &cotação.Ativo{
 		Código:       código,
 		Data:         data,
-		Abertura:     domínio.Dinheiro{Valor: vals[0], Moeda: r},
-		Máxima:       domínio.Dinheiro{Valor: vals[1], Moeda: r},
-		Mínima:       domínio.Dinheiro{Valor: vals[2], Moeda: r},
-		Encerramento: domínio.Dinheiro{Valor: vals[3], Moeda: r},
+		Abertura:     cotação.Dinheiro{Valor: vals[0], Moeda: r},
+		Máxima:       cotação.Dinheiro{Valor: vals[1], Moeda: r},
+		Mínima:       cotação.Dinheiro{Valor: vals[2], Moeda: r},
+		Encerramento: cotação.Dinheiro{Valor: vals[3], Moeda: r},
 		Volume:       vals[4],
 	}, nil
 }
