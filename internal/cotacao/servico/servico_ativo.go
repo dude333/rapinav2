@@ -2,8 +2,21 @@
 //
 // SPDX-License-Identifier: MIT
 
-// serviço define os casos de uso de um "ativo", como leitura da sua cotação em
-// um repositório (banco de dados ou API).
+// serviço de cotações que contém a lógica de como os dados são capturados,
+// armazenados (pelos repositórios) e disponibilizados para o domínio.
+//
+//     .---------------------.
+//     |   Domínio: Cotação  |
+//     '---------------------'
+//                 ↓
+//     .---------------------.
+//     |      *Serviço*      |
+//     '---------------------'
+//          ↓             ↓
+//     .---------    .-------.
+//     |   API  |    |  BD   |   <= Repositórios
+//     '--------'    '-------'
+//
 package serviço
 
 import (
@@ -12,8 +25,8 @@ import (
 	"time"
 )
 
-// ativo é um serviço de busca de informações de um ativo em vários
-// repositórios, como banco de dados ou via API.
+// ativo é um serviço que implementa RepositórioImportaçãoAtivo e busca
+// cotações de um ativo em vários repositórios (API e BD).
 type ativo struct {
 	api []cotação.RepositórioImportaçãoAtivo
 	bd  cotação.RepositórioLeituraEscritaAtivo

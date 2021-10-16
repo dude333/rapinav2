@@ -15,24 +15,30 @@ import (
 )
 
 var (
-	_cache    map[uint32]*contábil.Registro
-	_exemplos = []*contábil.Registro{}
+	_cache    map[uint32]*contábil.DFP
+	_exemplos = []*contábil.DFP{}
 )
 
 func init() {
-	_cache = make(map[uint32]*contábil.Registro)
+	_cache = make(map[uint32]*contábil.DFP)
 
 	for i := 1; i <= 10; i++ {
-		r := contábil.Registro{
-			CNPJ:         fmt.Sprintf("%010d", i),
-			Empresa:      fmt.Sprintf("Empresa %02d", i),
-			Ano:          2021,
-			DataFimExerc: "2021-12-31",
-			Versão:       1,
-			Total: contábil.Dinheiro{
-				Valor:  float64(i),
-				Escala: 1000,
-				Moeda:  "R$",
+		r := contábil.DFP{
+			CNPJ: fmt.Sprintf("%010d", i),
+			Nome: fmt.Sprintf("Empresa %02d", i),
+			Ano:  2021,
+			Contas: []contábil.Conta{
+				{
+					Código:       fmt.Sprintf("%d.%d", i, i),
+					Descr:        fmt.Sprintf("Descrição %d", i),
+					GrupoDFP:     "Grupo DFP",
+					DataFimExerc: "2021-12-31",
+					Total: contábil.Dinheiro{
+						Valor:  float64(i),
+						Escala: 1000,
+						Moeda:  "R$",
+					},
+				},
 			},
 		}
 		_exemplos = append(_exemplos, &r)
@@ -43,13 +49,13 @@ func init() {
 
 type repoBD struct{}
 
-func (r *repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Registro, error) {
+func (r *repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
 }
 
-func (r *repoBD) Salvar(ctx context.Context, e *contábil.Registro) error {
+func (r *repoBD) Salvar(ctx context.Context, e *contábil.DFP) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
 	_cache[uint32(y)] = e
@@ -64,10 +70,10 @@ func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.Result
 	go func() {
 		defer close(results)
 
-		for _, r := range _exemplos {
+		for _, ex := range _exemplos {
 			result := contábil.ResultadoImportação{
-				Error:    nil,
-				Registro: r,
+				DFP:   ex,
+				Error: nil,
 			}
 			select {
 			case <-ctx.Done():
@@ -86,8 +92,8 @@ func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.Result
 
 func Test_registro_Importar(t *testing.T) {
 	type fields struct {
-		api contábil.RepositórioImportaçãoRegistro
-		bd  contábil.RepositórioLeituraEscritaRegistro
+		api contábil.RepositórioImportaçãoDFP
+		bd  contábil.RepositórioLeituraEscritaDFP
 	}
 	type args struct {
 		ano int
@@ -128,7 +134,7 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoRegistro(
+			r := serviço.NovoDFP(
 				tt.fields.api,
 				tt.fields.bd,
 			)
@@ -147,8 +153,8 @@ func Test_registro_Importar(t *testing.T) {
 				if !ok {
 					t.Fatal("item não encontrado no cache")
 				}
-				if c.Empresa != r.Empresa {
-					t.Fatalf("valor salvo esperado: %v, recebido: %v", r.Empresa, c.Empresa)
+				if c.Nome != r.Nome {
+					t.Fatalf("valor salvo esperado: %v, recebido: %v", r.Nome, c.Nome)
 				}
 			}
 		})

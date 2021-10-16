@@ -17,7 +17,8 @@ import (
 	"strings"
 )
 
-// b3 implementa domínio.RepositórioLeituraAtivo
+// b3 implementa domínio.RepositórioLeituraAtivo. Busca a cotação de ativos
+// no site da B3.
 type b3 struct {
 	infra
 }

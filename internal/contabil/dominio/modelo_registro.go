@@ -11,12 +11,24 @@ import (
 
 type Hash uint32
 
-type Registro struct {
-	CNPJ         string
-	Empresa      string
-	Ano          int
+const (
+	Individual int = iota
+	Consolidado
+)
+
+// DFP = Demonstrações Financeiras Padronizadas de uma Empresa
+type DFP struct {
+	CNPJ   string
+	Nome   string // Nome da empresa
+	Ano    int
+	Contas []Conta
+}
+
+type Conta struct {
+	Código       string
+	Descr        string
+	GrupoDFP     string
 	DataFimExerc string // AAAA-MM-DD
-	Versão       int
 	Total        Dinheiro
 }
 
@@ -31,28 +43,28 @@ func (d Dinheiro) String() string {
 }
 
 type ResultadoImportação struct {
-	Registro *Registro
-	Error    error
+	DFP   *DFP
+	Error error
 }
 
-type RepositórioImportaçãoRegistro interface {
+type RepositórioImportaçãoDFP interface {
 	Importar(ctx context.Context, ano int) <-chan ResultadoImportação
 }
 
-type RepositórioLeituraRegistro interface {
-	Ler(ctx context.Context, cnpj string, ano int) (*Registro, error)
+type RepositórioLeituraDFP interface {
+	Ler(ctx context.Context, cnpj string, ano int) (*DFP, error)
 }
 
-type RepositórioEscritaRegistro interface {
-	Salvar(ctx context.Context, empresa *Registro) error
+type RepositórioEscritaDFP interface {
+	Salvar(ctx context.Context, empresa *DFP) error
 }
 
-type RepositórioLeituraEscritaRegistro interface {
-	RepositórioLeituraRegistro
-	RepositórioEscritaRegistro
+type RepositórioLeituraEscritaDFP interface {
+	RepositórioLeituraDFP
+	RepositórioEscritaDFP
 }
 
-type ServiçoRegistro interface {
+type ServiçoDFP interface {
 	Importar(ano int) error
-	Relatório(cnpj string, ano int) (*Registro, error)
+	Relatório(cnpj string, ano int) (*DFP, error)
 }
