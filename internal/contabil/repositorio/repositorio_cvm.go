@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
+	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 	"os"
@@ -69,8 +70,10 @@ func (c *cvm) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoI
 		}()
 
 		for _, arquivo := range arquivos {
-			fmt.Println("-", arquivo)
+			progress.Running(arquivo)
+			// Processa o arquivo e envia o resultado para o canal 'results'
 			_ = c.processarArquivoDFP(ctx, arquivo, results)
+			progress.RunOK()
 		}
 
 	}()
@@ -106,7 +109,6 @@ func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results c
 
 		dfp, err := csv.unmarshalDFP(linha)
 		if err != nil {
-			fmt.Println("* ", err)
 			continue
 		}
 
@@ -114,12 +116,15 @@ func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results c
 		empresas[k] = append(empresas[k], dfp)
 	}
 
-	paraDFP(empresas, results)
+	enviarDFP(empresas, results)
 
 	return nil
 }
 
-func paraDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoImportação) {
+// enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
+// lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
+// canal criado pelo método Importar.
+func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoImportação) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -149,8 +154,8 @@ func paraDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoIm
 			}
 			if c.Válida() {
 				contas[reg.Ano] = append(contas[reg.Ano], c)
+				num++
 			}
-			num++
 		}
 
 		for ano := range contas {
@@ -167,14 +172,13 @@ func paraDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoIm
 			}
 
 			if dfp.Válida() {
-				fmt.Println(">", dfp)
 				results <- contábil.ResultadoImportação{DFP: &dfp}
 			} else {
 				results <- contábil.ResultadoImportação{Error: ErrDFPInválida}
 			}
 		}
 	} // next k
-	fmt.Println("- Linhas processadas:", num)
+	progress.Status("Linhas processadas: %d", num)
 }
 
 // próxChave retora a chave com a próxima chave:

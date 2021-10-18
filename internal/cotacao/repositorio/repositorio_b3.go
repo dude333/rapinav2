@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	cotação "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 	"os"
@@ -53,8 +54,9 @@ func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.
 		}()
 
 		for _, arquivo := range arquivos {
-			fmt.Println("-", arquivo)
+			progress.Running(arquivo)
 			b.processarSériesHistóricas(ctx, arquivo, results)
+			progress.RunOK()
 			select {
 			case <-ctx.Done():
 				results <- cotação.ResultadoImportação{Error: ctx.Err()}
