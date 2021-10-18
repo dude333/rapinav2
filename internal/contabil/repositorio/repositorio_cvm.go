@@ -27,6 +27,7 @@ type cvmDFP struct {
 	Descr        string
 	GrupoDFP     string
 	DataFimExerc string // AAAA-MM-DD
+	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
 	Valor        float64
 	Escala       int
 	Moeda        string
@@ -105,7 +106,7 @@ func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results c
 
 		dfp, err := csv.unmarshalDFP(linha)
 		if err != nil {
-			fmt.Println("***", err)
+			fmt.Println("* ", err)
 			continue
 		}
 
@@ -121,7 +122,6 @@ func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results c
 func paraDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoImportação) {
 	num := 0
 	for k := range empresas {
-		num++
 		// Ignora se existir uma versão mais nova
 		if _, ok := empresas[próxChave(k)]; ok {
 			continue
@@ -132,14 +132,15 @@ func paraDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoIm
 			continue
 		}
 
-		contas := make([]contábil.Conta, len(registros))
-		i := 0
+		contas := make(map[string][]contábil.Conta)
+
 		for _, reg := range registros {
 			c := contábil.Conta{
 				Código:       reg.Código,
 				Descr:        reg.Descr,
 				GrupoDFP:     reg.GrupoDFP,
 				DataFimExerc: reg.DataFimExerc,
+				OrdemExerc:   reg.OrdemExerc,
 				Total: contábil.Dinheiro{
 					Valor:  reg.Valor,
 					Escala: reg.Escala,
@@ -147,29 +148,32 @@ func paraDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoIm
 				},
 			}
 			if c.Válida() {
-				contas[i] = c
-				i++
+				contas[reg.Ano] = append(contas[reg.Ano], c)
+			}
+			num++
+		}
+
+		for ano := range contas {
+			a, err := strconv.Atoi(ano)
+			if err != nil {
+				continue
+			}
+
+			dfp := contábil.DFP{
+				CNPJ:   registros[0].CNPJ,
+				Nome:   registros[0].Nome,
+				Ano:    a,
+				Contas: contas[ano],
+			}
+
+			if dfp.Válida() {
+				fmt.Println(">", dfp)
+				results <- contábil.ResultadoImportação{DFP: &dfp}
+			} else {
+				results <- contábil.ResultadoImportação{Error: ErrDFPInválida}
 			}
 		}
-
-		ano, err := strconv.Atoi(registros[0].Ano)
-		if err != nil {
-			continue
-		}
-
-		dfp := contábil.DFP{
-			CNPJ:   registros[0].CNPJ,
-			Nome:   registros[0].Nome,
-			Ano:    ano,
-			Contas: contas,
-		}
-
-		if dfp.Válida() {
-			results <- contábil.ResultadoImportação{DFP: &dfp}
-		} else {
-			results <- contábil.ResultadoImportação{Error: ErrDFPInválida}
-		}
-	}
+	} // next k
 	fmt.Println("- Linhas processadas:", num)
 }
 
@@ -329,9 +333,10 @@ func (c *csv) unmarshalDFP(linha string) (*cvmDFP, error) {
 		Descr:        itens[c.títulos["DS_CONTA"]],
 		GrupoDFP:     itens[c.títulos["GRUPO_DFP"]],
 		DataFimExerc: itens[c.títulos["DT_FIM_EXERC"]],
+		OrdemExerc:   itens[c.títulos["ORDEM_EXERC"]],
 		Valor:        vl,
 		Escala:       escala(itens[c.títulos["ESCALA_MOEDA"]]),
-		Moeda:        itens[c.títulos["MOEDA"]],
+		Moeda:        moeda(itens[c.títulos["MOEDA"]]),
 	}, nil
 }
 
@@ -345,4 +350,12 @@ func escala(s string) int {
 		return 1e6
 	}
 	return 1
+}
+
+func moeda(s string) string {
+	switch strings.ToUpper(s) {
+	case "REAL":
+		return "R$"
+	}
+	return s
 }

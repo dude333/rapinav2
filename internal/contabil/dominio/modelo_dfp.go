@@ -7,6 +7,7 @@ package domínio
 import (
 	"context"
 	"fmt"
+	"strings"
 )
 
 type Hash uint32
@@ -36,14 +37,20 @@ type Conta struct {
 	Descr        string
 	GrupoDFP     string
 	DataFimExerc string // AAAA-MM-DD
+	OrdemExerc   string
 	Total        Dinheiro
 }
 
+// Válida retorna verdadeiro se os dados da conta são válidos. Ignora os registros
+// do penúltimo ano, com exceção de 2009, uma vez que a CVM só disponibliza (pelo
+// menos em 2021) dados até 2010.
 func (c Conta) Válida() bool {
 	return len(c.Código) > 0 &&
 		len(c.Descr) > 0 &&
 		len(c.GrupoDFP) > 0 &&
-		len(c.DataFimExerc) == len("AAAA-MM-DD")
+		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
+		(c.OrdemExerc == "ÚLTIMO" ||
+			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
 }
 
 type Dinheiro struct {
