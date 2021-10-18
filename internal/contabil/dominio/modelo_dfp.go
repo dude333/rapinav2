@@ -24,12 +24,26 @@ type DFP struct {
 	Contas []Conta
 }
 
+func (d DFP) Válida() bool {
+	return len(d.CNPJ) == len("17.836.901/0001-10") &&
+		len(d.Nome) > 0 &&
+		d.Ano >= 2000 && d.Ano < 2221 && // 2 séculos de rapina :)
+		len(d.Contas) > 0
+}
+
 type Conta struct {
 	Código       string
 	Descr        string
 	GrupoDFP     string
 	DataFimExerc string // AAAA-MM-DD
 	Total        Dinheiro
+}
+
+func (c Conta) Válida() bool {
+	return len(c.Código) > 0 &&
+		len(c.Descr) > 0 &&
+		len(c.GrupoDFP) > 0 &&
+		len(c.DataFimExerc) == len("AAAA-MM-DD")
 }
 
 type Dinheiro struct {

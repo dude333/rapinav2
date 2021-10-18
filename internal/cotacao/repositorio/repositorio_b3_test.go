@@ -7,6 +7,7 @@ package repositório_test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ func Test_b3_Importar(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	b3 := repositório.B3("/tmp")
+	b3 := repositório.B3(os.TempDir())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

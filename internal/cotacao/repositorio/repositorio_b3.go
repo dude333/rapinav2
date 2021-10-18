@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-// b3 implementa domínio.RepositórioLeituraAtivo. Busca a cotação de ativos
+// b3 implementa RepositórioImportaçãoAtivo. Busca a cotação de ativos
 // no site da B3.
 type b3 struct {
 	infra
@@ -29,10 +29,8 @@ func B3(dirDados string) cotação.RepositórioImportaçãoAtivo {
 	}
 }
 
-//
 // Importar baixa o arquivo de cotações de todas as empresas de um determinado
 // dia do site da B3.
-//
 func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.ResultadoImportação {
 	results := make(chan cotação.ResultadoImportação)
 
@@ -72,7 +70,7 @@ func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.
 func arquivoCotação(dia cotação.Data) (url, zip string, err error) {
 	data := dia.String()
 	if len(data) != len("2021-05-03") {
-		return "", "", ErrDataInválida(data)
+		return "", "", ErrDataInválidaFn(data)
 	}
 	conv := data[8:10] + data[5:7] + data[0:4] // DDMMAAAA
 

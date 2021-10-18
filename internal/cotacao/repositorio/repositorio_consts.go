@@ -13,5 +13,5 @@ var (
 	ErrFalhaDownload      = errors.New("falha no download")
 	ErrAtivoNãoEncontrado = errors.New("ativo não encontrado")
 
-	ErrDataInválida = func(dia string) error { return fmt.Errorf("data com formato inválido: %s", dia) }
+	ErrDataInválidaFn = func(dia string) error { return fmt.Errorf("data com formato inválido: %s", dia) }
 )
