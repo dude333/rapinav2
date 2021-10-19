@@ -45,9 +45,18 @@ type Conta struct {
 // do penúltimo ano, com exceção de 2009, uma vez que a CVM só disponibliza (pelo
 // menos em 2021) dados até 2010.
 func (c Conta) Válida() bool {
+	grupoVálido := func(grupo string) bool {
+		for i := range Config.GruposDFP {
+			if grupo == Config.GruposDFP[i] {
+				return true
+			}
+		}
+		return false
+	}
+
 	return len(c.Código) > 0 &&
 		len(c.Descr) > 0 &&
-		len(c.GrupoDFP) > 0 &&
+		grupoVálido(c.GrupoDFP) &&
 		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
 		(c.OrdemExerc == "ÚLTIMO" ||
 			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
@@ -62,6 +71,31 @@ type Dinheiro struct {
 func (d Dinheiro) String() string {
 	return fmt.Sprintf(`%s %.2f`, d.Moeda, d.Valor*float64(d.Escala))
 }
+
+type config struct {
+	GruposDFP []string
+}
+
+var Config = config{}
+
+func init() {
+	Config.GruposDFP = []string{
+		"DF Individual - Balanço Patrimonial Ativo",
+		"DF Consolidado - Balanço Patrimonial Ativo",
+		"DF Individual - Balanço Patrimonial Passivo",
+		"DF Consolidado - Balanço Patrimonial Passivo",
+		"DF Individual - Demonstração do Fluxo de Caixa (Método Direto)",
+		"DF Consolidado - Demonstração do Fluxo de Caixa (Método Direto)",
+		"DF Individual - Demonstração do Fluxo de Caixa (Método Indireto)",
+		"DF Consolidado - Demonstração do Fluxo de Caixa (Método Indireto)",
+		"DF Individual - Demonstração do Resultado",
+		"DF Consolidado - Demonstração do Resultado",
+		"DF Individual - Demonstração de Valor Adicionado",
+		"DF Consolidado - Demonstração de Valor Adicionado",
+	}
+}
+
+// -- REPOSITÓRIO & SERVIÇO --
 
 type ResultadoImportação struct {
 	DFP   *DFP

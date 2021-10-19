@@ -70,6 +70,9 @@ func (c *cvm) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoI
 		}()
 
 		for _, arquivo := range arquivos {
+			if !prefixoVálido(arquivo) {
+				continue
+			}
 			progress.Running(arquivo)
 			// Processa o arquivo e envia o resultado para o canal 'results'
 			_ = c.processarArquivoDFP(ctx, arquivo, results)
