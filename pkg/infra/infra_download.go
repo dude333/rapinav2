@@ -25,6 +25,8 @@ func DownloadAndUnzip(url, zip string) ([]string, error) {
 		return []string{}, err
 	}
 
+	fmt.Println()
+
 	dataDir := filepath.Dir(zip)
 
 	// Unzip and list files
@@ -83,6 +85,7 @@ func downloadFile(url, filepath string, verbose bool) error {
 	// Write the body to file
 	counter := ioutil.Discard
 	if verbose {
+		fmt.Printf("[          ] Baixando %s", filepath)
 		counter = &WriteCounter{}
 	}
 	_, err = io.Copy(out, io.TeeReader(resp.Body, counter))
