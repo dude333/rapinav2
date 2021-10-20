@@ -9,6 +9,7 @@ import (
 	"fmt"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
 	repositório "github.com/dude333/rapinav2/internal/contabil/repositorio"
+	"github.com/jmoiron/sqlx"
 	"os"
 	"testing"
 )
@@ -33,10 +34,33 @@ func Test_cvm_Importar(t *testing.T) {
 			want:    make(<-chan contábil.ResultadoImportação),
 			wantErr: false,
 		},
+		{
+			name: "deveria funcionar",
+			args: args{
+				ctx: context.Background(),
+				ano: 2019,
+			},
+			want:    make(<-chan contábil.ResultadoImportação),
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var db *sqlx.DB
+			if testing.Short() {
+				db = sqlx.MustConnect("sqlite3", ":memory:")
+				db.SetMaxOpenConns(1)
+			} else {
+				connStr := "file:/tmp/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+				db = sqlx.MustConnect("sqlite3", connStr)
+			}
+
 			c := repositório.NovoCVM(os.TempDir())
+			s, err := repositório.NovoSqlite(db)
+			if err != nil {
+				t.Fatal(err)
+			}
+
 			for result := range c.Importar(tt.args.ctx, tt.args.ano) {
 				if (result.Error != nil) != tt.wantErr {
 					t.Errorf("RepositórioImportaçãoDFP.Importar() error = %v, wantErr %v", result.Error, tt.wantErr)
@@ -44,6 +68,11 @@ func Test_cvm_Importar(t *testing.T) {
 				}
 				if result.Error != nil {
 					fmt.Printf("=> %+v\n", result.Error)
+				}
+				err = s.Salvar(tt.args.ctx, result.DFP)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para DFP = %s | %s | %d", err, tt.wantErr,
+						result.DFP.CNPJ, result.DFP.Nome, result.DFP.Ano)
 				}
 			}
 		})
