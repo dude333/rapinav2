@@ -157,7 +157,7 @@ func removerDFPeContas(ctx context.Context, db *sqlx.DB, id int) error {
 	return err
 }
 
-// Tabelas dfp (one-to-many) contas
+// tabelas
 //
 //   +------------+      +------------+
 //   | dfp        |      | contas     |
@@ -179,36 +179,78 @@ func removerDFPeContas(ctx context.Context, db *sqlx.DB, id int) error {
 //    b. SELECT id FROM dfp WHERE cnpj = ? AND ano = ?;
 //    b. for range contas => INSERT INTO contas (dfp_id, ...) VALUES (?, ...)
 //
-const (
-	sqlCreateTableDFP = `CREATE TABLE IF NOT EXISTS dfp (
-		id     INTEGER PRIMARY KEY AUTOINCREMENT,
-		cnpj   VARCHAR NOT NULL,
-		nome   VARCHAR NOT NULL,
-		ano    INT NOT NULL,
-		UNIQUE (cnpj, ano)
-	)`
-	// sqlDestroyTableDFP = `DROP TABLE dfp`
+var tabelas = []struct {
+	nome   string
+	versão int
+	up     string
+	down   string
+}{
+	{
+		nome:   "dfp",
+		versão: 3,
+		up: `CREATE TABLE IF NOT EXISTS dfp (
+			id     INTEGER PRIMARY KEY AUTOINCREMENT,
+			cnpj   VARCHAR NOT NULL,
+			nome   VARCHAR NOT NULL,
+			ano    INT NOT NULL,
+			UNIQUE (cnpj, ano)
+		)`,
+		down: `DROP TABLE dfp`,
+	},
+	{nome: "contas",
+		versão: 3,
+		up: `CREATE TABLE IF NOT EXISTS contas (
+			dfp_id         INTEGER,
+			codigo         VARCHAR NOT NULL,
+			descr          VARCHAR NOT NULL,
+			grupo_dfp      VARCHAR NOT NULL,
+			data_fim_exerc VARCHAR NOT NULL,
+			valor          REAL NOT NULL,
+			escala         INTEGER NOT NULL,
+			moeda          VARCHAR,
+			PRIMARY KEY (dfp_id, codigo)
+		)`,
+		down: `DROP TABLE contas`,
+	},
+}
 
-	sqlCreateTableContas = `CREATE TABLE IF NOT EXISTS contas (
-		dfp_id         INTEGER,
-		codigo         VARCHAR NOT NULL,
-		descr          VARCHAR NOT NULL,
-		grupo_dfp      VARCHAR NOT NULL,
-		data_fim_exerc VARCHAR NOT NULL,
-		valor          REAL NOT NULL,
-		escala         INTEGER NOT NULL,
-		moeda          VARCHAR,
-		PRIMARY KEY (dfp_id, codigo)
+const sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
+		nome   VARCHAR PRIMARY KEY,
+		versao INTEGER NOT NULL
 	)`
-	// sqlDestroyTableContas = `DROP TABLE contas`
-)
 
 func criarTabelas(db *sqlx.DB) (err error) {
-	_, err = db.Exec(sqlCreateTableDFP)
-	if err != nil {
+	ins := func(n string, v int) error {
+		query := `INSERT OR REPLACE INTO tabelas (nome, versao) VALUES (?, ?)`
+		_, err := db.Exec(query, n, v)
 		return err
 	}
 
-	_, err = db.Exec(sqlCreateTableContas)
-	return err
+	ver := func(tabela string) int {
+		var versão int
+		_ = db.Get(&versão, `SELECT versao FROM tabelas WHERE nome=?`, tabela)
+		return versão
+	}
+
+	_, _ = db.Exec(sqlCreateTableTabelas)
+
+	for _, t := range tabelas {
+		if ver(t.nome) == t.versão {
+			continue
+		}
+		progress.Status(`Apagando tabela "%s" e recriando nova versão (v%d)`,
+			t.nome, t.versão)
+
+		_, _ = db.Exec(t.down)
+		_, err := db.Exec(t.up)
+		if err != nil {
+			return err
+		}
+		err = ins(t.nome, t.versão)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -12,11 +12,6 @@ import (
 
 type Hash uint32
 
-const (
-	Individual int = iota
-	Consolidado
-)
-
 // DFP = Demonstrações Financeiras Padronizadas de uma Empresa
 type DFP struct {
 	CNPJ   string
@@ -35,6 +30,7 @@ func (d DFP) Válida() bool {
 type Conta struct {
 	Código       string
 	Descr        string
+	Consolidado  bool // Individual ou Consolidado
 	GrupoDFP     string
 	DataFimExerc string // AAAA-MM-DD
 	OrdemExerc   string
@@ -45,18 +41,8 @@ type Conta struct {
 // do penúltimo ano, com exceção de 2009, uma vez que a CVM só disponibliza (pelo
 // menos em 2021) dados até 2010.
 func (c Conta) Válida() bool {
-	grupoVálido := func(grupo string) bool {
-		for i := range Config.GruposDFP {
-			if grupo == Config.GruposDFP[i] {
-				return true
-			}
-		}
-		return false
-	}
-
 	return len(c.Código) > 0 &&
 		len(c.Descr) > 0 &&
-		grupoVálido(c.GrupoDFP) &&
 		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
 		(c.OrdemExerc == "ÚLTIMO" ||
 			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))

@@ -19,10 +19,11 @@ import (
 )
 
 type cvmDFP struct {
-	CNPJ   string
-	Nome   string // Nome da empresa
-	Ano    string
-	Versão string
+	CNPJ        string
+	Nome        string // Nome da empresa
+	Ano         string
+	Consolidado bool
+	Versão      string
 
 	Código       string
 	Descr        string
@@ -32,6 +33,43 @@ type cvmDFP struct {
 	Valor        float64
 	Escala       int
 	Moeda        string
+}
+
+func (c *cvmDFP) converteConta() contábil.Conta {
+
+	contém := func(str string) bool {
+		return strings.Contains(c.GrupoDFP, str)
+	}
+
+	grp := c.GrupoDFP
+	switch {
+	case contém("Balanço Patrimonial Passivo"):
+		grp = "BPP"
+	case contém("Balanço Patrimonial Ativo"):
+		grp = "BPA"
+	case contém("Demonstração do Fluxo de Caixa"):
+		grp = "DFC"
+	case contém("Demonstração do Resultado"):
+		grp = "DRE"
+	case contém("Demonstração de Valor Adicionado"):
+		grp = "DVA"
+	}
+
+	conta := contábil.Conta{
+		Código:       c.Código,
+		Descr:        c.Descr,
+		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
+		GrupoDFP:     grp,
+		DataFimExerc: c.DataFimExerc,
+		OrdemExerc:   c.OrdemExerc,
+		Total: contábil.Dinheiro{
+			Valor:  c.Valor,
+			Escala: c.Escala,
+			Moeda:  c.Moeda,
+		},
+	}
+
+	return conta
 }
 
 // cvm implemente RepositórioImportaçãoDFP. Busca demonstrações financeiras
@@ -143,18 +181,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado
 		contas := make(map[string][]contábil.Conta)
 
 		for _, reg := range registros {
-			c := contábil.Conta{
-				Código:       reg.Código,
-				Descr:        reg.Descr,
-				GrupoDFP:     reg.GrupoDFP,
-				DataFimExerc: reg.DataFimExerc,
-				OrdemExerc:   reg.OrdemExerc,
-				Total: contábil.Dinheiro{
-					Valor:  reg.Valor,
-					Escala: reg.Escala,
-					Moeda:  reg.Moeda,
-				},
-			}
+			c := reg.converteConta()
 			if c.Válida() {
 				contas[reg.Ano] = append(contas[reg.Ano], c)
 				num++

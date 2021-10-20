@@ -2,13 +2,12 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositório_test
+package repositório
 
 import (
 	"context"
 	"fmt"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
-	repositório "github.com/dude333/rapinav2/internal/contabil/repositorio"
 	"github.com/jmoiron/sqlx"
 	"os"
 	"testing"
@@ -55,8 +54,8 @@ func Test_cvm_Importar(t *testing.T) {
 				db = sqlx.MustConnect("sqlite3", connStr)
 			}
 
-			c := repositório.NovoCVM(os.TempDir())
-			s, err := repositório.NovoSqlite(db)
+			c := NovoCVM(os.TempDir())
+			s, err := NovoSqlite(db)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -78,3 +77,45 @@ func Test_cvm_Importar(t *testing.T) {
 		})
 	}
 }
+
+func benchmarkconverteConta(c *cvmDFP, b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		c.converteConta()
+	}
+}
+
+var cc = []cvmDFP{
+	{
+		CNPJ:         "C1",
+		Nome:         "N1",
+		Ano:          "2020",
+		Consolidado:  false,
+		Versão:       "1",
+		Código:       "1.1",
+		Descr:        "D1",
+		GrupoDFP:     "Balanço Patrimonial Passivo",
+		DataFimExerc: "2020-12-30",
+		OrdemExerc:   "ÚLTIMO",
+		Valor:        12.34,
+		Escala:       1,
+		Moeda:        "R$",
+	},
+	{
+		CNPJ:         "C2",
+		Nome:         "N2",
+		Ano:          "2020",
+		Consolidado:  false,
+		Versão:       "1",
+		Código:       "1.1",
+		Descr:        "D1",
+		GrupoDFP:     "Demonstração de Valor Adicionado",
+		DataFimExerc: "2020-12-30",
+		OrdemExerc:   "ÚLTIMO",
+		Valor:        12.34,
+		Escala:       1,
+		Moeda:        "R$",
+	},
+}
+
+func BenchmarkConverteConta0(b *testing.B) { benchmarkconverteConta(&cc[0], b) }
+func BenchmarkConverteConta1(b *testing.B) { benchmarkconverteConta(&cc[1], b) }
