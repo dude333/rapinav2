@@ -52,16 +52,16 @@ type sqliteDFP struct {
 	Ano  int    `db:"ano"`
 }
 
-type sqliteConta struct {
-	ID           int     `db:"dfp_id"`
-	Código       string  `db:"codigo"`
-	Descr        string  `db:"descr"`
-	GrupoDFP     string  `db:"grupo_dfp"`
-	DataFimExerc string  `db:"data_fim_exerc"`
-	Valor        float64 `db:"valor"`
-	Escala       int     `db:"escala"`
-	Moeda        string  `db:"moeda"`
-}
+// type sqliteConta struct {
+// 	ID           int     `db:"dfp_id"`
+// 	Código       string  `db:"codigo"`
+// 	Descr        string  `db:"descr"`
+// 	GrupoDFP     string  `db:"grupo_dfp"`
+// 	DataFimExerc string  `db:"data_fim_exerc"`
+// 	Valor        float64 `db:"valor"`
+// 	Escala       int     `db:"escala"`
+// 	Moeda        string  `db:"moeda"`
+// }
 
 func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.DFP) error {
 	d := sqliteDFP{
@@ -116,24 +116,26 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		return err
 	}
 
+	stmt, err := tx.Prepare(`INSERT INTO contas 
+		(dfp_id, codigo, descr, grupo_dfp, data_fim_exerc, valor, escala, moeda) 
+		VALUES (?,?,?,?,?,?,?,?)`)
+	if err != nil {
+		return err
+	}
+
 	for i := range contas {
 
-		c := sqliteConta{
-			ID:           id,
-			Código:       contas[i].Código,
-			Descr:        contas[i].Descr,
-			GrupoDFP:     contas[i].GrupoDFP,
-			DataFimExerc: contas[i].DataFimExerc,
-			Valor:        contas[i].Total.Valor,
-			Escala:       contas[i].Total.Escala,
-			Moeda:        contas[i].Total.Moeda,
-		}
+		var args []interface{}
+		args = append(args, id)
+		args = append(args, contas[i].Código)
+		args = append(args, contas[i].Descr)
+		args = append(args, contas[i].GrupoDFP)
+		args = append(args, contas[i].DataFimExerc)
+		args = append(args, contas[i].Total.Valor)
+		args = append(args, contas[i].Total.Escala)
+		args = append(args, contas[i].Total.Moeda)
 
-		query := `INSERT INTO contas 
-			( dfp_id,  codigo,  descr,  grupo_dfp,  data_fim_exerc,  valor,  escala,  moeda)
-			VALUES 
-			(:dfp_id, :codigo, :descr, :grupo_dfp, :data_fim_exerc, :valor, :escala, :moeda)`
-		_, err = tx.NamedExecContext(ctx, query, c)
+		_, err = stmt.ExecContext(ctx, args...)
 		if err != nil {
 			// Ignora erro em caso de registro duplicado (dfp_id + codigo), pois se
 			// trata de erro no arquivo da CVM (raramente acontece)
@@ -143,8 +145,9 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 				return err
 			}
 		}
-		progress.Spinner()
 	}
+
+	progress.Spinner()
 
 	return tx.Commit()
 }

@@ -4,8 +4,12 @@
 
 package main
 
-import "github.com/dude333/rapinav2/cmd"
+import (
+	"github.com/dude333/rapinav2/cmd"
+	"github.com/pkg/profile"
+)
 
 func main() {
+	defer profile.Start().Stop()
 	cmd.Execute()
 }
