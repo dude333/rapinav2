@@ -111,6 +111,10 @@ func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.DFP) 
 // previamente que não exista nenhum registro com o dfp_id das contas a serem
 // inseridas.
 func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta) error {
+	tx, err := db.Beginx()
+	if err != nil {
+		return err
+	}
 
 	for i := range contas {
 
@@ -129,19 +133,20 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 			( dfp_id,  codigo,  descr,  grupo_dfp,  data_fim_exerc,  valor,  escala,  moeda)
 			VALUES 
 			(:dfp_id, :codigo, :descr, :grupo_dfp, :data_fim_exerc, :valor, :escala, :moeda)`
-		_, err := db.NamedExecContext(ctx, query, c)
+		_, err = tx.NamedExecContext(ctx, query, c)
 		if err != nil {
 			// Ignora erro em caso de registro duplicado (dfp_id + codigo), pois se
 			// trata de erro no arquivo da CVM (raramente acontece)
 			sqliteErr := err.(sqlite3.Error)
 			if sqliteErr.Code != sqlite3.ErrConstraint {
+				_ = tx.Rollback()
 				return err
 			}
 		}
 		progress.Spinner()
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func removerDFPeContas(ctx context.Context, db *sqlx.DB, id int) error {
@@ -187,7 +192,7 @@ var tabelas = []struct {
 }{
 	{
 		nome:   "dfp",
-		versão: 3,
+		versão: _ver_,
 		up: `CREATE TABLE IF NOT EXISTS dfp (
 			id     INTEGER PRIMARY KEY AUTOINCREMENT,
 			cnpj   VARCHAR NOT NULL,
@@ -198,7 +203,7 @@ var tabelas = []struct {
 		down: `DROP TABLE dfp`,
 	},
 	{nome: "contas",
-		versão: 3,
+		versão: _ver_,
 		up: `CREATE TABLE IF NOT EXISTS contas (
 			dfp_id         INTEGER,
 			codigo         VARCHAR NOT NULL,
@@ -214,10 +219,13 @@ var tabelas = []struct {
 	},
 }
 
-const sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
+const (
+	_ver_                 = 5
+	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL
 	)`
+)
 
 func criarTabelas(db *sqlx.DB) (err error) {
 	ins := func(n string, v int) error {
