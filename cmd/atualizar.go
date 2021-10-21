@@ -7,8 +7,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"time"
 
 	repositório "github.com/dude333/rapinav2/internal/contabil/repositorio"
+	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
@@ -27,8 +30,7 @@ var atualizarCmd = &cobra.Command{
 }
 
 func init() {
-	atualizarCmd.Flags().IntVarP(&flags.atualizar.ano, "ano", "a", 2021, "Ano do relatório")
-	_ = atualizarCmd.MarkFlagRequired("ano")
+	atualizarCmd.Flags().IntVarP(&flags.atualizar.ano, "ano", "a", 0, "Ano do relatório")
 
 	rootCmd.AddCommand(atualizarCmd)
 }
@@ -43,16 +45,34 @@ func atualizar(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
+	progress.Status("{%d}", flags.atualizar.ano)
+
 	ctx := cmd.Context()
 
-	for result := range c.Importar(ctx, flags.atualizar.ano) {
-		if result.Error != nil {
-			panic(err)
-		}
-		err = s.Salvar(ctx, result.DFP)
-		if err != nil {
-			fmt.Println("*", err)
-		}
+	anoi := 2010
+	anof, err := strconv.Atoi(time.Now().Format("2006"))
+	if err != nil {
+		progress.Error(err)
+		return
 	}
+
+	if flags.atualizar.ano >= 2000 {
+		anoi = flags.atualizar.ano
+		anof = anoi
+	}
+
+	for ano := anof; ano >= anoi; ano-- {
+
+		for result := range c.Importar(ctx, ano) {
+			if result.Error != nil {
+				panic(err)
+			}
+			err = s.Salvar(ctx, result.DFP)
+			if err != nil {
+				fmt.Println("*", err)
+			}
+		}
+
+	} // next ano
 
 }
