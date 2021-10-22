@@ -98,7 +98,7 @@ func (c *cvm) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoI
 			return
 		}
 
-		arquivos, err := c.infra.DownloadAndUnzip(url, zip)
+		arquivos, err := c.infra.DownloadAndUnzip(url, zip, Config.Filtros)
 		if err != nil {
 			results <- contábil.ResultadoImportação{Error: err}
 			return
@@ -108,9 +108,6 @@ func (c *cvm) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoI
 		}()
 
 		for _, arquivo := range arquivos {
-			if !prefixoVálido(arquivo) {
-				continue
-			}
 			progress.Running(arquivo)
 			// Processa o arquivo e envia o resultado para o canal 'results'
 			_ = c.processarArquivoDFP(ctx, arquivo, results)

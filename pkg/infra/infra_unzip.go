@@ -19,7 +19,7 @@ import (
 // within the zip file (parameter 1) to an output directory (parameter 2).
 // Source: https://golangcode.com/unzip-files-in-go/
 //
-func Unzip(src string, dest string, verbose bool) ([]string, error) {
+func Unzip(src string, dest string, filters []string, verbose bool) ([]string, error) {
 
 	var filenames []string
 
@@ -30,6 +30,10 @@ func Unzip(src string, dest string, verbose bool) ([]string, error) {
 	defer r.Close()
 
 	for _, f := range r.File {
+
+		if !matchFilter(f.Name, filters) {
+			continue
+		}
 
 		rc, err := f.Open()
 		if err != nil {
@@ -86,4 +90,16 @@ func Unzip(src string, dest string, verbose bool) ([]string, error) {
 		}
 	}
 	return filenames, nil
+}
+
+func matchFilter(s string, f []string) bool {
+	if len(f) == 0 {
+		return true // ignore when filter f is empty
+	}
+	for i := range f {
+		if strings.Contains(strings.ToLower(s), strings.ToLower(f[i])) {
+			return true
+		}
+	}
+	return false
 }

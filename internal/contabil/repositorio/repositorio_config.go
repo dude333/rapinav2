@@ -1,9 +1,7 @@
 package repositório
 
-import "strings"
-
 type config struct {
-	Prefixos []string
+	Filtros []string // Parte do nome dos arquivos que serão usados
 }
 
 var Config config
@@ -19,15 +17,7 @@ func init() {
 	}
 
 	for _, t := range tipo {
-		Config.Prefixos = append(Config.Prefixos, "dfp_cia_aberta_"+t+"_con")
+		// Por hora serão usados apenas os dados consolidados
+		Config.Filtros = append(Config.Filtros, "dfp_cia_aberta_"+t+"_con")
 	}
-}
-
-func prefixoVálido(arquivo string) bool {
-	for i := range Config.Prefixos {
-		if strings.Contains(arquivo, Config.Prefixos[i]) {
-			return true
-		}
-	}
-	return false
 }

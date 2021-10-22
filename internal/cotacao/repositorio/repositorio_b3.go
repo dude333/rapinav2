@@ -44,7 +44,7 @@ func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.
 			return
 		}
 
-		arquivos, err := b.infra.DownloadAndUnzip(url, zip)
+		arquivos, err := b.infra.DownloadAndUnzip(url, zip, []string{})
 		if err != nil {
 			results <- cotação.ResultadoImportação{Error: err}
 			return

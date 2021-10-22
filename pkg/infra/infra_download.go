@@ -17,7 +17,7 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-func DownloadAndUnzip(url, zip string) ([]string, error) {
+func DownloadAndUnzip(url, zip string, filters []string) ([]string, error) {
 	verbose := true
 
 	err := downloadFile(url, zip, verbose)
@@ -30,7 +30,7 @@ func DownloadAndUnzip(url, zip string) ([]string, error) {
 	dataDir := filepath.Dir(zip)
 
 	// Unzip and list files
-	files, err := Unzip(zip, dataDir, verbose)
+	files, err := Unzip(zip, dataDir, filters, verbose)
 	os.Remove(zip)
 	if err != nil {
 		return []string{}, err

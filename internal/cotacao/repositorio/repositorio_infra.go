@@ -13,7 +13,7 @@ import (
 // infra define uma interface para que este respositório não fique amarrado
 // na implementação de uma única biblioteca externa.
 type infra interface {
-	DownloadAndUnzip(url, zip string) ([]string, error)
+	DownloadAndUnzip(url, zip string, filtros []string) ([]string, error)
 	Cleanup(files []string) []string
 }
 
@@ -21,9 +21,9 @@ type localInfra struct {
 	dirDados string // diretório de dados
 }
 
-func (l localInfra) DownloadAndUnzip(url, arquivo string) ([]string, error) {
+func (l localInfra) DownloadAndUnzip(url, arquivo string, filtros []string) ([]string, error) {
 	zip := path.Join(l.dirDados, arquivo)
-	return ext.DownloadAndUnzip(url, zip)
+	return ext.DownloadAndUnzip(url, zip, filtros)
 }
 
 func (l localInfra) Cleanup(files []string) []string {
