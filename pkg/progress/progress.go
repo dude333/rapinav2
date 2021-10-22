@@ -1,4 +1,8 @@
-// progress prints the program progress on screen. It's similar to a logger, but
+// SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
+//
+// SPDX-License-Identifier: MIT
+
+// Package progress prints the program progress on screen. It's similar to a logger, but
 // with better formatting.
 package progress
 
