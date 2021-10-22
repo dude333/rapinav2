@@ -148,7 +148,7 @@ func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results c
 	for scanner.Scan() {
 		linha := scanner.Text()
 
-		dfp, err := csv.unmarshalDFP(linha)
+		dfp, err := csv.carregaDFP(linha)
 		if err != nil {
 			continue
 		}
@@ -231,20 +231,59 @@ var (
 	ErrDataInválida = errors.New("data inválida")
 )
 
+const (
+	numItens int = 11 // número de itens (soma dos parâmetros pos___ da struct csv)
+)
+
 type csv struct {
-	sep     string // separador de campos
-	títulos map[string]int
+	sep           string // separador de campos
+	cabeçalhoLido bool
+
+	posCnpj        int
+	posDenomCia    int
+	posDtFimExerc  int
+	posVersao      int
+	posCdConta     int
+	posDsConta     int
+	posGrupoDFP    int
+	posOrdemExerc  int
+	posVlConta     int
+	posEscalaMoeda int
+	posMoeda       int
 }
 
 func (c *csv) lerCabeçalho(linha string) {
+	c.cabeçalhoLido = true
 	títulos := strings.Split(linha, c.sep)
-	c.títulos = make(map[string]int, len(títulos))
 	for i, t := range títulos {
-		c.títulos[t] = i
+		switch t {
+		case "CNPJ_CIA":
+			c.posCnpj = i
+		case "DENOM_CIA":
+			c.posDenomCia = i
+		case "DT_FIM_EXERC":
+			c.posDtFimExerc = i
+		case "VERSAO":
+			c.posVersao = i
+		case "CD_CONTA":
+			c.posCdConta = i
+		case "DS_CONTA":
+			c.posDsConta = i
+		case "GRUPO_DFP":
+			c.posGrupoDFP = i
+		case "ORDEM_EXERC":
+			c.posOrdemExerc = i
+		case "VL_CONTA":
+			c.posVlConta = i
+		case "ESCALA_MOEDA":
+			c.posEscalaMoeda = i
+		case "MOEDA":
+			c.posMoeda = i
+		}
 	}
 }
 
-// unmarshalDFP transforma uma linha do arquivo DFP em uma estrutura DFP.
+// carregaDFP transforma uma linha do arquivo DFP em uma estrutura DFP.
 //
 //		-----------------------
 //		Campo: CD_CONTA
@@ -336,41 +375,41 @@ func (c *csv) lerCabeçalho(linha string) {
 //			Precisão  : 29
 //			Scale     : 10
 //
-func (c *csv) unmarshalDFP(linha string) (*cvmDFP, error) {
-	if len(c.títulos) == 0 {
+func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
+	if !c.cabeçalhoLido {
 		c.lerCabeçalho(linha)
 		return nil, ErrCabeçalho
 	}
 
 	itens := strings.Split(linha, c.sep)
-	if len(itens) < len(c.títulos) {
+	if len(itens) < numItens {
 		return nil, ErrFaltaItem
 	}
 
 	// A validação da Conta é feita pelo modelo, mas aqui é feita para
 	// evitar erro ao pegar o ano
-	if len(itens[c.títulos["DT_FIM_EXERC"]]) != len("AAAA-MM-DD") {
+	if len(itens[c.posDtFimExerc]) != len("AAAA-MM-DD") {
 		return nil, ErrDataInválida
 	}
 
-	vl, err := strconv.ParseFloat(itens[c.títulos["VL_CONTA"]], 64)
+	vl, err := strconv.ParseFloat(itens[c.posVlConta], 64)
 	if err != nil {
 		return nil, err
 	}
 
 	return &cvmDFP{
-		CNPJ:         itens[c.títulos["CNPJ"]],
-		Nome:         itens[c.títulos["DENOM_CIA"]],
-		Ano:          itens[c.títulos["DT_FIM_EXERC"]][:4],
-		Versão:       itens[c.títulos["VERSAO"]],
-		Código:       itens[c.títulos["CD_CONTA"]],
-		Descr:        itens[c.títulos["DS_CONTA"]],
-		GrupoDFP:     itens[c.títulos["GRUPO_DFP"]],
-		DataFimExerc: itens[c.títulos["DT_FIM_EXERC"]],
-		OrdemExerc:   itens[c.títulos["ORDEM_EXERC"]],
+		CNPJ:         itens[c.posCnpj],
+		Nome:         itens[c.posDenomCia],
+		Ano:          itens[c.posDtFimExerc][:4],
+		Versão:       itens[c.posVersao],
+		Código:       itens[c.posCdConta],
+		Descr:        itens[c.posDsConta],
+		GrupoDFP:     itens[c.posGrupoDFP],
+		DataFimExerc: itens[c.posDtFimExerc],
+		OrdemExerc:   itens[c.posOrdemExerc],
 		Valor:        vl,
-		Escala:       escala(itens[c.títulos["ESCALA_MOEDA"]]),
-		Moeda:        moeda(itens[c.títulos["MOEDA"]]),
+		Escala:       escala(itens[c.posEscalaMoeda]),
+		Moeda:        moeda(itens[c.posMoeda]),
 	}, nil
 }
 
