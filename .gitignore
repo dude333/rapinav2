@@ -3,6 +3,8 @@
 *.prof
 *.tmp
 *.log
+*.cfg
+*.conf
 
 bin/*
 .vscode/*

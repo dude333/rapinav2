@@ -1,0 +1,245 @@
+html, body {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+*,
+::after,
+::before {
+	box-sizing: border-box;
+}
+
+* {
+	color: #222;
+	font-family: Inconsolata, monospace;
+	line-height: 1.2;
+}
+
+
+body {
+	font-size: 1rem;
+	font-weight: 400;
+	text-align: left;
+}
+
+.navbar {
+	align-items: center;
+	color: rgb(34, 34, 34);
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: flex-start;
+	line-height: 19.2px;
+	padding: 2.2em 0 0 0;
+	position: relative;
+	text-align: left;
+	white-space: nowrap;
+}
+
+.navbar-title {
+	text-decoration: none;
+	font-size: 2rem;
+	margin: 0 auto 0 0;
+}
+
+.navbar-nav {
+	box-sizing: border-box;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+	list-style-image: none;
+	list-style-position: outside;
+	list-style-type: none;
+	margin-bottom: 0px;
+	padding-left: 0px;
+	text-align: left;
+	white-space: nowrap;
+}
+
+.navbar-nav>a {
+	color: royalblue;
+	list-style-image: none;
+	list-style-position: outside;
+	list-style-type: none;
+	text-align: left;
+	text-decoration: none;
+	padding: 0.6em;
+	white-space: nowrap;
+}
+
+.navbar-nav>a:hover {
+	text-decoration: underline solid royalblue;
+}
+
+.container,
+#title {
+	max-width: 750px;
+	width: 100%;
+	padding-right: 15px;
+	padding-left: 15px;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+footer {
+	margin-top: 3rem;
+	margin-bottom: 3rem;
+	text-align: center;
+}
+
+footer * {
+	color: #444;
+	font-size: 0.9em;
+	line-height: 1.6;
+	margin: 0;
+}
+
+footer>p {
+	font-family: monospace;
+	color: #ddd;
+}
+
+footer>a {
+	text-decoration: none;
+}
+
+footer>a:hover {
+	color: #222;
+	text-decoration: underline solid #222;
+}
+
+hr {
+	box-sizing: content-box;
+	height: 0;
+	overflow: visible;
+	margin-top: 1rem;
+	margin-bottom: 1rem;
+	border: 0;
+	border-top: 1px solid rgba(0, 0, 0, .1);
+}
+
+h2 {
+	font-size: 1.6rem;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+#content table {
+	margin: 1rem auto;
+	width: 100%;
+}
+
+#content table td,
+#content table th {
+	border: 1px solid #ccc;
+	padding: 6px 12px;
+	text-align: left;
+}
+
+#content table th {
+	font-weight: 700;
+	font-size: 1.1rem;
+}
+
+#content table tr:nth-child(2n) {
+	background-color: #f8f8f8;
+}
+
+#content table td.date {
+	text-align: center;
+}
+
+#content table td.currency,
+#content table td.percent {
+	text-align: right;
+	padding-right: 1em;
+}
+
+small,
+.small {
+	font-size: 0.9rem;
+	vertical-align: text-bottom;
+	text-decoration: none;
+	padding-left: 2em;
+}
+
+.blue {
+	color: royalblue;
+}
+
+label,
+input {
+	vertical-align: top;
+}
+
+textarea {
+	text-transform: uppercase;
+}
+
+/*SVG ICON SYSTEM*/
+.icon {
+	display: inline-flex;
+	align-self: center;
+}
+
+.icon svg,
+.icon img {
+	height: 0.9rem;
+	width: 0.9rem;
+	fill: currentColor;
+}
+
+.icon.baseline svg,
+.icon img {
+	top: .125em;
+	position: relative;
+}
+
+@-webkit-keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
+}
+
+.report {
+	display: block;
+	-webkit-animation: fadeIn .3s;
+	animation: fadeIn .3s;
+	opacity: 1;
+	-wekit-transition: all .1s;
+	-moz-transition: all .1s;
+	transition: all .1s;
+}
+
+.spinner-1 {
+	width: 30px;
+	height: 30px;
+	border-radius: 50%;
+	border: 6px solid;
+	border-color: #000 #0000;
+	animation: s1 1s infinite;
+}
+
+@keyframes s1 {
+	to {
+		transform: rotate(.5turn)
+	}
+}
