@@ -5,24 +5,25 @@
 package api
 
 import (
-	domínio "github.com/dude333/rapinav2/internal/contabil/dominio"
-	repositório "github.com/dude333/rapinav2/internal/contabil/repositorio"
-	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
-	"github.com/jmoiron/sqlx"
-	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
+
+	"github.com/dude333/rapinav2/internal/contabil/dominio"
+	"github.com/dude333/rapinav2/internal/contabil/repositorio"
+	"github.com/dude333/rapinav2/internal/contabil/servico"
+	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
 )
 
 type htmlDFP struct {
-	svc domínio.ServiçoDFP
+	svc dominio.ServiçoDFP
 }
 
 func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
 
-	sqlite, _ := repositório.NovoSqlite(db)
-	api := repositório.NovoCVM(dataDir)
-	svc := serviço.NovoDFP(api, sqlite)
+	sqlite, _ := repositorio.NovoSqlite(db)
+	api := repositorio.NovoCVM(dataDir)
+	svc := servico.NovoDFP(api, sqlite)
 	handler := &htmlDFP{svc: svc}
 
 	e.GET("/api/lucros", handler.lucros)

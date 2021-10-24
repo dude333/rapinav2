@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositório
+package repositorio
 
 import (
 	"context"

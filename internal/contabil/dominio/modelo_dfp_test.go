@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package domínio
+package dominio
 
 import "testing"
 

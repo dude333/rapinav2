@@ -2,20 +2,21 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositório
+package repositorio
 
 import (
 	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
-	"github.com/dude333/rapinav2/pkg/progress"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/transform"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/dude333/rapinav2/internal/contabil/dominio"
+	"github.com/dude333/rapinav2/pkg/progress"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
 )
 
 type cvmDFP struct {
@@ -35,7 +36,7 @@ type cvmDFP struct {
 	Moeda        string
 }
 
-func (c *cvmDFP) converteConta() contábil.Conta {
+func (c *cvmDFP) converteConta() dominio.Conta {
 
 	contém := func(str string) bool {
 		return strings.Contains(c.GrupoDFP, str)
@@ -55,14 +56,14 @@ func (c *cvmDFP) converteConta() contábil.Conta {
 		grp = "DVA"
 	}
 
-	conta := contábil.Conta{
+	conta := dominio.Conta{
 		Código:       c.Código,
 		Descr:        c.Descr,
 		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
 		GrupoDFP:     grp,
 		DataFimExerc: c.DataFimExerc,
 		OrdemExerc:   c.OrdemExerc,
-		Total: contábil.Dinheiro{
+		Total: dominio.Dinheiro{
 			Valor:  c.Valor,
 			Escala: c.Escala,
 			Moeda:  c.Moeda,
@@ -78,7 +79,7 @@ type cvm struct {
 	infra
 }
 
-func NovoCVM(dirDados string) contábil.RepositórioImportaçãoDFP {
+func NovoCVM(dirDados string) dominio.RepositórioImportaçãoDFP {
 	return &cvm{
 		infra: &localInfra{dirDados: dirDados},
 	}
@@ -86,21 +87,21 @@ func NovoCVM(dirDados string) contábil.RepositórioImportaçãoDFP {
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
 // ano do site da CVM.
-func (c *cvm) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportação {
-	results := make(chan contábil.ResultadoImportação)
+func (c *cvm) Importar(ctx context.Context, ano int) <-chan dominio.ResultadoImportação {
+	results := make(chan dominio.ResultadoImportação)
 
 	go func() {
 		defer close(results)
 
 		url, zip, err := arquivoDFP(ano)
 		if err != nil {
-			results <- contábil.ResultadoImportação{Error: err}
+			results <- dominio.ResultadoImportação{Error: err}
 			return
 		}
 
 		arquivos, err := c.infra.DownloadAndUnzip(url, zip, Config.Filtros)
 		if err != nil {
-			results <- contábil.ResultadoImportação{Error: err}
+			results <- dominio.ResultadoImportação{Error: err}
 			return
 		}
 		defer func() {
@@ -128,7 +129,7 @@ func arquivoDFP(ano int) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results chan<- contábil.ResultadoImportação) error {
+func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dominio.ResultadoImportação) error {
 	fh, err := os.Open(arquivo)
 	if err != nil {
 		return err
@@ -162,7 +163,7 @@ func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results c
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.ResultadoImportação) {
+func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.ResultadoImportação) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -175,7 +176,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado
 			continue
 		}
 
-		contas := make(map[string][]contábil.Conta)
+		contas := make(map[string][]dominio.Conta)
 
 		for _, reg := range registros {
 			c := reg.converteConta()
@@ -191,7 +192,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado
 				continue
 			}
 
-			dfp := contábil.DFP{
+			dfp := dominio.DFP{
 				CNPJ:   registros[0].CNPJ,
 				Nome:   registros[0].Nome,
 				Ano:    a,
@@ -199,9 +200,9 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado
 			}
 
 			if dfp.Válida() {
-				results <- contábil.ResultadoImportação{DFP: &dfp}
+				results <- dominio.ResultadoImportação{DFP: &dfp}
 			} else {
-				results <- contábil.ResultadoImportação{Error: ErrDFPInválida}
+				results <- dominio.ResultadoImportação{Error: ErrDFPInválida}
 			}
 		}
 	} // next k

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositório
+package repositorio
 
 type config struct {
 	Filtros []string // Parte do nome dos arquivos que serão usados

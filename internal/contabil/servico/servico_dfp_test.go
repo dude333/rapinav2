@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package serviço_test
+package servico_test
 
 import (
 	"context"
