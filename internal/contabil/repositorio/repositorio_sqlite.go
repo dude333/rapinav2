@@ -40,8 +40,52 @@ func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscritaDFP, error) {
 }
 
 func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
+	var sd sqliteDFP
+	err := s.db.GetContext(ctx, &sd, `SELECT * FROM dfp WHERE cnpj=? AND ano=?`, &cnpj, &ano)
+	if err != nil {
+		progress.Error(err)
+		return nil, err
+	}
 
-	return nil, nil
+	dfp := contábil.DFP{
+		CNPJ:   sd.CNPJ,
+		Nome:   sd.Nome,
+		Ano:    sd.Ano,
+		Contas: nil,
+	}
+
+	contas := make([]contábil.Conta, 0, 100)
+	rows, err := s.db.QueryxContext(ctx, `SELECT * FROM contas WHERE dfp_id=?`, &sd.ID)
+	if err != nil {
+		progress.Error(err)
+		return nil, err
+	}
+	for rows.Next() {
+		var sc sqliteConta
+		err := rows.StructScan(&sc)
+		if err != nil {
+			progress.Error(err)
+			return nil, err
+		}
+		conta := contábil.Conta{
+			Código:       sc.Código,
+			Descr:        sc.Descr,
+			Consolidado:  true,
+			GrupoDFP:     sc.GrupoDFP,
+			DataFimExerc: sc.DataFimExerc,
+			OrdemExerc:   "",
+			Total: contábil.Dinheiro{
+				Valor:  sc.Valor,
+				Escala: sc.Escala,
+				Moeda:  sc.Moeda,
+			},
+		}
+		contas = append(contas, conta)
+	}
+
+	dfp.Contas = contas
+
+	return &dfp, err
 }
 
 func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.DFP) error {
@@ -51,21 +95,22 @@ func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.DFP) error {
 }
 
 type sqliteDFP struct {
+	ID   int    `db:"id"`
 	CNPJ string `db:"cnpj"`
 	Nome string `db:"nome"`
 	Ano  int    `db:"ano"`
 }
 
-// type sqliteConta struct {
-// 	ID           int     `db:"dfp_id"`
-// 	Código       string  `db:"codigo"`
-// 	Descr        string  `db:"descr"`
-// 	GrupoDFP     string  `db:"grupo_dfp"`
-// 	DataFimExerc string  `db:"data_fim_exerc"`
-// 	Valor        float64 `db:"valor"`
-// 	Escala       int     `db:"escala"`
-// 	Moeda        string  `db:"moeda"`
-// }
+type sqliteConta struct {
+	ID           int     `db:"dfp_id"`
+	Código       string  `db:"codigo"`
+	Descr        string  `db:"descr"`
+	GrupoDFP     string  `db:"grupo_dfp"`
+	DataFimExerc string  `db:"data_fim_exerc"`
+	Valor        float64 `db:"valor"`
+	Escala       int     `db:"escala"`
+	Moeda        string  `db:"moeda"`
+}
 
 func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.DFP) error {
 	d := sqliteDFP{

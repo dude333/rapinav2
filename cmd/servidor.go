@@ -10,6 +10,9 @@ import (
 	"net/http"
 
 	"github.com/dude333/rapinav2/frontend"
+	"github.com/dude333/rapinav2/internal/contabil/api"
+	"github.com/jmoiron/sqlx"
+	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 )
 
@@ -27,16 +30,21 @@ func init() {
 }
 
 func servidor(cmd *cobra.Command, args []string) {
+	e := echo.New()
+
+	connStr := "file:/tmp/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+	db := sqlx.MustConnect("sqlite3", connStr)
+	api.New(e, db, "/tmp")
+
 	contentFS, err := fs.Sub(frontend.ContentFS, "public")
 	if err != nil {
 		panic(err)
 	}
 	fs := http.FileServer(http.FS(contentFS))
-	http.Handle("/", fs)
+	e.GET("/*", echo.WrapHandler(fs))
 
 	log.Println("Listening on port", 3000)
-	err = http.ListenAndServe(":3000", nil)
-	if err != nil {
+	if err := e.Start(":3000"); err != http.ErrServerClosed {
 		log.Fatal(err)
 	}
 }

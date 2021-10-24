@@ -67,6 +67,6 @@ func (r *dfp) Relatório(cnpj string, ano int) (*contábil.DFP, error) {
 	if r.bd == nil {
 		return &contábil.DFP{}, ErrRepositórioInválido
 	}
-	registro, err := r.bd.Ler(context.Background(), cnpj, ano)
-	return registro, err
+	dfp, err := r.bd.Ler(context.Background(), cnpj, ano)
+	return dfp, err
 }
