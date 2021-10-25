@@ -70,7 +70,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP,
 		conta := contábil.Conta{
 			Código:       sc.Código,
 			Descr:        sc.Descr,
-			Consolidado:  true,
+			Consolidado:  sc.Consolidado != 0,
 			GrupoDFP:     sc.GrupoDFP,
 			DataFimExerc: sc.DataFimExerc,
 			OrdemExerc:   "",
@@ -106,6 +106,7 @@ type sqliteConta struct {
 	Código       string  `db:"codigo"`
 	Descr        string  `db:"descr"`
 	GrupoDFP     string  `db:"grupo_dfp"`
+	Consolidado  int     `db:"consolidado"`
 	DataFimExerc string  `db:"data_fim_exerc"`
 	Valor        float64 `db:"valor"`
 	Escala       int     `db:"escala"`
@@ -166,10 +167,17 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 	}
 
 	stmt, err := tx.Prepare(`INSERT INTO contas 
-		(dfp_id, codigo, descr, grupo_dfp, data_fim_exerc, valor, escala, moeda) 
-		VALUES (?,?,?,?,?,?,?,?)`)
+		(dfp_id, codigo, descr, grupo_dfp, consolidado, data_fim_exerc, valor, escala, moeda) 
+		VALUES (?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
 		return err
+	}
+
+	boolToInt := func(is bool) int {
+		if is {
+			return 1
+		}
+		return 0
 	}
 
 	for i := range contas {
@@ -179,6 +187,7 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		args = append(args, contas[i].Código)
 		args = append(args, contas[i].Descr)
 		args = append(args, contas[i].GrupoDFP)
+		args = append(args, boolToInt(contas[i].Consolidado))
 		args = append(args, contas[i].DataFimExerc)
 		args = append(args, contas[i].Total.Valor)
 		args = append(args, contas[i].Total.Escala)
@@ -261,6 +270,7 @@ var tabelas = []struct {
 			codigo         VARCHAR NOT NULL,
 			descr          VARCHAR NOT NULL,
 			grupo_dfp      VARCHAR NOT NULL,
+			consolidado    INTEGER NOT NULL,
 			data_fim_exerc VARCHAR NOT NULL,
 			valor          REAL NOT NULL,
 			escala         INTEGER NOT NULL,
@@ -272,7 +282,7 @@ var tabelas = []struct {
 }
 
 const (
-	_ver_                 = 5
+	_ver_                 = 6
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL
