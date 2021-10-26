@@ -51,9 +51,6 @@ github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/pkg/profile v1.6.0
-## explicit; go 1.13
-github.com/pkg/profile
 # github.com/spf13/afero v1.6.0
 ## explicit; go 1.13
 github.com/spf13/afero

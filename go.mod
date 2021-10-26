@@ -8,7 +8,6 @@ require (
 	github.com/labstack/echo/v4 v4.6.1
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/pkg/errors v0.9.1
-	github.com/pkg/profile v1.6.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
 	golang.org/x/text v0.3.7
