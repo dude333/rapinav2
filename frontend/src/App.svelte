@@ -4,24 +4,28 @@ SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
 SPDX-License-Identifier: MIT
 -->
 <script>
-	import { onMount } from 'svelte'
-	import { apiDFP } from "./dfp"
-	
-	let dfp = {}
-	let err = ""
-	onMount(async () => {
-		[dfp, err] = await apiDFP("84.429.695%2F0001-11", "2020")
-		
-	})
+	import { onMount } from "svelte";
+	import { apiDFP } from "./dfp";
 
-	function format(conta) {
-		let num = conta.Valor * conta.Escala
-		try {
-			num = num.toLocaleString()
-		} catch (_) {
-		}
-		return conta.Moeda + " " + num
-	}
+	// type Conta = {
+	// 	codigo: string;
+	// 	descr: string;
+	// 	totais: string[];
+	// };
+
+	// type DFP = {
+	// 	nome: string;
+	// 	cnpj: string;
+	// 	anos: number[];
+	// 	contas: Conta[];
+	// };
+
+	let dfp;
+	let err = "";
+	onMount(async () => {
+		[dfp, err] = await apiDFP("84.429.695%2F0001-11", "2020");
+		console.log("onMount()", dfp, err);
+	});
 </script>
 
 <div class="container">
@@ -39,23 +43,22 @@ SPDX-License-Identifier: MIT
 	<div class="container">
 		{#if err != ''}
 			<p>Erro: {err}</p>
-		{:else}
-			<p>CNPJ: {dfp.CNPJ}</p>
-			<p>Nome: {dfp.Nome}</p>
-			<p>Ano: {dfp.Ano}</p>
+		{/if}
+		{#if err == '' && dfp && dfp.cnpj != ''}
+			<p>CNPJ: {dfp.cnpj}</p>
+			<p>Nome: {dfp.nome}</p>
+			<p>Ano: {dfp.anos}</p>
 			<small>
 				<table>
-					{#if dfp && dfp.Contas}
-						{#each dfp.Contas as conta}
-							{#if conta.Total && conta.Total.Valor > 0}
-								<tr>
-									<td>{conta.Código}</td>
-									<td>{conta.Descr}</td>
-									<td style="text-align:right;">{format(conta.Total)}</td>
-								</tr>
-							{/if}
-						{/each}
-					{/if}
+					{#each dfp.contas as conta}
+						<tr>
+							<td>{conta.codigo}</td>
+							<td>{conta.descr}</td>
+							{#each conta.totais as total}
+								<td style="text-align:right;">{total}</td>
+							{/each}
+						</tr>
+					{/each}
 				</table>
 			</small>
 		{/if}

@@ -22,6 +22,7 @@ package servico
 import (
 	"context"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
+	"github.com/dude333/rapinav2/pkg/progress"
 	"time"
 )
 
@@ -67,6 +68,7 @@ func (r *dfp) Relatório(cnpj string, ano int) (*contábil.DFP, error) {
 	if r.bd == nil {
 		return &contábil.DFP{}, ErrRepositórioInválido
 	}
+	progress.Debug("Ler(%s, %d)", cnpj, ano)
 	dfp, err := r.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
 }

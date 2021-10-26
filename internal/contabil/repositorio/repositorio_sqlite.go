@@ -55,7 +55,8 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP,
 	}
 
 	contas := make([]contábil.Conta, 0, 100)
-	rows, err := s.db.QueryxContext(ctx, `SELECT * FROM contas WHERE dfp_id=?`, &sd.ID)
+	rows, err := s.db.QueryxContext(ctx,
+		`SELECT * FROM contas WHERE dfp_id=? ORDER BY codigo`, &sd.ID)
 	if err != nil {
 		progress.Error(err)
 		return nil, err

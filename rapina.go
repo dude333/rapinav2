@@ -6,9 +6,11 @@ package main
 
 import (
 	"github.com/dude333/rapinav2/cmd"
+	"github.com/dude333/rapinav2/pkg/progress"
 )
 
 func main() {
 	// defer profile.Start().Stop()
+	progress.SetDebug(true)
 	cmd.Execute()
 }

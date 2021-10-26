@@ -5,6 +5,6 @@
 import { fetchJSON } from "./fetch";
 
 export async function apiDFP(cnpj, ano) {
-  const url = `/api/lucros?cnpj=${cnpj}&ano=${ano}`;
+  const url = `/api/dfp?cnpj=${cnpj}`;
   return fetchJSON(url);
 }
