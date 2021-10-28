@@ -77,32 +77,38 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 	var ret jsonDFP
 	mapContas := make(map[string]jsonConta)
 	n := 0
+	skip := 0
 	for ano := esq; inRange(ano, dir); ano = ano + op {
 		dfp, err := h.svc.Relatório(cnpj, ano)
-		if err == sql.ErrNoRows {
-			n++
-			continue
-		}
-		if err != nil {
+		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
+
+		if err == sql.ErrNoRows {
+			if len(ret.Anos) > 0 {
+				n++
+				ret.Anos = append(ret.Anos, ano)
+			}
+			skip++
+			continue
+		}
+
+		ret.Anos = append(ret.Anos, ano)
 
 		if ret.CNPJ == "" {
 			ret.Nome = dfp.Nome
 			ret.CNPJ = dfp.CNPJ
 		}
 
-		ret.Anos = append(ret.Anos, ano)
-
 		for _, c := range dfp.Contas {
-			key := c.Código + c.Descr
+			key := c.Código + " " + c.Descr
 			m, ok := mapContas[key]
 			if !ok {
 				m.Código = c.Código
 				m.Descr = c.Descr
-				m.Totais = make([]string, abs(esq-dir)+1)
+				m.Totais = make([]float64, abs(esq-dir)+1-skip)
 			}
-			m.Totais[n] = c.Total.String()
+			m.Totais[n] = c.Total.Valor * float64(c.Total.Escala)
 			mapContas[key] = m
 		}
 		n++
@@ -128,9 +134,9 @@ type jsonDFP struct {
 }
 
 type jsonConta struct {
-	Código string   `json:"codigo"`
-	Descr  string   `json:"descr"`
-	Totais []string `json:"totais"`
+	Código string    `json:"codigo"`
+	Descr  string    `json:"descr"`
+	Totais []float64 `json:"totais"`
 }
 
 func keys(m map[string]jsonConta) []string {

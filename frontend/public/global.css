@@ -73,12 +73,19 @@ body {
 	text-decoration: underline solid royalblue;
 }
 
-.container,
 #title {
 	max-width: 750px;
 	width: 100%;
 	padding-right: 15px;
 	padding-left: 15px;
+	margin-right: auto;
+	margin-left: auto;
+}
+
+.container {
+	width: 100%;
+	padding-left: 2em;
+	padding-right: 4em;
 	margin-right: auto;
 	margin-left: auto;
 }
@@ -129,6 +136,7 @@ table {
 }
 
 #content table {
+	font-size: 0.8rem;
 	margin: 1rem auto;
 	width: 100%;
 }
@@ -146,7 +154,7 @@ table {
 }
 
 #content table tr:nth-child(2n) {
-	background-color: #f8f8f8;
+	background-color: #f8fcf8;
 }
 
 #content table td.date {
