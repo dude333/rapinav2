@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
+//
+// SPDX-License-Identifier: MIT
+
 export async function fetchJSON(url, opts = {}) {
   try {
     const res = await fetch(url, opts);
