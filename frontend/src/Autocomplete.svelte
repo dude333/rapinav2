@@ -5,7 +5,6 @@
   let timer;
 
   let inputFind;
-  let divDropdown;
   let ulDropdown;
 
   async function query2(str) {
@@ -27,7 +26,9 @@
   function navigate(ev) {
     console.log("navigate", ev.keyCode);
     switch (ev.keyCode) {
+      case 9:  // tab
       case 13: // enter
+        results = [];
         select(ev);
         break;
       case 38: // up
@@ -57,13 +58,16 @@
     timer = setTimeout(async () => {
       const val = ev.target.value;
       console.log("val", val);
-      await showResults2(val);
+      await showResults(val);
       ev.target.value = val;
     }, 150);
   }
 
-  async function showResults2(val) {
-    results = await query(val);
+  async function showResults(val) {
+    const r = await query(val);
+    if (r.length > 1) {
+      results = r;
+    }
   }
 </script>
 
@@ -98,7 +102,7 @@
   }
 </style>
 
-<form autocomplete="off">
+<form autocomplete="off" on:submit|preventDefault={() => console.log("===>", inputFind.value)}>
   <label>Find:
     <input bind:this={inputFind} on:keyup={(ev) => debounce(ev)} />
     <div bind:this={divDropdown} class="autocomplete dropdown">
@@ -107,7 +111,7 @@
           <li
             tabindex="0"
             on:click={(ev) => select(ev)}
-            on:keyup={(ev) => navigate(ev)}>
+            on:keydown|preventDefault={(ev) => navigate(ev)}>
             {result}
           </li>
         {/each}
