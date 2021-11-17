@@ -36,6 +36,7 @@ type dfp struct {
 func NovoDFP(
 	api contábil.RepositórioImportaçãoDFP,
 	bd contábil.RepositórioLeituraEscritaDFP) contábil.ServiçoDFP {
+
 	return &dfp{api: api, bd: bd}
 }
 
@@ -71,4 +72,13 @@ func (r *dfp) Relatório(cnpj string, ano int) (*contábil.DFP, error) {
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
 	dfp, err := r.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
+}
+
+func (r *dfp) Empresas(nome string) []string {
+	if r.bd == nil {
+		return []string{}
+	}
+	progress.Debug("Empresas(%s)", nome)
+	lista := r.bd.Empresas(context.Background(), nome)
+	return lista
 }

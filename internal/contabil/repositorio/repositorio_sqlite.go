@@ -10,7 +10,9 @@ import (
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
+	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/mattn/go-sqlite3"
+	"sort"
 
 	// _ "github.com/mattn/go-sqlite3"
 	"strconv"
@@ -26,6 +28,8 @@ type sqlite struct {
 	// de *todas* as empresas em um determinado ano (CNPJ+ANO) deve ser feito
 	// de uma única vez.
 	limpo map[string]bool
+
+	cache []string
 }
 
 func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscritaDFP, error) {
@@ -35,8 +39,9 @@ func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscritaDFP, error) {
 	}
 
 	limpo := make(map[string]bool)
+	cache := make([]string, 0, 500)
 
-	return &sqlite{db: db, limpo: limpo}, nil
+	return &sqlite{db: db, limpo: limpo, cache: cache}, nil
 }
 
 func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
@@ -87,6 +92,27 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP,
 	dfp.Contas = contas
 
 	return &dfp, err
+}
+
+func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
+	if len(s.cache) == 0 {
+		err := s.db.SelectContext(ctx, &s.cache,
+			`SELECT DISTINCT(nome) FROM dfp ORDER BY nome`)
+		if err != nil {
+			progress.Error(err)
+			return nil
+		}
+	}
+
+	matches := fuzzy.RankFindNormalizedFold(nome, s.cache)
+	sort.Sort(matches)
+	var ret []string
+	for i := range matches {
+		if matches[i].Distance < 30 {
+			ret = append(ret, matches[i].Target)
+		}
+	}
+	return ret
 }
 
 func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.DFP) error {

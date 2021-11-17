@@ -8,13 +8,20 @@
   let divDropdown;
   let ulDropdown;
 
-  async function query(str) {
+  async function query2(str) {
     const res = await fetch(
       "https://autocomplete.clearbit.com/v1/companies/suggest?query=" + str
     );
     const json = await res.json();
     const list = json.map((obj) => obj.name);
     return list;
+  }
+  async function query(str) {
+    const res = await fetch(
+      "/api/dfp/empresas/" + str
+    );
+    const json = await res.json();
+    return json.empresas;
   }
 
   function navigate(ev) {

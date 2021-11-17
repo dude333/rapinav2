@@ -9,6 +9,7 @@ import (
 	"fmt"
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
 	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -49,7 +50,7 @@ func init() {
 
 type repoBD struct{}
 
-func (r *repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
+func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
@@ -61,6 +62,10 @@ func (r *repoBD) Salvar(ctx context.Context, e *contábil.DFP) error {
 	_cache[uint32(y)] = e
 
 	return nil
+}
+
+func (r repoBD) Empresas(ctx context.Context, nome string) []string {
+	return []string{"a", "b", "c"}
 }
 
 type repoAPI struct{}
@@ -156,6 +161,45 @@ func Test_registro_Importar(t *testing.T) {
 				if c.Nome != r.Nome {
 					t.Fatalf("valor salvo esperado: %v, recebido: %v", r.Nome, c.Nome)
 				}
+			}
+		})
+	}
+}
+
+func Test_dfp_Empresas(t *testing.T) {
+	type fields struct {
+		api contábil.RepositórioImportaçãoDFP
+		bd  contábil.RepositórioLeituraEscritaDFP
+	}
+	type args struct {
+		nome string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "deveria funcionar",
+			fields: fields{
+				api: nil,
+				bd:  &repoBD{},
+			},
+			args:    args{nome: "a"},
+			want:    []string{"a", "b", "c"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := serviço.NovoDFP(
+				tt.fields.api,
+				tt.fields.bd,
+			)
+			if got := r.Empresas(tt.args.nome); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("dfp.Empresas() = %v, want %v", got, tt.want)
 			}
 		})
 	}

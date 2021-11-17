@@ -29,7 +29,7 @@ SPDX-License-Identifier: MIT
 
   function format(n) {
     if (!n) return "-";
-    return (n / 1000).toLocaleString("pt-BR");
+    return (Math.round(n / 10e6)).toLocaleString("pt-BR");
   }
 
   function fontWeight(cod) {
@@ -75,6 +75,12 @@ SPDX-License-Identifier: MIT
   // background = linear-gradient(to top, #d7e7d7 40%, #f8fcf8 40%)
   // t.style.background = "linear-gradient(to right,"+col1+" "+percentage+"%, "+col2+" "+percentage+"%)";
 </script>
+
+<style>
+  table * {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  }
+</style>
 
 {#if err != ''}
   <p>Erro: {err}</p>

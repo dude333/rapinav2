@@ -29,6 +29,7 @@ func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
 	handler := &htmlDFP{svc: svc}
 
 	e.GET("/api/dfp", handler.dfp)
+	e.GET("/api/dfp/empresas/:nome", handler.empresas)
 }
 
 // dfp retorna um JSON com os DFPs de uma empresa.
@@ -155,4 +156,27 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+// empresas retorna um JSON como nome de empresas similares ao parâmetro 'nome'.
+//
+// Parâmetros:
+//   - "nome": "string"
+//
+// Retorno:
+//	{
+//		"empresas": []
+//	}
+func (h *htmlDFP) empresas(c echo.Context) error {
+	nome := c.Param("nome")
+
+	lista := h.svc.Empresas(nome)
+
+	ret := jsonEmpresas{Empresas: lista}
+
+	return c.JSON(http.StatusOK, &ret)
+}
+
+type jsonEmpresas struct {
+	Empresas []string `json:"empresas"`
 }

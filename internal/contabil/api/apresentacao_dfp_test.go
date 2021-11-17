@@ -43,6 +43,9 @@ func (m *mockService) Relatório(cnpj string, ano int) (*dominio.DFP, error) {
 	c.Ano = ano
 	return &c, nil
 }
+func (m *mockService) Empresas(nome string) []string {
+	return nil
+}
 
 func Test_htmlDFP_dfp(t *testing.T) {
 	// Setup

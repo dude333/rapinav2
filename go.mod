@@ -6,6 +6,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/labstack/echo/v4 v4.6.1
+	github.com/lithammer/fuzzysearch v1.1.3
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.2.1

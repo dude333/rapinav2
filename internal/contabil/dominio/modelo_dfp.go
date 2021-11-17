@@ -94,6 +94,7 @@ type RepositórioImportaçãoDFP interface {
 
 type RepositórioLeituraDFP interface {
 	Ler(ctx context.Context, cnpj string, ano int) (*DFP, error)
+	Empresas(ctx context.Context, nome string) []string
 }
 
 type RepositórioEscritaDFP interface {
@@ -108,4 +109,5 @@ type RepositórioLeituraEscritaDFP interface {
 type ServiçoDFP interface {
 	Importar(ano int) error
 	Relatório(cnpj string, ano int) (*DFP, error)
+	Empresas(nome string) []string
 }
