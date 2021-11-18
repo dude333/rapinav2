@@ -23,6 +23,8 @@ github.com/inconshreveable/mousetrap
 ## explicit; go 1.10
 github.com/jmoiron/sqlx
 github.com/jmoiron/sqlx/reflectx
+# github.com/kylelemons/godebug v1.1.0
+## explicit; go 1.11
 # github.com/labstack/echo/v4 v4.6.1
 ## explicit; go 1.15
 github.com/labstack/echo/v4
@@ -30,9 +32,6 @@ github.com/labstack/echo/v4
 ## explicit; go 1.12
 github.com/labstack/gommon/color
 github.com/labstack/gommon/log
-# github.com/lithammer/fuzzysearch v1.1.3
-## explicit; go 1.15
-github.com/lithammer/fuzzysearch/fuzzy
 # github.com/magiconair/properties v1.8.5
 ## explicit; go 1.13
 github.com/magiconair/properties
@@ -54,6 +53,9 @@ github.com/pelletier/go-toml
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
+# github.com/sahilm/fuzzy v0.1.0
+## explicit
+github.com/sahilm/fuzzy
 # github.com/spf13/afero v1.6.0
 ## explicit; go 1.13
 github.com/spf13/afero
@@ -108,7 +110,6 @@ golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/internal/identifier
-golang.org/x/text/runes
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi

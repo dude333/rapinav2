@@ -10,8 +10,10 @@ import (
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
-	"github.com/lithammer/fuzzysearch/fuzzy"
+
+	// "github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/mattn/go-sqlite3"
+	"github.com/sahilm/fuzzy"
 	"sort"
 
 	// _ "github.com/mattn/go-sqlite3"
@@ -107,12 +109,12 @@ func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
 		}
 	}
 
-	matches := fuzzy.RankFindNormalizedFold(nome, s.cache)
+	matches := fuzzy.Find(nome, s.cache)
 	sort.Sort(matches)
 	var ret []string
 	for i := range matches {
-		if matches[i].Distance < 30 {
-			ret = append(ret, matches[i].Target)
+		if matches[i].Score < 30 {
+			ret = append(ret, matches[i].Str)
 		}
 	}
 	return ret

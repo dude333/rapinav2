@@ -2,7 +2,6 @@
   export let empresa = "";
 
   let results = [];
-  let timer;
 
   let inputFind;
   let ulDropdown;
@@ -48,15 +47,15 @@
     inputFind.focus();
   }
 
+  let timer;
   async function debounce(ev) {
     if (ev.keyCode == 40) {
-      ulDropdown.firstChild && ulDropdown.firstChild.focus();
+      ulDropdown && ulDropdown.firstChild && ulDropdown.firstChild.focus();
       return;
     }
     clearTimeout(timer);
     timer = setTimeout(async () => {
       const val = ev.target.value;
-      console.log("val", val);
       await showResults(val);
       ev.target.value = val;
     }, 150);
@@ -70,21 +69,18 @@
   }
 </script>
 
-<form
-  autocomplete="off"
-  on:submit|preventDefault={() => console.log("===>", inputFind.value)}
->
+<form autocomplete="off" on:submit|preventDefault={() => {}}>
   <label
     >Find:
-    <input bind:this={inputFind} on:keyup={(ev) => debounce(ev)} />
+    <input bind:this={inputFind} on:keyup={debounce} />
     {#if results && results.length > 0}
       <div class="autocomplete dropdown">
         <ul bind:this={ulDropdown}>
           {#each results as result}
             <li
               tabindex="0"
-              on:click={(ev) => select(ev)}
-              on:keydown|preventDefault={(ev) => navigate(ev)}
+              on:click={select}
+              on:keydown|preventDefault={navigate}
             >
               {result}
             </li>

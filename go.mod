@@ -6,9 +6,9 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/labstack/echo/v4 v4.6.1
-	github.com/lithammer/fuzzysearch v1.1.3
 	github.com/mattn/go-sqlite3 v1.14.9
 	github.com/pkg/errors v0.9.1
+	github.com/sahilm/fuzzy v0.1.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.9.0
 	golang.org/x/text v0.3.7
@@ -18,6 +18,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
