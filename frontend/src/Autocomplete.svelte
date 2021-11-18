@@ -1,5 +1,5 @@
 <script>
-  let name = "world";
+  export let empresa = "";
 
   let results = [];
   let timer;
@@ -16,9 +16,7 @@
     return list;
   }
   async function query(str) {
-    const res = await fetch(
-      "/api/dfp/empresas/" + str
-    );
+    const res = await fetch("/api/dfp/empresas/" + str);
     const json = await res.json();
     return json.empresas;
   }
@@ -26,7 +24,7 @@
   function navigate(ev) {
     console.log("navigate", ev.keyCode);
     switch (ev.keyCode) {
-      case 9:  // tab
+      case 9: // tab
       case 13: // enter
         results = [];
         select(ev);
@@ -45,7 +43,8 @@
   }
 
   function select(ev) {
-    inputFind.value = ev.target.textContent;
+    empresa = ev.target.textContent && ev.target.textContent.trim();
+    inputFind.value = empresa;
     inputFind.focus();
   }
 
@@ -65,11 +64,36 @@
 
   async function showResults(val) {
     const r = await query(val);
-    if (r.length > 1) {
+    if (r && r.length > 1) {
       results = r;
     }
   }
 </script>
+
+<form
+  autocomplete="off"
+  on:submit|preventDefault={() => console.log("===>", inputFind.value)}
+>
+  <label
+    >Find:
+    <input bind:this={inputFind} on:keyup={(ev) => debounce(ev)} />
+    {#if results && results.length > 0}
+      <div class="autocomplete dropdown">
+        <ul bind:this={ulDropdown}>
+          {#each results as result}
+            <li
+              tabindex="0"
+              on:click={(ev) => select(ev)}
+              on:keydown|preventDefault={(ev) => navigate(ev)}
+            >
+              {result}
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+  </label>
+</form>
 
 <style>
   .autocomplete.dropdown {
@@ -101,21 +125,3 @@
     cursor: pointer;
   }
 </style>
-
-<form autocomplete="off" on:submit|preventDefault={() => console.log("===>", inputFind.value)}>
-  <label>Find:
-    <input bind:this={inputFind} on:keyup={(ev) => debounce(ev)} />
-    <div bind:this={divDropdown} class="autocomplete dropdown">
-      <ul bind:this={ulDropdown}>
-        {#each results as result}
-          <li
-            tabindex="0"
-            on:click={(ev) => select(ev)}
-            on:keydown|preventDefault={(ev) => navigate(ev)}>
-            {result}
-          </li>
-        {/each}
-      </ul>
-    </div>
-  </label>
-</form>

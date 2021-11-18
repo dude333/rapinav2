@@ -57,6 +57,9 @@ func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
 // anos[ano1, ano2, ...] = totais[total_ano1, total_ano2, ...].
 func (h *htmlDFP) dfp(c echo.Context) error {
 	cnpj := c.QueryParam("cnpj")
+	if cnpj == "" {
+		cnpj = c.QueryParam("empresa")
+	}
 	ordem := c.QueryParam("ordem")
 
 	atual := time.Now().Year()

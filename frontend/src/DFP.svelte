@@ -4,6 +4,8 @@ SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
 SPDX-License-Identifier: MIT
 -->
 <script>
+  import Autocomplete from "./Autocomplete.svelte";
+
   import { onMount } from "svelte";
   import { apiDFP } from "./dfp";
 
@@ -22,14 +24,25 @@ SPDX-License-Identifier: MIT
 
   let dfp;
   let err = "";
+  let empresa;
+
   onMount(async () => {
-    [dfp, err] = await apiDFP("84.429.695%2F0001-11", "2020");
-    console.log("onMount()", dfp, err);
+    // [dfp, err] = await apiDFP("84.429.695%2F0001-11", "2020");
+    // console.log("onMount()", dfp, err);
   });
+
+  async function load(str) {
+    if (!str || str.length < 2) return;
+    
+    [dfp, err] = await apiDFP(str, "2020");
+    console.log("load()", dfp, err);
+  }
+
+  $: load(empresa);
 
   function format(n) {
     if (!n) return "-";
-    return (Math.round(n / 10e6)).toLocaleString("pt-BR");
+    return Math.round(n / 10e6).toLocaleString("pt-BR");
   }
 
   function fontWeight(cod) {
@@ -76,16 +89,12 @@ SPDX-License-Identifier: MIT
   // t.style.background = "linear-gradient(to right,"+col1+" "+percentage+"%, "+col2+" "+percentage+"%)";
 </script>
 
-<style>
-  table * {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  }
-</style>
+<Autocomplete bind:empresa />
 
-{#if err != ''}
+{#if err != ""}
   <p>Erro: {err}</p>
 {/if}
-{#if err == '' && dfp && dfp.cnpj != '' && dfp.contas}
+{#if err == "" && dfp && dfp.cnpj != "" && dfp.contas}
   <p>CNPJ: {dfp.cnpj}</p>
   <p>Nome: {dfp.nome}</p>
   <small>
@@ -102,7 +111,8 @@ SPDX-License-Identifier: MIT
         <tr
           class={tag(conta.codigo)}
           style="font-weight: {fontWeight(conta.codigo)}"
-          on:click={() => toggle(conta.codigo)}>
+          on:click={() => toggle(conta.codigo)}
+        >
           <td>{conta.codigo}</td>
           <td>{conta.descr}</td>
           {#each conta.totais as total}
@@ -113,3 +123,10 @@ SPDX-License-Identifier: MIT
     </table>
   </small>
 {/if}
+
+<style>
+  table * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  }
+</style>

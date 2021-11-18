@@ -47,6 +47,9 @@ func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscritaDFP, error) {
 func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
 	var sd sqliteDFP
 	err := s.db.GetContext(ctx, &sd, `SELECT * FROM dfp WHERE cnpj=? AND ano=?`, &cnpj, &ano)
+	if err == sql.ErrNoRows {
+		err = s.db.GetContext(ctx, &sd, `SELECT * FROM dfp WHERE nome=? AND ano=?`, &cnpj, &ano)
+	}
 	if err != nil {
 		progress.Error(err)
 		return nil, err

@@ -5,7 +5,6 @@ SPDX-License-Identifier: MIT
 -->
 <script>
 	import DFP from "./DFP.svelte";
-	import Autocomplete from "./Autocomplete.svelte";
 </script>
 
 <div class="container">
@@ -21,7 +20,6 @@ SPDX-License-Identifier: MIT
 
 <div id="content">
 	<div class="container">
-		<Autocomplete />
 		<DFP />
 	</div>
 </div>
