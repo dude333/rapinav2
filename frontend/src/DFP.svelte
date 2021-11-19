@@ -5,8 +5,7 @@ SPDX-License-Identifier: MIT
 -->
 <script>
   import Autocomplete from "./Autocomplete.svelte";
-
-  import { onMount } from "svelte";
+  import { fade } from "svelte/transition";
   import { apiDFP } from "./dfp";
 
   // type Conta = {
@@ -30,7 +29,10 @@ SPDX-License-Identifier: MIT
     if (!str || str.length < 2) return;
 
     [dfp, err] = await apiDFP(str);
-    console.log("load()", dfp, err);
+
+    for (let i = 0; i < dfp.length; i++) {
+      toggle(i);
+    }
   }
 
   $: load(empresa);
@@ -54,6 +56,16 @@ SPDX-License-Identifier: MIT
     return cod.split(".").length - 1;
   }
 
+  function initStatus() {
+    dfp.contas.forEach((el, idx) => {
+      lastIdx--;
+      if (lastIdx >= 0 && el.codigo.startsWith(dfp.contas[lastIdx])) {
+        dfp.contas[lastIdx].hasChild = true;
+        dfp.contas[idx].hide = true;
+      }
+    });
+  }
+
   function toggle(i) {
     const base = dfp.contas[i].codigo;
     let hasChild = false;
@@ -64,6 +76,19 @@ SPDX-License-Identifier: MIT
       }
     });
     if (hasChild) dfp.contas[i].collapse = !dfp.contas[i].collapse;
+  }
+
+  function symbol(conta) {
+    let hasChild = false;
+    dfp.contas.forEach((el, idx) => {
+      if (el.codigo != conta.codigo && el.codigo.startsWith(conta.codigo)) {
+        hasChild = true;
+      }
+    });
+
+    if (!hasChild) return "";
+
+    return conta.collapse ? "˃" : "˅";
   }
 
   // https://svelte.dev/repl/69efbdcbbb6743e9988f777ef0f906ed?version=3.44.0
@@ -107,8 +132,13 @@ SPDX-License-Identifier: MIT
 
       {#each dfp.contas as conta, i}
         {#if !conta.hide}
-          <tr style="font-weight: {fontWeight(conta.codigo)}">
-            <td on:click={() => toggle(i)}>{conta.collapse ? '+' : '-'}&nbsp;{conta.codigo}</td>
+          <tr
+            transition:fade={{ duration: 100 }}
+            style="font-weight: {fontWeight(conta.codigo)}"
+          >
+            <td on:click={() => toggle(i)}
+              >{symbol(conta)}&nbsp;{conta.codigo}</td
+            >
             <td>{conta.descr}</td>
             {#each conta.totais as total}
               <td style="text-align:right;">{format(total)}</td>
