@@ -26,15 +26,10 @@ SPDX-License-Identifier: MIT
   let err = "";
   let empresa;
 
-  onMount(async () => {
-    // [dfp, err] = await apiDFP("84.429.695%2F0001-11", "2020");
-    // console.log("onMount()", dfp, err);
-  });
-
   async function load(str) {
     if (!str || str.length < 2) return;
 
-    [dfp, err] = await apiDFP(str, "2020");
+    [dfp, err] = await apiDFP(str);
     console.log("load()", dfp, err);
   }
 
@@ -59,29 +54,16 @@ SPDX-License-Identifier: MIT
     return cod.split(".").length - 1;
   }
 
-  function tag(cod) {
-    const c = cod.split(".");
-
-    if (c.length <= 1) return "";
-
-    let res = "";
-    const max = c.length < 3 ? c.length : 3;
-    for (let i = 1; i < max; i++) {
-      const j = c.slice(0, i);
-      res += "lvl-" + j.join("-") + " ";
-    }
-    return res.trim();
-  }
-
-  const toggled = {};
-  function toggle(cod) {
-    const c = cod.split(".");
-    const j = ".lvl-" + c.join("-");
-    const elements = document.querySelectorAll(j);
-    for (let i = 0; i < elements.length; i++) {
-      elements[i].style.display = toggled[cod] ? "" : "none";
-    }
-    toggled[cod] = !toggled[cod];
+  function toggle(i) {
+    const base = dfp.contas[i].codigo;
+    let hasChild = false;
+    dfp.contas.forEach((el, idx) => {
+      if (idx != i && el.codigo.startsWith(base)) {
+        hasChild = true;
+        dfp.contas[idx].hide = !dfp.contas[i].collapse;
+      }
+    });
+    if (hasChild) dfp.contas[i].collapse = !dfp.contas[i].collapse;
   }
 
   // https://svelte.dev/repl/69efbdcbbb6743e9988f777ef0f906ed?version=3.44.0
@@ -123,18 +105,16 @@ SPDX-License-Identifier: MIT
         {/each}
       </tr>
 
-      {#each dfp.contas as conta}
-        <tr
-          class={tag(conta.codigo)}
-          style="font-weight: {fontWeight(conta.codigo)}"
-          on:click={() => toggle(conta.codigo)}
-        >
-          <td>{conta.codigo}</td>
-          <td>{conta.descr}</td>
-          {#each conta.totais as total}
-            <td style="text-align:right;">{format(total)}</td>
-          {/each}
-        </tr>
+      {#each dfp.contas as conta, i}
+        {#if !conta.hide}
+          <tr style="font-weight: {fontWeight(conta.codigo)}">
+            <td on:click={() => toggle(i)}>{conta.collapse ? '+' : '-'}&nbsp;{conta.codigo}</td>
+            <td>{conta.descr}</td>
+            {#each conta.totais as total}
+              <td style="text-align:right;">{format(total)}</td>
+            {/each}
+          </tr>
+        {/if}
       {/each}
     </table>
   </small>
