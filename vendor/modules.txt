@@ -55,7 +55,6 @@ github.com/pelletier/go-toml
 github.com/pkg/errors
 # github.com/sahilm/fuzzy v0.1.0
 ## explicit
-github.com/sahilm/fuzzy
 # github.com/spf13/afero v1.6.0
 ## explicit; go 1.13
 github.com/spf13/afero
@@ -110,6 +109,7 @@ golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
 golang.org/x/text/encoding/internal
 golang.org/x/text/encoding/internal/identifier
+golang.org/x/text/runes
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi

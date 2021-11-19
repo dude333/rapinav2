@@ -1,3 +1,8 @@
+<!--
+SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
+
+SPDX-License-Identifier: MIT
+-->
 <script>
   export let empresa = "";
 
@@ -15,9 +20,13 @@
     return list;
   }
   async function query(str) {
-    const res = await fetch("/api/dfp/empresas/" + str);
-    const json = await res.json();
-    return json.empresas;
+    try {
+      const res = await fetch("/api/dfp/empresas/" + str);
+      const json = await res.json();
+      return json.empresas;
+    } catch (err) {
+      return "";
+    }
   }
 
   function navigate(ev) {
@@ -27,6 +36,9 @@
       case 13: // enter
         results = [];
         select(ev);
+        break;
+      case 27: // esc
+        results = [];
         break;
       case 38: // up
         if (ev.target.previousSibling) {
@@ -49,13 +61,19 @@
 
   let timer;
   async function debounce(ev) {
-    if (ev.keyCode == 40) {
-      ulDropdown && ulDropdown.firstChild && ulDropdown.firstChild.focus();
-      return;
+    switch (ev.keyCode) {
+      case 40: // down
+        ulDropdown && ulDropdown.firstChild && ulDropdown.firstChild.focus();
+        return;
+      case 27: // esc
+        results = [];
+        return;
     }
+    const val = ev.target.value;
+    console.log("debounce:", val);
+    if (!val || val.length == 0) return;
     clearTimeout(timer);
     timer = setTimeout(async () => {
-      const val = ev.target.value;
       await showResults(val);
       ev.target.value = val;
     }, 150);
@@ -63,33 +81,9 @@
 
   async function showResults(val) {
     const r = await query(val);
-    if (r && r.length > 1) {
-      results = r;
-    }
+    results = r || [];
   }
 </script>
-
-<form autocomplete="off" on:submit|preventDefault={() => {}}>
-  <label
-    >Find:
-    <input bind:this={inputFind} on:keyup={debounce} />
-    {#if results && results.length > 0}
-      <div class="autocomplete dropdown">
-        <ul bind:this={ulDropdown}>
-          {#each results as result}
-            <li
-              tabindex="0"
-              on:click={select}
-              on:keydown|preventDefault={navigate}
-            >
-              {result}
-            </li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
-  </label>
-</form>
 
 <style>
   .autocomplete.dropdown {
@@ -121,3 +115,25 @@
     cursor: pointer;
   }
 </style>
+
+<form autocomplete="off" on:submit|preventDefault={() => {}}>
+  <label
+    >Find:
+    <input bind:this={inputFind} on:keyup={debounce} />
+    {#if results && results.length > 0}
+      <div class="autocomplete dropdown">
+        <ul bind:this={ulDropdown}>
+          {#each results as result}
+            <li
+              tabindex="0"
+              on:click={select}
+              on:keydown|preventDefault={navigate}
+            >
+              {result}
+            </li>
+          {/each}
+        </ul>
+      </div>
+    {/if}
+  </label>
+</form>

@@ -33,7 +33,7 @@ SPDX-License-Identifier: MIT
 
   async function load(str) {
     if (!str || str.length < 2) return;
-    
+
     [dfp, err] = await apiDFP(str, "2020");
     console.log("load()", dfp, err);
   }
@@ -89,6 +89,22 @@ SPDX-License-Identifier: MIT
   // t.style.background = "linear-gradient(to right,"+col1+" "+percentage+"%, "+col2+" "+percentage+"%)";
 </script>
 
+<style>
+  table * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  }
+
+  table th {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+    box-shadow: 0 1px 1px 0px rgba(0, 0, 0, 0.4);
+  }
+</style>
+
 <Autocomplete bind:empresa />
 
 {#if err != ""}
@@ -123,10 +139,3 @@ SPDX-License-Identifier: MIT
     </table>
   </small>
 {/if}
-
-<style>
-  table * {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-      Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
-  }
-</style>

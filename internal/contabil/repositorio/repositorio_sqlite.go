@@ -10,11 +10,14 @@ import (
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
+	"strings"
+	"unicode"
 
 	// "github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/mattn/go-sqlite3"
-	"github.com/sahilm/fuzzy"
-	"sort"
 
 	// _ "github.com/mattn/go-sqlite3"
 	"strconv"
@@ -109,12 +112,22 @@ func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
 		}
 	}
 
-	matches := fuzzy.Find(nome, s.cache)
-	sort.Sort(matches)
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	nome, _, err := transform.String(t, nome)
+	nome = strings.ToLower(nome)
+	if err != nil {
+		return nil
+	}
+
 	var ret []string
-	for i := range matches {
-		if matches[i].Score < 30 {
-			ret = append(ret, matches[i].Str)
+	for _, n := range s.cache {
+		x, _, err := transform.String(t, n)
+		if err != nil {
+			return nil
+		}
+		x = strings.ToLower(x)
+		if strings.HasPrefix(x, nome) {
+			ret = append(ret, n)
 		}
 	}
 	return ret
