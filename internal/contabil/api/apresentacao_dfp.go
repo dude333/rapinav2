@@ -48,7 +48,8 @@ func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
 //			{
 //				"codigo": "",
 //				"descr": "",
-//				"totais": []
+//				"totais": [],
+//              "subcontas": [],
 //			}
 //		]
 //	}
@@ -62,39 +63,15 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 	}
 	ordem := c.QueryParam("ordem")
 
-	atual := time.Now().Year()
-	esq := atual
-	dir := 2009
-	op := -1
-	if ordem == "asc" {
-		esq = 2009
-		dir = atual
-		op = 1
-	}
-	inRange := func(a, b int) bool {
-		if op == -1 {
-			return a >= b
-		}
-		return a <= b
-	}
-
 	var ret jsonDFP
 	mapContas := make(map[string]jsonConta)
-	n := 0
-	skip := 0
-	for ano := esq; inRange(ano, dir); ano = ano + op {
+	for _, ano := range listaAnos(ordem) {
 		dfp, err := h.svc.Relatório(cnpj, ano)
-		if err != nil && err != sql.ErrNoRows {
-			return err
-		}
-
 		if err == sql.ErrNoRows {
-			if len(ret.Anos) > 0 {
-				n++
-				ret.Anos = append(ret.Anos, ano)
-			}
-			skip++
 			continue
+		}
+		if err != nil {
+			return err
 		}
 
 		ret.Anos = append(ret.Anos, ano)
@@ -110,12 +87,10 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 			if !ok {
 				m.Código = c.Código
 				m.Descr = c.Descr
-				m.Totais = make([]float64, abs(esq-dir)+1-skip)
 			}
-			m.Totais[n] = c.Total.Valor * float64(c.Total.Escala)
+			m.Totais = append(m.Totais, c.Total.Valor*float64(c.Total.Escala))
 			mapContas[key] = m
 		}
-		n++
 	}
 
 	sorted := keys(mapContas)
@@ -154,11 +129,24 @@ func keys(m map[string]jsonConta) []string {
 	return keys
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
+// listaAnos retorna uma lista de anos.
+// Se asc == "asc", retorna de 2009 até o ano atual.
+// Caso contrário, retorna do ano atual até 2009.
+func listaAnos(ordem string) []int {
+	atual := time.Now().Year()
+	esq := atual
+	dir := 2009
+	op := -1
+	if ordem == "asc" {
+		esq = 2009
+		dir = atual
+		op = 1
 	}
-	return x
+	var ret []int
+	for i := esq; (i >= esq && i <= dir) || (i >= dir && i <= esq); i = i + op {
+		ret = append(ret, i)
+	}
+	return ret
 }
 
 // empresas retorna um JSON como nome de empresas similares ao parâmetro 'nome'.
