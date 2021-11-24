@@ -5,8 +5,8 @@ SPDX-License-Identifier: MIT
 -->
 <script>
   import Autocomplete from "./Autocomplete.svelte";
-  import { fade } from "svelte/transition";
   import { apiDFP } from "./dfp";
+  import Rows from './DFP_Rows.svelte';
 
   // type Conta = {
   // 	codigo: string;
@@ -21,7 +21,7 @@ SPDX-License-Identifier: MIT
   // 	contas: Conta[];
   // };
 
-  let dfp;
+  let dfp = [];
   let err = "";
   let empresa;
 
@@ -30,66 +30,45 @@ SPDX-License-Identifier: MIT
 
     [dfp, err] = await apiDFP(str);
 
-    for (let i = 0; i < dfp.length; i++) {
-      toggle(i);
-    }
+    // dfp.contas.forEach((_, i) => toggle(i));
   }
 
   $: load(empresa);
 
-  function format(n) {
-    if (!n) return "-";
-    return Math.round(n / 10e6).toLocaleString("pt-BR");
+  const toggle = idx => {
+    dfp.contas[idx].collapsed = !dfp.contas[idx].collapsed;
+		const hide = !!dfp.contas[idx].collapsed;
+		
+		for (let i = idx+1; i < dfp.contas.length; i++) {
+			if (hide && dfp.contas[i].codigo.startsWith(dfp.contas[idx].codigo)) {
+				dfp.contas[i].hide = true; 	
+			}
+			if (!hide) {
+				const j = parent(dfp.contas[i].codigo)
+				dfp.contas[i].hide = j >= 0 ? dfp.contas[j].collapsed : false;
+			}
+		}
+	}
+
+  const symbol = (conta, idx) => {
+		for (let i = idx+1; i < dfp.contas.length; i++) {
+			if (dfp.contas[i].codigo.startsWith(conta.codigo)) {
+				return conta.collapsed ? "˃" : "˅";
+			}
+		}
+		return "\xa0";
   }
 
-  function fontWeight(cod) {
-    switch (lvl(cod)) {
-      case 0:
-        return 900;
-      case 1:
-        return 700;
-    }
-    return 400;
-  }
+  const parent = (code) => {
+		const arr = code.split(".");
+		arr.pop();
+		const codigo = arr.join(".");
+		if (codigo != "") {
+			return dfp.contas.findIndex(x => x.n === codigo);
+		}
+		return -1;
+	}
 
-  function lvl(cod) {
-    return cod.split(".").length - 1;
-  }
-
-  function initStatus() {
-    dfp.contas.forEach((el, idx) => {
-      lastIdx--;
-      if (lastIdx >= 0 && el.codigo.startsWith(dfp.contas[lastIdx])) {
-        dfp.contas[lastIdx].hasChild = true;
-        dfp.contas[idx].hide = true;
-      }
-    });
-  }
-
-  function toggle(i) {
-    const base = dfp.contas[i].codigo;
-    let hasChild = false;
-    dfp.contas.forEach((el, idx) => {
-      if (idx != i && el.codigo.startsWith(base)) {
-        hasChild = true;
-        dfp.contas[idx].hide = !dfp.contas[i].collapse;
-      }
-    });
-    if (hasChild) dfp.contas[i].collapse = !dfp.contas[i].collapse;
-  }
-
-  function symbol(conta) {
-    let hasChild = false;
-    dfp.contas.forEach((el, idx) => {
-      if (el.codigo != conta.codigo && el.codigo.startsWith(conta.codigo)) {
-        hasChild = true;
-      }
-    });
-
-    if (!hasChild) return "";
-
-    return conta.collapse ? "˃" : "˅";
-  }
 
   // https://svelte.dev/repl/69efbdcbbb6743e9988f777ef0f906ed?version=3.44.0
   // background = linear-gradient(to top, #d7e7d7 40%, #f8fcf8 40%)
@@ -130,22 +109,10 @@ SPDX-License-Identifier: MIT
         {/each}
       </tr>
 
-      {#each dfp.contas as conta, i}
-        {#if !conta.hide}
-          <tr
-            transition:fade={{ duration: 100 }}
-            style="font-weight: {fontWeight(conta.codigo)}"
-          >
-            <td on:click={() => toggle(i)}
-              >{symbol(conta)}&nbsp;{conta.codigo}</td
-            >
-            <td>{conta.descr}</td>
-            {#each conta.totais as total}
-              <td style="text-align:right;">{format(total)}</td>
-            {/each}
-          </tr>
-        {/if}
+      {#each dfp.contas as conta}
+        <Rows {...conta} />
       {/each}
+
     </table>
   </small>
 {/if}

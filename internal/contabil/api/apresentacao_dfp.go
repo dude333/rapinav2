@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dude333/rapinav2/internal/contabil/dominio"
@@ -82,7 +83,7 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 		}
 
 		for _, c := range dfp.Contas {
-			key := c.Código + " " + c.Descr
+			key := c.Código
 			m, ok := mapContas[key]
 			if !ok {
 				m.Código = c.Código
@@ -93,14 +94,28 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 		}
 	}
 
-	sorted := keys(mapContas)
-	sort.Strings(sorted)
-	retContas := make([]jsonConta, len(sorted))
-	for i, k := range sorted {
-		retContas[i] = mapContas[k]
+	for _, v := range mapContas {
+		c := parent(v.Código)
+		p, ok := mapContas[c]
+		if ok {
+			p.Subcontas = append(p.Subcontas, v)
+			mapContas[c] = p
+		}
 	}
 
-	ret.Contas = retContas
+	sorted := keys(mapContas)
+	sort.Strings(sorted)
+	var retContas []jsonConta
+
+	for _, k := range sorted {
+		c := parent(mapContas[k].Código)
+		_, ok := mapContas[c]
+		if c == "" || !ok { // no parents
+			retContas = append(retContas, mapContas[k])
+		}
+	}
+
+	ret.Contas = sortSubcontas(retContas)
 
 	return c.JSON(http.StatusOK, &ret)
 }
@@ -113,9 +128,10 @@ type jsonDFP struct {
 }
 
 type jsonConta struct {
-	Código string    `json:"codigo"`
-	Descr  string    `json:"descr"`
-	Totais []float64 `json:"totais"`
+	Código    string      `json:"codigo"`
+	Descr     string      `json:"descr"`
+	Totais    []float64   `json:"totais"`
+	Subcontas []jsonConta `json:"subcontas"`
 }
 
 func keys(m map[string]jsonConta) []string {
@@ -147,6 +163,27 @@ func listaAnos(ordem string) []int {
 		ret = append(ret, i)
 	}
 	return ret
+}
+
+func parent(code string) string {
+	c := strings.Split(code, ".")
+	if len(c) > 0 {
+		c = c[:len(c)-1]
+	}
+	return strings.Join(c, ".")
+}
+
+func sortSubcontas(contas []jsonConta) []jsonConta {
+	for k := range contas {
+		if len(contas[k].Subcontas) > 0 {
+			sortSubcontas(contas[k].Subcontas)
+			sort.Slice(contas[k].Subcontas, func(i, j int) bool {
+				return contas[k].Subcontas[i].Código < contas[k].Subcontas[j].Código
+			})
+		}
+	}
+
+	return contas
 }
 
 // empresas retorna um JSON como nome de empresas similares ao parâmetro 'nome'.
