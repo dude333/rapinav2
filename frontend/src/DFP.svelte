@@ -109,7 +109,7 @@ SPDX-License-Identifier: MIT
         {/each}
       </tr>
 
-      {#each dfp.contas as conta}
+      {#each dfp.contas as conta (conta)}
         <Rows {...conta} />
       {/each}
 

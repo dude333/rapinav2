@@ -29,11 +29,17 @@
     }
 </script>
 
+<style>
+    .code {
+        white-space: nowrap;
+    }
+</style>
+
 <tr
     transition:fade={{ duration: 100 }}
     style="font-weight: {fontWeight(codigo)}"
 >
-    <td on:click={toggle}>
+    <td class="code" on:click={toggle}>
         {codigo}
         <span style="font-weight: 300"
             >{subcontas ? (opened ? "(-)" : "(+)") : ""}</span
@@ -46,7 +52,7 @@
 </tr>
 
 {#if opened && subcontas}
-    {#each subcontas as conta}
+    {#each subcontas as conta (conta)}
         <svelte:self {...conta} />
     {/each}
 {/if}

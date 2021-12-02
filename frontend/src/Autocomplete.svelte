@@ -56,10 +56,13 @@ SPDX-License-Identifier: MIT
   function select(ev) {
     empresa = ev.target.textContent && ev.target.textContent.trim();
     inputFind.value = empresa;
+    lastVal = empresa;
+    results = [];
     inputFind.focus();
   }
 
   let timer;
+  let lastVal = "";
   async function debounce(ev) {
     switch (ev.keyCode) {
       case 40: // down
@@ -70,13 +73,13 @@ SPDX-License-Identifier: MIT
         return;
     }
     const val = ev.target.value;
-    console.log("debounce:", val);
-    if (!val || val.length == 0) return;
+    console.log("debounce:", val, lastVal);
+    if (!val || val.length == 0 || lastVal == val) return;
     clearTimeout(timer);
     timer = setTimeout(async () => {
       await showResults(val);
       ev.target.value = val;
-    }, 150);
+    }, 50);
   }
 
   async function showResults(val) {

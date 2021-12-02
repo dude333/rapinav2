@@ -66,6 +66,7 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 
 	var ret jsonDFP
 	mapContas := make(map[string]jsonConta)
+	i := 0
 	for _, ano := range listaAnos(ordem) {
 		dfp, err := h.svc.Relatório(cnpj, ano)
 		if err == sql.ErrNoRows {
@@ -89,9 +90,13 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 				m.Código = c.Código
 				m.Descr = c.Descr
 			}
+			for j := len(m.Totais); j < i; j++ {
+				m.Totais = append(m.Totais, 0) // fill missing data
+			}
 			m.Totais = append(m.Totais, c.Total.Valor*float64(c.Total.Escala))
 			mapContas[key] = m
 		}
+		i++
 	}
 
 	for _, v := range mapContas {
