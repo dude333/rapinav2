@@ -111,7 +111,7 @@ func (c *cvm) Importar(ctx context.Context, ano int) <-chan dominio.ResultadoImp
 		for _, arquivo := range arquivos {
 			progress.Running(arquivo)
 			// Processa o arquivo e envia o resultado para o canal 'results'
-			_ = c.processarArquivoDFP(ctx, arquivo, results)
+			_ = processarArquivoDFP(ctx, arquivo, results)
 			progress.RunOK()
 		}
 
@@ -129,7 +129,7 @@ func arquivoDFP(ano int) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-func (c *cvm) processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dominio.ResultadoImportação) error {
+func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dominio.ResultadoImportação) error {
 	fh, err := os.Open(arquivo)
 	if err != nil {
 		return err
