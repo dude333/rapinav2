@@ -1,5 +1,6 @@
 <script>
     import { fade } from "svelte/transition";
+    import Numbers from "./Numbers.svelte";
 
     export let subcontas = [];
     export let codigo = "";
@@ -46,8 +47,8 @@
         >
     </td>
     <td>{descr}</td>
-    {#each totais as total}
-        <td style="text-align:right;">{format(total)}</td>
+    {#each totais as total, i}
+        <td><Numbers av={i < (totais.length-1) ? (total/totais[i+1])-1 : 0} n={format(total)} /></td>
     {/each}
 </tr>
 
