@@ -66,7 +66,7 @@ func atualizar(cmd *cobra.Command, args []string) {
 		for result := range c.Importar(ctx, ano) {
 			if result.Error != nil {
 				progress.Error(result.Error)
-				panic(result.Error)
+				continue
 			}
 			err = s.Salvar(ctx, result.DFP)
 			if err != nil {
