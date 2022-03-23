@@ -85,7 +85,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP,
 			Código:       sc.Código,
 			Descr:        sc.Descr,
 			Consolidado:  sc.Consolidado != 0,
-			GrupoDFP:     sc.GrupoDFP,
+			Grupo:        sc.GrupoDFP,
 			DataFimExerc: sc.DataFimExerc,
 			OrdemExerc:   "",
 			Total: contábil.Dinheiro{
@@ -231,7 +231,7 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		args = append(args, id)
 		args = append(args, contas[i].Código)
 		args = append(args, contas[i].Descr)
-		args = append(args, contas[i].GrupoDFP)
+		args = append(args, contas[i].Grupo)
 		args = append(args, boolToInt(contas[i].Consolidado))
 		args = append(args, contas[i].DataFimExerc)
 		args = append(args, contas[i].Total.Valor)

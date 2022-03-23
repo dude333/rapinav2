@@ -36,7 +36,7 @@ func Test_inserirDFP(t *testing.T) {
 			c := contábil.Conta{
 				Código:       fmt.Sprintf("C%03d", n),
 				Descr:        fmt.Sprintf("D%03d", n),
-				GrupoDFP:     fmt.Sprintf("G%03d", n),
+				Grupo:        fmt.Sprintf("G%03d", n),
 				DataFimExerc: fmt.Sprintf("D%03d", n),
 				OrdemExerc:   fmt.Sprintf("O%03d", n),
 				Total: contábil.Dinheiro{

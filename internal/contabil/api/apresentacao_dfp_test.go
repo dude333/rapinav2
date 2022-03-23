@@ -21,7 +21,7 @@ var dfp = dominio.DFP{
 		Código:       "c1",
 		Descr:        "d1",
 		Consolidado:  false,
-		GrupoDFP:     "g1",
+		Grupo:        "g1",
 		DataFimExerc: "dt1",
 		OrdemExerc:   "x",
 		Total: dominio.Dinheiro{

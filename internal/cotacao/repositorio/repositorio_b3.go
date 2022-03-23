@@ -32,21 +32,21 @@ func B3(dirDados string) cotação.RepositórioImportaçãoAtivo {
 
 // Importar baixa o arquivo de cotações de todas as empresas de um determinado
 // dia do site da B3.
-func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.ResultadoImportação {
-	results := make(chan cotação.ResultadoImportação)
+func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.ResultadoImportaçãoDFP {
+	results := make(chan cotação.ResultadoImportaçãoDFP)
 
 	go func() {
 		defer close(results)
 
 		url, zip, err := arquivoCotação(dia)
 		if err != nil {
-			results <- cotação.ResultadoImportação{Error: err}
+			results <- cotação.ResultadoImportaçãoDFP{Error: err}
 			return
 		}
 
 		arquivos, err := b.infra.DownloadAndUnzip(url, zip, []string{})
 		if err != nil {
-			results <- cotação.ResultadoImportação{Error: err}
+			results <- cotação.ResultadoImportaçãoDFP{Error: err}
 			return
 		}
 		defer func() {
@@ -59,7 +59,7 @@ func (b *b3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.
 			progress.RunOK()
 			select {
 			case <-ctx.Done():
-				results <- cotação.ResultadoImportação{Error: ctx.Err()}
+				results <- cotação.ResultadoImportaçãoDFP{Error: ctx.Err()}
 				return
 			default:
 			}
@@ -84,10 +84,10 @@ func arquivoCotação(dia cotação.Data) (url, zip string, err error) {
 
 // processarSériesHistóricas lê o arquivo de séries históricas baixado da B3
 // e envia os valores do ativo para o canal "result".
-func (b *b3) processarSériesHistóricas(ctx context.Context, arquivo string, result chan<- cotação.ResultadoImportação) {
+func (b *b3) processarSériesHistóricas(ctx context.Context, arquivo string, result chan<- cotação.ResultadoImportaçãoDFP) {
 	fh, err := os.Open(arquivo)
 	if err != nil {
-		result <- cotação.ResultadoImportação{Error: err}
+		result <- cotação.ResultadoImportaçãoDFP{Error: err}
 		return
 	}
 	defer fh.Close()
@@ -102,10 +102,10 @@ func (b *b3) processarSériesHistóricas(ctx context.Context, arquivo string, re
 		}
 		select {
 		case <-ctx.Done():
-			result <- cotação.ResultadoImportação{Error: ctx.Err()}
+			result <- cotação.ResultadoImportaçãoDFP{Error: ctx.Err()}
 			return
 		default:
-			result <- cotação.ResultadoImportação{Ativo: atv}
+			result <- cotação.ResultadoImportaçãoDFP{Ativo: atv}
 		}
 	}
 }

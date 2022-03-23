@@ -53,14 +53,14 @@ func init() {
 // apiMockOk implementa domínio.RepositórioLeituraAtivo
 type apiMockOk struct{}
 
-func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan cotação.ResultadoImportação {
+func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan cotação.ResultadoImportaçãoDFP {
 	// _cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
-	results := make(chan cotação.ResultadoImportação)
+	results := make(chan cotação.ResultadoImportaçãoDFP)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := cotação.ResultadoImportação{
+			result := cotação.ResultadoImportaçãoDFP{
 				Error: nil,
 				Ativo: ex,
 			}
@@ -79,14 +79,14 @@ func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan co
 // apiMockFail implementa domínio.RepositórioLeituraAtivo
 type apiMockFail struct{}
 
-func (r *apiMockFail) Importar(ctx context.Context, data cotação.Data) <-chan cotação.ResultadoImportação {
+func (r *apiMockFail) Importar(ctx context.Context, data cotação.Data) <-chan cotação.ResultadoImportaçãoDFP {
 	// _cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
-	results := make(chan cotação.ResultadoImportação)
+	results := make(chan cotação.ResultadoImportaçãoDFP)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := cotação.ResultadoImportação{
+			result := cotação.ResultadoImportaçãoDFP{
 				Error: nil,
 				Ativo: ex,
 			}

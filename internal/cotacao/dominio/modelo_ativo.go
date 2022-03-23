@@ -26,13 +26,13 @@ type Ativos []Ativo
 
 // Repositório --------------------------------------------
 
-type ResultadoImportação struct {
+type ResultadoImportaçãoDFP struct {
 	Ativo *Ativo
 	Error error
 }
 
 type RepositórioImportaçãoAtivo interface {
-	Importar(ctx context.Context, dia Data) <-chan ResultadoImportação
+	Importar(ctx context.Context, dia Data) <-chan ResultadoImportaçãoDFP
 }
 
 type RepositórioLeituraAtivo interface {

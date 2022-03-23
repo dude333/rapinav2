@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
+// SPDX-FileCopyrightText: 2022 Adriano Prado <dev@dude333.com>
 //
 // SPDX-License-Identifier: MIT
 
@@ -8,17 +8,15 @@ import (
 	"context"
 )
 
-type Hash uint32
-
-// DFP = Demonstrações Financeiras Padronizadas de uma Empresa
-type DFP struct {
+// ITR = Informações Trimestrais de uma Empresa
+type ITR struct {
 	CNPJ   string
 	Nome   string // Nome da empresa
 	Ano    int
 	Contas []Conta
 }
 
-func (d DFP) Válida() bool {
+func (d ITR) Válida() bool {
 	return len(d.CNPJ) == len("17.836.901/0001-10") &&
 		len(d.Nome) > 0 &&
 		d.Ano >= 2000 && d.Ano < 2221 && // 2 séculos de rapina :)
@@ -26,7 +24,7 @@ func (d DFP) Válida() bool {
 }
 
 func init() {
-	Config.GruposDFP = []string{
+	Config.GruposITR = []string{
 		"DF Individual - Balanço Patrimonial Ativo",
 		"DF Consolidado - Balanço Patrimonial Ativo",
 		"DF Individual - Balanço Patrimonial Passivo",
@@ -44,31 +42,31 @@ func init() {
 
 // -- REPOSITÓRIO & SERVIÇO --
 
-type ResultadoImportaçãoDFP struct {
-	DFP   *DFP
+type ResultadoImportaçãoITR struct {
+	ITR   *ITR
 	Error error
 }
 
-type RepositórioImportaçãoDFP interface {
-	Importar(ctx context.Context, ano int) <-chan ResultadoImportaçãoDFP
+type RepositórioImportaçãoITR interface {
+	Importar(ctx context.Context, ano int) <-chan ResultadoImportaçãoITR
 }
 
-type RepositórioLeituraDFP interface {
-	Ler(ctx context.Context, cnpj string, ano int) (*DFP, error)
+type RepositórioLeituraITR interface {
+	Ler(ctx context.Context, cnpj string, ano int) (*ITR, error)
 	Empresas(ctx context.Context, nome string) []string
 }
 
-type RepositórioEscritaDFP interface {
-	Salvar(ctx context.Context, empresa *DFP) error
+type RepositórioEscritaITR interface {
+	Salvar(ctx context.Context, empresa *ITR) error
 }
 
-type RepositórioLeituraEscritaDFP interface {
-	RepositórioLeituraDFP
-	RepositórioEscritaDFP
+type RepositórioLeituraEscritaITR interface {
+	RepositórioLeituraITR
+	RepositórioEscritaITR
 }
 
-type ServiçoDFP interface {
+type ServiçoITR interface {
 	Importar(ano int) error
-	Relatório(cnpj string, ano int) (*DFP, error)
+	Relatório(cnpj string, ano int) (*ITR, error)
 	Empresas(nome string) []string
 }

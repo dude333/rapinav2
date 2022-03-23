@@ -17,7 +17,7 @@ var cc = []Conta{
 		Código:       "C1",
 		Descr:        "D1",
 		Consolidado:  true,
-		GrupoDFP:     "DF Individual - Balanço Patrimonial Passivo",
+		Grupo:        "DF Individual - Balanço Patrimonial Passivo",
 		DataFimExerc: "2020-12-31",
 		OrdemExerc:   "ÚLTIMO",
 		Total: Dinheiro{
@@ -30,7 +30,7 @@ var cc = []Conta{
 		Código:       "C2",
 		Descr:        "D2",
 		Consolidado:  false,
-		GrupoDFP:     "DF Consolidado - Demonstração do Fluxo de Caixa (Método Direto)",
+		Grupo:        "DF Consolidado - Demonstração do Fluxo de Caixa (Método Direto)",
 		DataFimExerc: "2020-12-31",
 		OrdemExerc:   "ÚLTIMO",
 		Total: Dinheiro{
@@ -42,7 +42,7 @@ var cc = []Conta{
 	{
 		Código:       "C3",
 		Descr:        "D3",
-		GrupoDFP:     "DF Consolidado - Demonstração de Valor Adicionado",
+		Grupo:        "DF Consolidado - Demonstração de Valor Adicionado",
 		DataFimExerc: "2020-12-31",
 		OrdemExerc:   "ÚLTIMO",
 		Total: Dinheiro{

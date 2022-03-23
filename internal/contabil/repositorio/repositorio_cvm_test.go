@@ -21,7 +21,7 @@ func Test_cvm_Importar(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    <-chan contábil.ResultadoImportação
+		want    <-chan contábil.ResultadoImportaçãoDFP
 		wantErr bool
 	}{
 		{
@@ -30,7 +30,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2020,
 			},
-			want:    make(<-chan contábil.ResultadoImportação),
+			want:    make(<-chan contábil.ResultadoImportaçãoDFP),
 			wantErr: false,
 		},
 		{
@@ -39,7 +39,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2019,
 			},
-			want:    make(<-chan contábil.ResultadoImportação),
+			want:    make(<-chan contábil.ResultadoImportaçãoDFP),
 			wantErr: false,
 		},
 	}

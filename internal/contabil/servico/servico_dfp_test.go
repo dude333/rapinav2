@@ -32,7 +32,7 @@ func init() {
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),
-					GrupoDFP:     "Grupo DFP",
+					Grupo:        "Grupo DFP",
 					DataFimExerc: "2021-12-31",
 					Total: contábil.Dinheiro{
 						Valor:  float64(i),
@@ -70,13 +70,13 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []string {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportação {
-	results := make(chan contábil.ResultadoImportação)
+func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportaçãoDFP {
+	results := make(chan contábil.ResultadoImportaçãoDFP)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := contábil.ResultadoImportação{
+			result := contábil.ResultadoImportaçãoDFP{
 				DFP:   ex,
 				Error: nil,
 			}
