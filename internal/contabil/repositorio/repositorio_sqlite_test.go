@@ -48,14 +48,14 @@ func Test_inserirDFP(t *testing.T) {
 			contas = append(contas, c)
 		}
 
-		dfp := contábil.DFP{
+		empresa := contábil.Empresa{
 			CNPJ:   "123",
 			Nome:   "N1",
 			Ano:    2020,
 			Contas: contas,
 		}
 
-		err := s.Salvar(context.Background(), &dfp)
+		err := s.Salvar(context.Background(), &empresa)
 		if err != nil {
 			t.Logf("%v", err)
 		}

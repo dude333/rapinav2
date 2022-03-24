@@ -73,13 +73,13 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 	return conta
 }
 
-// cvm implemente RepositórioImportaçãoDFP. Busca demonstrações financeiras
+// cvm implementa RepositórioImportação. Busca demonstrações financeiras
 // no site da CVM.
 type cvm struct {
 	infra
 }
 
-func NovoCVM(dirDados string) dominio.RepositórioImportaçãoDFP {
+func NovoCVM(dirDados string) dominio.RepositórioImportação {
 	return &cvm{
 		infra: &localInfra{dirDados: dirDados},
 	}
@@ -87,21 +87,21 @@ func NovoCVM(dirDados string) dominio.RepositórioImportaçãoDFP {
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
 // ano do site da CVM.
-func (c *cvm) Importar(ctx context.Context, ano int) <-chan dominio.ResultadoImportaçãoDFP {
-	results := make(chan dominio.ResultadoImportaçãoDFP)
+func (c *cvm) Importar(ctx context.Context, ano int) <-chan dominio.ResultadoImportação {
+	results := make(chan dominio.ResultadoImportação)
 
 	go func() {
 		defer close(results)
 
 		url, zip, err := arquivoDFP(ano)
 		if err != nil {
-			results <- dominio.ResultadoImportaçãoDFP{Error: err}
+			results <- dominio.ResultadoImportação{Error: err}
 			return
 		}
 
 		arquivos, err := c.infra.DownloadAndUnzip(url, zip, Config.Filtros)
 		if err != nil {
-			results <- dominio.ResultadoImportaçãoDFP{Error: err}
+			results <- dominio.ResultadoImportação{Error: err}
 			return
 		}
 		defer func() {
@@ -129,7 +129,7 @@ func arquivoDFP(ano int) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dominio.ResultadoImportaçãoDFP) error {
+func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dominio.ResultadoImportação) error {
 	fh, err := os.Open(arquivo)
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dom
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.ResultadoImportaçãoDFP) {
+func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.ResultadoImportação) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -192,17 +192,17 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.ResultadoIm
 				continue
 			}
 
-			dfp := dominio.DFP{
+			empresa := dominio.Empresa{
 				CNPJ:   registros[0].CNPJ,
 				Nome:   registros[0].Nome,
 				Ano:    a,
 				Contas: contas[ano],
 			}
 
-			if dfp.Válida() {
-				results <- dominio.ResultadoImportaçãoDFP{DFP: &dfp}
+			if empresa.Válida() {
+				results <- dominio.ResultadoImportação{Empresa: &empresa}
 			} else {
-				results <- dominio.ResultadoImportaçãoDFP{Error: ErrDFPInválida}
+				results <- dominio.ResultadoImportação{Error: ErrDFPInválida}
 			}
 		}
 	} // next k

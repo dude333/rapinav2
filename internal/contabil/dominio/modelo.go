@@ -5,10 +5,28 @@
 package dominio
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
 
+// Empresa listada na B3, com dados obtidos na CVM.
+type Empresa struct {
+	CNPJ   string
+	Nome   string
+	Ano    int
+	Contas []Conta
+}
+
+func (d Empresa) Válida() bool {
+	return len(d.CNPJ) == len("17.836.901/0001-10") &&
+		len(d.Nome) > 0 &&
+		d.Ano >= 2000 && d.Ano < 2221 && // 2 séculos de rapina :)
+		len(d.Contas) > 0
+}
+
+// Conta com os dados das Demonstrações Financeiras Padronizadas (DFP) ou
+// com as Informações Trimestrais (ITR).
 type Conta struct {
 	Código       string
 	Descr        string
@@ -16,6 +34,7 @@ type Conta struct {
 	Grupo        string
 	DataFimExerc string // AAAA-MM-DD
 	OrdemExerc   string
+	Trimestral   bool
 	Total        Dinheiro
 }
 
@@ -41,8 +60,55 @@ func (d Dinheiro) String() string {
 }
 
 type config struct {
-	GruposDFP []string
-	GruposITR []string
+	Grupos []string
 }
 
 var Config = config{}
+
+func init() {
+	Config.Grupos = []string{
+		"DF Individual - Balanço Patrimonial Ativo",
+		"DF Consolidado - Balanço Patrimonial Ativo",
+		"DF Individual - Balanço Patrimonial Passivo",
+		"DF Consolidado - Balanço Patrimonial Passivo",
+		"DF Individual - Demonstração do Fluxo de Caixa (Método Direto)",
+		"DF Consolidado - Demonstração do Fluxo de Caixa (Método Direto)",
+		"DF Individual - Demonstração do Fluxo de Caixa (Método Indireto)",
+		"DF Consolidado - Demonstração do Fluxo de Caixa (Método Indireto)",
+		"DF Individual - Demonstração do Resultado",
+		"DF Consolidado - Demonstração do Resultado",
+		"DF Individual - Demonstração de Valor Adicionado",
+		"DF Consolidado - Demonstração de Valor Adicionado",
+	}
+}
+
+// -- REPOSITÓRIO & SERVIÇO --
+
+type ResultadoImportação struct {
+	Empresa *Empresa
+	Error   error
+}
+
+type RepositórioImportação interface {
+	Importar(ctx context.Context, ano int) <-chan ResultadoImportação
+}
+
+type RepositórioLeitura interface {
+	Ler(ctx context.Context, cnpj string, ano int) (*Empresa, error)
+	Empresas(ctx context.Context, nome string) []string
+}
+
+type RepositórioEscrita interface {
+	Salvar(ctx context.Context, empresa *Empresa) error
+}
+
+type RepositórioLeituraEscrita interface {
+	RepositórioLeitura
+	RepositórioEscrita
+}
+
+type Serviço interface {
+	Importar(ano int) error
+	Relatório(cnpj string, ano int) (*Empresa, error)
+	Empresas(nome string) []string
+}

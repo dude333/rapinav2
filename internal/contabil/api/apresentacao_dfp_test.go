@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var dfp = dominio.DFP{
+var empresa = dominio.Empresa{
 	CNPJ: "123",
 	Nome: "Web",
 	Ano:  2021,
@@ -37,8 +37,8 @@ type mockService struct{}
 func (m *mockService) Importar(ano int) error {
 	return nil
 }
-func (m *mockService) Relatório(cnpj string, ano int) (*dominio.DFP, error) {
-	c := dfp
+func (m *mockService) Relatório(cnpj string, ano int) (*dominio.Empresa, error) {
+	c := empresa
 	c.CNPJ = cnpj
 	c.Ano = ano
 	return &c, nil

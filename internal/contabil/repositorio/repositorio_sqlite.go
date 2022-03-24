@@ -23,7 +23,7 @@ import (
 	"strconv"
 )
 
-// sqlite implementa RepositórioLeituraEscritaDFP
+// sqlite implementa RepositórioLeituraEscrita
 type sqlite struct {
 	db *sqlx.DB
 
@@ -37,7 +37,7 @@ type sqlite struct {
 	cache []string
 }
 
-func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscritaDFP, error) {
+func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscrita, error) {
 	err := criarTabelas(db)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscritaDFP, error) {
 	return &sqlite{db: db, limpo: limpo, cache: cache}, nil
 }
 
-func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
+func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {
 	var sd sqliteDFP
 	err := s.db.GetContext(ctx, &sd, `SELECT * FROM dfp WHERE cnpj=? AND ano=?`, &cnpj, &ano)
 	if err == sql.ErrNoRows {
@@ -60,7 +60,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP,
 		return nil, err
 	}
 
-	dfp := contábil.DFP{
+	empresa := contábil.Empresa{
 		CNPJ:   sd.CNPJ,
 		Nome:   sd.Nome,
 		Ano:    sd.Ano,
@@ -97,9 +97,9 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP,
 		contas = append(contas, conta)
 	}
 
-	dfp.Contas = contas
+	empresa.Contas = contas
 
-	return &dfp, err
+	return &empresa, err
 }
 
 func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
@@ -133,7 +133,7 @@ func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
 	return ret
 }
 
-func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.DFP) error {
+func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.Empresa) error {
 	// progress.Status("%-60s %4d\n", empresa.Nome, len(empresa.Contas))
 
 	return s.inserirOuAtualizarDFP(ctx, empresa)
@@ -158,7 +158,7 @@ type sqliteConta struct {
 	Moeda        string  `db:"moeda"`
 }
 
-func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.DFP) error {
+func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.Empresa) error {
 	d := sqliteDFP{
 		CNPJ: dfp.CNPJ,
 		Nome: dfp.Nome,

@@ -26,16 +26,16 @@ import (
 	"time"
 )
 
-// dfp é um serviço que implementa RepositórioImportaçãoDFP e
+// dfp é um serviço que implementa RepositórioImportação e
 // busca os relatórios contábeis de uma empresa em vários repositórios (API e BD).
 type dfp struct {
-	api contábil.RepositórioImportaçãoDFP
-	bd  contábil.RepositórioLeituraEscritaDFP
+	api contábil.RepositórioImportação
+	bd  contábil.RepositórioLeituraEscrita
 }
 
 func NovoDFP(
-	api contábil.RepositórioImportaçãoDFP,
-	bd contábil.RepositórioLeituraEscritaDFP) contábil.ServiçoDFP {
+	api contábil.RepositórioImportação,
+	bd contábil.RepositórioLeituraEscrita) contábil.Serviço {
 
 	return &dfp{api: api, bd: bd}
 }
@@ -58,16 +58,16 @@ func (r *dfp) Importar(ano int) error {
 			return result.Error
 		}
 		if r.bd != nil {
-			_ = r.bd.Salvar(context.Background(), result.DFP)
+			_ = r.bd.Salvar(context.Background(), result.Empresa)
 		}
 	}
 
 	return nil
 }
 
-func (r *dfp) Relatório(cnpj string, ano int) (*contábil.DFP, error) {
+func (r *dfp) Relatório(cnpj string, ano int) (*contábil.Empresa, error) {
 	if r.bd == nil {
-		return &contábil.DFP{}, ErrRepositórioInválido
+		return &contábil.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
 	dfp, err := r.bd.Ler(context.Background(), cnpj, ano)

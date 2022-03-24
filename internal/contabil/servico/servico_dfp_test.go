@@ -16,15 +16,15 @@ import (
 )
 
 var (
-	_cache    map[uint32]*contábil.DFP
-	_exemplos = []*contábil.DFP{}
+	_cache    map[uint32]*contábil.Empresa
+	_exemplos = []*contábil.Empresa{}
 )
 
 func init() {
-	_cache = make(map[uint32]*contábil.DFP)
+	_cache = make(map[uint32]*contábil.Empresa)
 
 	for i := 1; i <= 10; i++ {
-		r := contábil.DFP{
+		r := contábil.Empresa{
 			CNPJ: fmt.Sprintf("%010d", i),
 			Nome: fmt.Sprintf("Empresa %02d", i),
 			Ano:  2021,
@@ -50,13 +50,13 @@ func init() {
 
 type repoBD struct{}
 
-func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DFP, error) {
+func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
 }
 
-func (r *repoBD) Salvar(ctx context.Context, e *contábil.DFP) error {
+func (r *repoBD) Salvar(ctx context.Context, e *contábil.Empresa) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
 	_cache[uint32(y)] = e
@@ -70,15 +70,15 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []string {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportaçãoDFP {
-	results := make(chan contábil.ResultadoImportaçãoDFP)
+func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportação {
+	results := make(chan contábil.ResultadoImportação)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := contábil.ResultadoImportaçãoDFP{
-				DFP:   ex,
-				Error: nil,
+			result := contábil.ResultadoImportação{
+				Empresa: ex,
+				Error:   nil,
 			}
 			select {
 			case <-ctx.Done():
@@ -97,8 +97,8 @@ func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.Result
 
 func Test_registro_Importar(t *testing.T) {
 	type fields struct {
-		api contábil.RepositórioImportaçãoDFP
-		bd  contábil.RepositórioLeituraEscritaDFP
+		api contábil.RepositórioImportação
+		bd  contábil.RepositórioLeituraEscrita
 	}
 	type args struct {
 		ano int
@@ -168,8 +168,8 @@ func Test_registro_Importar(t *testing.T) {
 
 func Test_dfp_Empresas(t *testing.T) {
 	type fields struct {
-		api contábil.RepositórioImportaçãoDFP
-		bd  contábil.RepositórioLeituraEscritaDFP
+		api contábil.RepositórioImportação
+		bd  contábil.RepositórioLeituraEscrita
 	}
 	type args struct {
 		nome string

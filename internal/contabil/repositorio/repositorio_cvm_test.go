@@ -21,7 +21,7 @@ func Test_cvm_Importar(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    <-chan contábil.ResultadoImportaçãoDFP
+		want    <-chan contábil.ResultadoImportação
 		wantErr bool
 	}{
 		{
@@ -30,7 +30,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2020,
 			},
-			want:    make(<-chan contábil.ResultadoImportaçãoDFP),
+			want:    make(<-chan contábil.ResultadoImportação),
 			wantErr: false,
 		},
 		{
@@ -39,7 +39,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2019,
 			},
-			want:    make(<-chan contábil.ResultadoImportaçãoDFP),
+			want:    make(<-chan contábil.ResultadoImportação),
 			wantErr: false,
 		},
 	}
@@ -68,10 +68,10 @@ func Test_cvm_Importar(t *testing.T) {
 				if result.Error != nil {
 					fmt.Printf("=> %+v\n", result.Error)
 				}
-				err = s.Salvar(tt.args.ctx, result.DFP)
+				err = s.Salvar(tt.args.ctx, result.Empresa)
 				if (err != nil) != tt.wantErr {
-					t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para DFP = %s | %s | %d", err, tt.wantErr,
-						result.DFP.CNPJ, result.DFP.Nome, result.DFP.Ano)
+					t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para Empresa = %s | %s | %d", err, tt.wantErr,
+						result.Empresa.CNPJ, result.Empresa.Nome, result.Empresa.Ano)
 				}
 			}
 		})

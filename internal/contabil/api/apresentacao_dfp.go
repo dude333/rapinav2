@@ -19,7 +19,7 @@ import (
 )
 
 type htmlDFP struct {
-	svc dominio.ServiçoDFP
+	svc dominio.Serviço
 }
 
 func New(e *echo.Echo, db *sqlx.DB, dataDir string) {

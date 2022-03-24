@@ -68,7 +68,7 @@ func atualizar(cmd *cobra.Command, args []string) {
 				progress.Error(result.Error)
 				continue
 			}
-			err = s.Salvar(ctx, result.DFP)
+			err = s.Salvar(ctx, result.Empresa)
 			if err != nil {
 				fmt.Println("*", err)
 			}
