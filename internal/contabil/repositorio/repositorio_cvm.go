@@ -193,10 +193,10 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.ResultadoIm
 			}
 
 			empresa := dominio.Empresa{
-				CNPJ:   registros[0].CNPJ,
-				Nome:   registros[0].Nome,
-				Ano:    a,
-				Contas: contas[ano],
+				CNPJ:         registros[0].CNPJ,
+				Nome:         registros[0].Nome,
+				Ano:          a,
+				ContasAnuais: contas[ano],
 			}
 
 			if empresa.Válida() {

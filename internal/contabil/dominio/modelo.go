@@ -12,29 +12,29 @@ import (
 
 // Empresa listada na B3, com dados obtidos na CVM.
 type Empresa struct {
-	CNPJ   string
-	Nome   string
-	Ano    int
-	Contas []Conta
+	CNPJ              string
+	Nome              string
+	Ano               int
+	ContasAnuais      []Conta
+	ContasTrimestrais []Conta
 }
 
 func (d Empresa) Válida() bool {
 	return len(d.CNPJ) == len("17.836.901/0001-10") &&
 		len(d.Nome) > 0 &&
 		d.Ano >= 2000 && d.Ano < 2221 && // 2 séculos de rapina :)
-		len(d.Contas) > 0
+		(len(d.ContasAnuais) > 0 || len(d.ContasTrimestrais) > 0)
 }
 
 // Conta com os dados das Demonstrações Financeiras Padronizadas (DFP) ou
 // com as Informações Trimestrais (ITR).
 type Conta struct {
-	Código       string
+	Código       string // 1, 1.01, 1.02...
 	Descr        string
-	Consolidado  bool // Individual ou Consolidado
-	Grupo        string
+	Consolidado  bool   // Individual ou Consolidado
+	Grupo        string // BPA, BPP, DRE, DFC...
 	DataFimExerc string // AAAA-MM-DD
-	OrdemExerc   string
-	Trimestral   bool
+	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
 	Total        Dinheiro
 }
 

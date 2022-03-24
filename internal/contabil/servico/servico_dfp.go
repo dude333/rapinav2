@@ -26,24 +26,24 @@ import (
 	"time"
 )
 
-// dfp é um serviço que implementa RepositórioImportação e
-// busca os relatórios contábeis de uma empresa em vários repositórios (API e BD).
-type dfp struct {
+// serviço é um serviço que implementa RepositórioImportação e
+// busca os relatórios contábeis de uma serviço em vários repositórios (API e BD).
+type serviço struct {
 	api contábil.RepositórioImportação
 	bd  contábil.RepositórioLeituraEscrita
 }
 
-func NovoDFP(
+func NovoServiço(
 	api contábil.RepositórioImportação,
 	bd contábil.RepositórioLeituraEscrita) contábil.Serviço {
 
-	return &dfp{api: api, bd: bd}
+	return &serviço{api: api, bd: bd}
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (r *dfp) Importar(ano int) error {
-	if r.api == nil {
+func (s *serviço) Importar(ano int) error {
+	if s.api == nil {
 		return ErrRepositórioInválido
 	}
 
@@ -53,32 +53,32 @@ func (r *dfp) Importar(ano int) error {
 
 	// result retorna o registro após a leitura de cada linha
 	// do arquivo importado
-	for result := range r.api.Importar(ctx, ano) {
+	for result := range s.api.Importar(ctx, ano) {
 		if result.Error != nil {
 			return result.Error
 		}
-		if r.bd != nil {
-			_ = r.bd.Salvar(context.Background(), result.Empresa)
+		if s.bd != nil {
+			_ = s.bd.Salvar(context.Background(), result.Empresa)
 		}
 	}
 
 	return nil
 }
 
-func (r *dfp) Relatório(cnpj string, ano int) (*contábil.Empresa, error) {
-	if r.bd == nil {
+func (s *serviço) Relatório(cnpj string, ano int) (*contábil.Empresa, error) {
+	if s.bd == nil {
 		return &contábil.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
-	dfp, err := r.bd.Ler(context.Background(), cnpj, ano)
+	dfp, err := s.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
 }
 
-func (r *dfp) Empresas(nome string) []string {
-	if r.bd == nil {
+func (s *serviço) Empresas(nome string) []string {
+	if s.bd == nil {
 		return []string{}
 	}
 	progress.Debug("Empresas(%s)", nome)
-	lista := r.bd.Empresas(context.Background(), nome)
+	lista := s.bd.Empresas(context.Background(), nome)
 	return lista
 }

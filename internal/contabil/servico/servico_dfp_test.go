@@ -28,7 +28,7 @@ func init() {
 			CNPJ: fmt.Sprintf("%010d", i),
 			Nome: fmt.Sprintf("Empresa %02d", i),
 			Ano:  2021,
-			Contas: []contábil.Conta{
+			ContasAnuais: []contábil.Conta{
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),
@@ -139,7 +139,7 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoDFP(
+			r := serviço.NovoServiço(
 				tt.fields.api,
 				tt.fields.bd,
 			)
@@ -194,7 +194,7 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoDFP(
+			r := serviço.NovoServiço(
 				tt.fields.api,
 				tt.fields.bd,
 			)

@@ -27,11 +27,11 @@ import (
 type sqlite struct {
 	db *sqlx.DB
 
-	// limpo serve para sinalizar se os dados DFP de um determinado CNPJ+ANO
-	// foi limpo ao rodar a primeira vez (para evitar duplicação de dados ao
-	// rodar a coleta mais de uma vez). Portanto, o armazenamento do DFP
-	// de *todas* as empresas em um determinado ano (CNPJ+ANO) deve ser feito
-	// de uma única vez.
+	// limpo serve para sinalizar se os dados de um determinado CNPJ+ANO
+	// foi limpo ao rodar a primeira vez (para evitar duplicação de dados
+	// ao rodar a coleta mais de uma vez). Portanto, o armazenamento do
+	// de *todas* as empresas em um determinado ano (CNPJ+ANO) deve ser
+	// feito de uma única vez.
 	limpo map[string]bool
 
 	cache []string
@@ -50,10 +50,10 @@ func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscrita, error) {
 }
 
 func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {
-	var sd sqliteDFP
-	err := s.db.GetContext(ctx, &sd, `SELECT * FROM dfp WHERE cnpj=? AND ano=?`, &cnpj, &ano)
+	var sd sqliteEmpresa
+	err := s.db.GetContext(ctx, &sd, `SELECT * FROM empresas WHERE cnpj=? AND ano=?`, &cnpj, &ano)
 	if err == sql.ErrNoRows {
-		err = s.db.GetContext(ctx, &sd, `SELECT * FROM dfp WHERE nome=? AND ano=?`, &cnpj, &ano)
+		err = s.db.GetContext(ctx, &sd, `SELECT * FROM empresas WHERE nome=? AND ano=?`, &cnpj, &ano)
 	}
 	if err != nil {
 		progress.Error(err)
@@ -61,15 +61,15 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 	}
 
 	empresa := contábil.Empresa{
-		CNPJ:   sd.CNPJ,
-		Nome:   sd.Nome,
-		Ano:    sd.Ano,
-		Contas: nil,
+		CNPJ:         sd.CNPJ,
+		Nome:         sd.Nome,
+		Ano:          sd.Ano,
+		ContasAnuais: nil,
 	}
 
 	contas := make([]contábil.Conta, 0, 100)
 	rows, err := s.db.QueryxContext(ctx,
-		`SELECT * FROM contas WHERE dfp_id=? ORDER BY codigo`, &sd.ID)
+		`SELECT * FROM contas WHERE id_empresa=? ORDER BY codigo`, &sd.ID)
 	if err != nil {
 		progress.Error(err)
 		return nil, err
@@ -85,7 +85,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 			Código:       sc.Código,
 			Descr:        sc.Descr,
 			Consolidado:  sc.Consolidado != 0,
-			Grupo:        sc.GrupoDFP,
+			Grupo:        sc.Grupo,
 			DataFimExerc: sc.DataFimExerc,
 			OrdemExerc:   "",
 			Total: contábil.Dinheiro{
@@ -97,7 +97,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 		contas = append(contas, conta)
 	}
 
-	empresa.Contas = contas
+	empresa.ContasAnuais = contas
 
 	return &empresa, err
 }
@@ -105,7 +105,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
 	if len(s.cache) == 0 {
 		err := s.db.SelectContext(ctx, &s.cache,
-			`SELECT DISTINCT(nome) FROM dfp ORDER BY nome`)
+			`SELECT DISTINCT(nome) FROM empresas ORDER BY nome`)
 		if err != nil {
 			progress.Error(err)
 			return nil
@@ -136,10 +136,10 @@ func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
 func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.Empresa) error {
 	// progress.Status("%-60s %4d\n", empresa.Nome, len(empresa.Contas))
 
-	return s.inserirOuAtualizarDFP(ctx, empresa)
+	return s.inserirOuAtualizarEmpresa(ctx, empresa)
 }
 
-type sqliteDFP struct {
+type sqliteEmpresa struct {
 	ID   int    `db:"id"`
 	CNPJ string `db:"cnpj"`
 	Nome string `db:"nome"`
@@ -147,27 +147,28 @@ type sqliteDFP struct {
 }
 
 type sqliteConta struct {
-	ID           int     `db:"dfp_id"`
+	ID           int     `db:"id_empresa"`
 	Código       string  `db:"codigo"`
 	Descr        string  `db:"descr"`
-	GrupoDFP     string  `db:"grupo_dfp"`
+	Grupo        string  `db:"grupo"`
 	Consolidado  int     `db:"consolidado"`
 	DataFimExerc string  `db:"data_fim_exerc"`
+	Periodo      int     `db:"periodo"` // 3 ou 12 meses (trimestral/anual)
 	Valor        float64 `db:"valor"`
 	Escala       int     `db:"escala"`
 	Moeda        string  `db:"moeda"`
 }
 
-func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.Empresa) error {
-	d := sqliteDFP{
-		CNPJ: dfp.CNPJ,
-		Nome: dfp.Nome,
-		Ano:  dfp.Ano,
+func (s *sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Empresa) error {
+	d := sqliteEmpresa{
+		CNPJ: e.CNPJ,
+		Nome: e.Nome,
+		Ano:  e.Ano,
 	}
 
 	idRegistro := func() (int, error) {
 		var id int
-		err := s.db.GetContext(ctx, &id, `SELECT id FROM dfp WHERE cnpj=? AND ano=?`, d.CNPJ, d.Ano)
+		err := s.db.GetContext(ctx, &id, `SELECT id FROM empresas WHERE cnpj=? AND ano=?`, d.CNPJ, d.Ano)
 		return id, err
 	}
 
@@ -179,13 +180,13 @@ func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.Empre
 			return err
 		}
 		if err != sql.ErrNoRows {
-			if err := removerDFPeContas(ctx, s.db, id); err != nil {
+			if err := removerEmpresa(ctx, s.db, id); err != nil {
 				return err
 			}
 		}
 		s.limpo[k] = true
 		// Criar novo registro
-		query := `INSERT INTO dfp (cnpj, nome, ano) VALUES (:cnpj, :nome, :ano)`
+		query := `INSERT INTO empresas (cnpj, nome, ano) VALUES (:cnpj, :nome, :ano)`
 		_, err = s.db.NamedExecContext(ctx, query, &d)
 		if err != nil {
 			return err
@@ -197,23 +198,29 @@ func (s *sqlite) inserirOuAtualizarDFP(ctx context.Context, dfp *contábil.Empre
 		return err
 	}
 
-	err = inserirContas(ctx, s.db, id, dfp.Contas)
+	err = inserirContas(ctx, s.db, id, e.ContasAnuais, 12)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return inserirContas(ctx, s.db, id, e.ContasTrimestrais, 3)
 }
 
 // inserirContas insere os registro das contas, sendo que deve ter sido garantido
-// previamente que não exista nenhum registro com o dfp_id das contas a serem
+// previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta) error {
+func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta, periodo int) error {
+	if len(contas) == 0 {
+		return nil
+	}
 	tx, err := db.Beginx()
 	if err != nil {
 		return err
 	}
 
 	stmt, err := tx.Prepare(`INSERT INTO contas 
-		(dfp_id, codigo, descr, grupo_dfp, consolidado, data_fim_exerc, valor, escala, moeda) 
-		VALUES (?,?,?,?,?,?,?,?,?)`)
+		(id_empresa, codigo, descr, grupo, consolidado, data_fim_exerc, periodo, valor, escala, moeda) 
+		VALUES (?,?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
 		return err
 	}
@@ -234,13 +241,14 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		args = append(args, contas[i].Grupo)
 		args = append(args, boolToInt(contas[i].Consolidado))
 		args = append(args, contas[i].DataFimExerc)
+		args = append(args, periodo)
 		args = append(args, contas[i].Total.Valor)
 		args = append(args, contas[i].Total.Escala)
 		args = append(args, contas[i].Total.Moeda)
 
 		_, err = stmt.ExecContext(ctx, args...)
 		if err != nil {
-			// Ignora erro em caso de registro duplicado (dfp_id + codigo), pois se
+			// Ignora erro em caso de registro duplicado (id_empresa + codigo), pois se
 			// trata de erro no arquivo da CVM (raramente acontece)
 			sqliteErr := err.(sqlite3.Error)
 			if sqliteErr.Code != sqlite3.ErrConstraint {
@@ -255,14 +263,14 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 	return tx.Commit()
 }
 
-func removerDFPeContas(ctx context.Context, db *sqlx.DB, id int) error {
-	query := `DELETE FROM contas WHERE dfp_id=?`
+func removerEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
+	query := `DELETE FROM contas WHERE id_empresa=?`
 	_, err := db.ExecContext(ctx, query, &id)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
 
-	query = `DELETE FROM dfp WHERE id=?`
+	query = `DELETE FROM empresas WHERE id=?`
 	_, err = db.ExecContext(ctx, query, &id)
 
 	return err
@@ -271,24 +279,24 @@ func removerDFPeContas(ctx context.Context, db *sqlx.DB, id int) error {
 // tabelas
 //
 //   +------------+      +------------+
-//   | dfp        |      | contas     |
+//   | empresas   |      | contas     |
 //   +------------+      +------------+
-//   | id*        |-----<| dfp_id*    |
+//   | id*        |-----<| id_empresa*|
 //   | cnpj       |      | codigo*    |
 //   | nome       |      | descr      |
 //   | ano        |      | ...        |
 //   +------------+      +------------+
 //
-// Passos oo inserir um registro DFP:
+// Passos oo inserir um registro empresa:
 //
 // 1. Verificar e remover se o registro já existe:
-//    a. SELECT id FROM dfp WHERE cnpj = ? AND ano = ?;
-//    b. DELETE FROM contas WHERE dfp_id = ?;
-//    c. DELETE FROM dfp WHERE id = ?;
+//    a. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
+//    b. DELETE FROM contas WHERE id_empresa = ?;
+//    c. DELETE FROM empresas WHERE id = ?;
 // 2. Inserir os novos registro:
-//    a. INSERT INTO dfp (cnpj, nome, ano) VALUES (?,?,?);
-//    b. SELECT id FROM dfp WHERE cnpj = ? AND ano = ?;
-//    b. for range contas => INSERT INTO contas (dfp_id, ...) VALUES (?, ...)
+//    a. INSERT INTO empresas (cnpj, nome, ano) VALUES (?,?,?);
+//    b. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
+//    b. for range contas => INSERT INTO contas (id_empresa, ...) VALUES (?, ...)
 //
 var tabelas = []struct {
 	nome   string
@@ -297,37 +305,38 @@ var tabelas = []struct {
 	down   string
 }{
 	{
-		nome:   "dfp",
+		nome:   "empresas",
 		versão: _ver_,
-		up: `CREATE TABLE IF NOT EXISTS dfp (
+		up: `CREATE TABLE IF NOT EXISTS empresas (
 			id     INTEGER PRIMARY KEY AUTOINCREMENT,
 			cnpj   VARCHAR NOT NULL,
 			nome   VARCHAR NOT NULL,
 			ano    INT NOT NULL,
 			UNIQUE (cnpj, ano)
 		)`,
-		down: `DROP TABLE dfp`,
+		down: `DROP TABLE empresas`,
 	},
 	{nome: "contas",
 		versão: _ver_,
 		up: `CREATE TABLE IF NOT EXISTS contas (
-			dfp_id         INTEGER,
+			id_empresa     INTEGER,
 			codigo         VARCHAR NOT NULL,
 			descr          VARCHAR NOT NULL,
-			grupo_dfp      VARCHAR NOT NULL,
+			grupo          VARCHAR NOT NULL,
 			consolidado    INTEGER NOT NULL,
 			data_fim_exerc VARCHAR NOT NULL,
+			periodo        INTEGER NOT NULL,
 			valor          REAL NOT NULL,
 			escala         INTEGER NOT NULL,
 			moeda          VARCHAR,
-			PRIMARY KEY (dfp_id, codigo)
+			PRIMARY KEY (id_empresa, codigo)
 		)`,
 		down: `DROP TABLE contas`,
 	},
 }
 
 const (
-	_ver_                 = 6
+	_ver_                 = 7
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL

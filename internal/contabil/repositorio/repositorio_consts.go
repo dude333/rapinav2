@@ -12,6 +12,7 @@ import (
 var (
 	ErrArquivoInválido = errors.New("arquivo inválido")
 	ErrDFPInválida     = errors.New("DFP inválida")
+	ErrSemDados        = errors.New("Sem dados")
 
 	ErrAnoInválidoFn = func(ano int) error { return fmt.Errorf("ano inválido: %d", ano) }
 )

@@ -17,7 +17,7 @@ var empresa = dominio.Empresa{
 	CNPJ: "123",
 	Nome: "Web",
 	Ano:  2021,
-	Contas: []dominio.Conta{{
+	ContasAnuais: []dominio.Conta{{
 		Código:       "c1",
 		Descr:        "d1",
 		Consolidado:  false,

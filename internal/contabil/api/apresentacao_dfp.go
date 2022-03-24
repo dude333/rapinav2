@@ -26,7 +26,7 @@ func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
 
 	sqlite, _ := repositorio.NovoSqlite(db)
 	api := repositorio.NovoCVM(dataDir)
-	svc := servico.NovoDFP(api, sqlite)
+	svc := servico.NovoServiço(api, sqlite)
 	handler := &htmlDFP{svc: svc}
 
 	e.GET("/api/dfp", handler.dfp)
@@ -83,7 +83,7 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 			ret.CNPJ = dfp.CNPJ
 		}
 
-		for _, c := range dfp.Contas {
+		for _, c := range dfp.ContasAnuais {
 			key := c.Código
 			m, ok := mapContas[key]
 			if !ok {
