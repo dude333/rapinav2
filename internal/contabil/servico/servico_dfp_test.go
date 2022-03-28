@@ -28,7 +28,7 @@ func init() {
 			CNPJ: fmt.Sprintf("%010d", i),
 			Nome: fmt.Sprintf("Empresa %02d", i),
 			Ano:  2021,
-			ContasAnuais: []contábil.Conta{
+			Contas: []contábil.Conta{
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),

@@ -61,10 +61,10 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 	}
 
 	empresa := contábil.Empresa{
-		CNPJ:         sd.CNPJ,
-		Nome:         sd.Nome,
-		Ano:          sd.Ano,
-		ContasAnuais: nil,
+		CNPJ:   sd.CNPJ,
+		Nome:   sd.Nome,
+		Ano:    sd.Ano,
+		Contas: nil,
 	}
 
 	contas := make([]contábil.Conta, 0, 100)
@@ -87,6 +87,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 			Consolidado:  sc.Consolidado != 0,
 			Grupo:        sc.Grupo,
 			DataFimExerc: sc.DataFimExerc,
+			Meses:        12,
 			OrdemExerc:   "",
 			Total: contábil.Dinheiro{
 				Valor:  sc.Valor,
@@ -97,7 +98,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 		contas = append(contas, conta)
 	}
 
-	empresa.ContasAnuais = contas
+	empresa.Contas = contas
 
 	return &empresa, err
 }
@@ -153,7 +154,7 @@ type sqliteConta struct {
 	Grupo        string  `db:"grupo"`
 	Consolidado  int     `db:"consolidado"`
 	DataFimExerc string  `db:"data_fim_exerc"`
-	Periodo      int     `db:"periodo"` // 3 ou 12 meses (trimestral/anual)
+	Meses        int     `db:"meses"` // Meses acumulados desde o início do exercício
 	Valor        float64 `db:"valor"`
 	Escala       int     `db:"escala"`
 	Moeda        string  `db:"moeda"`
@@ -198,18 +199,13 @@ func (s *sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Emp
 		return err
 	}
 
-	err = inserirContas(ctx, s.db, id, e.ContasAnuais, 12)
-	if err != nil {
-		return err
-	}
-
-	return inserirContas(ctx, s.db, id, e.ContasTrimestrais, 3)
+	return inserirContas(ctx, s.db, id, e.Contas, 12)
 }
 
 // inserirContas insere os registro das contas, sendo que deve ter sido garantido
 // previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta, periodo int) error {
+func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta, meses int) error {
 	if len(contas) == 0 {
 		return nil
 	}
@@ -219,7 +215,7 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 	}
 
 	stmt, err := tx.Prepare(`INSERT INTO contas 
-		(id_empresa, codigo, descr, grupo, consolidado, data_fim_exerc, periodo, valor, escala, moeda) 
+		(id_empresa, codigo, descr, grupo, consolidado, data_fim_exerc, meses, valor, escala, moeda) 
 		VALUES (?,?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
 		return err
@@ -241,7 +237,7 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		args = append(args, contas[i].Grupo)
 		args = append(args, boolToInt(contas[i].Consolidado))
 		args = append(args, contas[i].DataFimExerc)
-		args = append(args, periodo)
+		args = append(args, meses)
 		args = append(args, contas[i].Total.Valor)
 		args = append(args, contas[i].Total.Escala)
 		args = append(args, contas[i].Total.Moeda)
@@ -325,7 +321,7 @@ var tabelas = []struct {
 			grupo          VARCHAR NOT NULL,
 			consolidado    INTEGER NOT NULL,
 			data_fim_exerc VARCHAR NOT NULL,
-			periodo        INTEGER NOT NULL,
+			meses          INTEGER NOT NULL,
 			valor          REAL NOT NULL,
 			escala         INTEGER NOT NULL,
 			moeda          VARCHAR,
@@ -336,7 +332,7 @@ var tabelas = []struct {
 }
 
 const (
-	_ver_                 = 7
+	_ver_                 = 8
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL

@@ -83,7 +83,7 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 			ret.CNPJ = dfp.CNPJ
 		}
 
-		for _, c := range dfp.ContasAnuais {
+		for _, c := range dfp.Contas {
 			key := c.Código
 			m, ok := mapContas[key]
 			if !ok {

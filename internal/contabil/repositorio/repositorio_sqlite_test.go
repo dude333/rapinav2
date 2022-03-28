@@ -49,10 +49,10 @@ func Test_inserirDFP(t *testing.T) {
 		}
 
 		empresa := contábil.Empresa{
-			CNPJ:         "123",
-			Nome:         "N1",
-			Ano:          2020,
-			ContasAnuais: contas,
+			CNPJ:   "123",
+			Nome:   "N1",
+			Ano:    2020,
+			Contas: contas,
 		}
 
 		err := s.Salvar(context.Background(), &empresa)

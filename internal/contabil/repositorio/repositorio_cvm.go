@@ -30,6 +30,7 @@ type cvmDFP struct {
 	Descr        string
 	GrupoDFP     string
 	DataFimExerc string // AAAA-MM-DD
+	Meses        int    // Número de meses acumulados desde o início do exercício
 	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
 	Valor        float64
 	Escala       int
@@ -62,6 +63,7 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
 		Grupo:        grp,
 		DataFimExerc: c.DataFimExerc,
+		Meses:        c.Meses,
 		OrdemExerc:   c.OrdemExerc,
 		Total: dominio.Dinheiro{
 			Valor:  c.Valor,
@@ -193,10 +195,10 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.ResultadoIm
 			}
 
 			empresa := dominio.Empresa{
-				CNPJ:         registros[0].CNPJ,
-				Nome:         registros[0].Nome,
-				Ano:          a,
-				ContasAnuais: contas[ano],
+				CNPJ:   registros[0].CNPJ,
+				Nome:   registros[0].Nome,
+				Ano:    a,
+				Contas: contas[ano],
 			}
 
 			if empresa.Válida() {
@@ -239,6 +241,7 @@ type csv struct {
 
 	posCnpj        int
 	posDenomCia    int
+	posDtIniExerc  int
 	posDtFimExerc  int
 	posVersao      int
 	posCdConta     int
@@ -251,6 +254,7 @@ type csv struct {
 }
 
 func (c *csv) lerCabeçalho(linha string) {
+	c.posDtIniExerc = -1 // Este campo não aparece nos dados do balanço patrimonial
 	c.cabeçalhoLido = true
 	títulos := strings.Split(linha, c.sep)
 	for i, t := range títulos {
@@ -259,6 +263,8 @@ func (c *csv) lerCabeçalho(linha string) {
 			c.posCnpj = i
 		case "DENOM_CIA":
 			c.posDenomCia = i
+		case "DT_INI_EXERC":
+			c.posDtIniExerc = i
 		case "DT_FIM_EXERC":
 			c.posDtFimExerc = i
 		case "VERSAO":
@@ -314,6 +320,14 @@ func (c *csv) lerCabeçalho(linha string) {
 //			Domínio   : Alfanumérico
 //			Tipo Dados: varchar
 //			Tamanho   : 100
+//
+//		-----------------------
+//		Campo: DT_INI_EXERC
+//		-----------------------
+//			Descrição : Data início do exercício social
+//			Domínio   : AAAA-MM-DD
+//			Tipo Dados: date
+//			Tamanho   : 10
 //
 //		-----------------------
 //		Campo: DT_FIM_EXERC
@@ -384,10 +398,13 @@ func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
 		return nil, ErrFaltaItem
 	}
 
-	// A validação da Conta é feita pelo modelo, mas aqui é feita para
-	// evitar erro ao pegar o ano
-	if len(itens[c.posDtFimExerc]) != len("AAAA-MM-DD") {
-		return nil, ErrDataInválida
+	dtIni := "" // dado não aparece no BP
+	if c.posDtIniExerc >= 0 {
+		dtIni = itens[c.posDtIniExerc]
+	}
+	m, err := meses(dtIni, itens[c.posDtFimExerc])
+	if err != nil {
+		return nil, err
 	}
 
 	vl, err := strconv.ParseFloat(itens[c.posVlConta], 64)
@@ -404,11 +421,50 @@ func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
 		Descr:        itens[c.posDsConta],
 		GrupoDFP:     itens[c.posGrupoDFP],
 		DataFimExerc: itens[c.posDtFimExerc],
+		Meses:        m,
 		OrdemExerc:   itens[c.posOrdemExerc],
 		Valor:        vl,
 		Escala:       escala(itens[c.posEscalaMoeda]),
 		Moeda:        moeda(itens[c.posMoeda]),
 	}, nil
+}
+
+// meses retorna a diferença em meses entre ini e fim, com a data no formato
+// AAAA-MM-DD.
+func meses(ini, fim string) (int, error) {
+	if len(fim) != 10 || (ini != "" && len(ini) != 10) {
+		return 0, ErrDataInválida
+	}
+
+	// Quando ini == "" significa que o dado veio do balanço patrimonial
+	// e só o data do fim do exercício é fornecido
+	if ini == "" {
+		return 12, nil
+	}
+
+	anoI, _ := strconv.Atoi(ini[0:4])
+	mesI, _ := strconv.Atoi(ini[5:7])
+	anoF, _ := strconv.Atoi(fim[0:4])
+	mesF, _ := strconv.Atoi(fim[5:7])
+
+	if anoI == 0 || mesI == 0 || anoF == 0 || mesF == 0 {
+		return 0, ErrDataInválida
+	}
+
+	meses := 0
+
+	if anoF != anoI {
+		meses = (anoF - anoI) * 12
+		meses = meses - mesI + mesF
+	} else {
+		meses = mesF - mesI + 1
+	}
+
+	if meses <= 0 {
+		return 0, ErrDataInválida
+	}
+
+	return meses, nil
 }
 
 func escala(s string) int {
