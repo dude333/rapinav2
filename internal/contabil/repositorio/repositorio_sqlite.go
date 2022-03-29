@@ -13,6 +13,8 @@ import (
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
+	"os"
+	"path"
 	"strings"
 	"unicode"
 
@@ -35,18 +37,46 @@ type sqlite struct {
 	limpo map[string]bool
 
 	cache []string
+	cfg
 }
 
-func NovoSqlite(db *sqlx.DB) (contábil.RepositórioLeituraEscrita, error) {
-	err := criarTabelas(db)
+func NovoSqlite(configs ...ConfigFn) (contábil.RepositórioLeituraEscrita, error) {
+	var s sqlite
+	for _, cfg := range configs {
+		cfg(&s.cfg)
+	}
+
+	if s.dirBD == ":memory:" {
+		s.db = sqlx.MustConnect("sqlite3", ":memory:")
+		s.db.SetMaxOpenConns(1)
+	} else {
+		if s.dirBD == "" {
+			s.dirBD = ".bd"
+		}
+		err := os.MkdirAll(s.dirBD, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
+
+		filename := "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+		dir := strings.ReplaceAll(s.dirBD, "\\", "/")
+		connStr := "file:" + path.Join(dir, filename)
+
+		s.db, err = sqlx.Connect("sqlite3", connStr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err := criarTabelas(s.db)
 	if err != nil {
 		return nil, err
 	}
 
-	limpo := make(map[string]bool)
-	cache := make([]string, 0, 500)
+	s.limpo = make(map[string]bool)
+	s.cache = make([]string, 0, 500)
 
-	return &sqlite{db: db, limpo: limpo, cache: cache}, nil
+	return &s, nil
 }
 
 func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {

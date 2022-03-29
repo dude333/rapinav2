@@ -7,24 +7,22 @@ package repositorio
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
-	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 func Test_inserirDFP(t *testing.T) {
-	var db *sqlx.DB
+	var c ConfigFn
 	if testing.Short() {
-		db = sqlx.MustConnect("sqlite3", ":memory:")
-		db.SetMaxOpenConns(1)
+		c = RodarBDNaMemória()
 	} else {
-		connStr := "file:/tmp/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-		db = sqlx.MustConnect("sqlite3", connStr)
+		c = DirBD(os.TempDir())
 	}
 
-	s, err := NovoSqlite(db)
+	s, err := NovoSqlite(c)
 	if err != nil {
 		t.Fatal(err)
 	}

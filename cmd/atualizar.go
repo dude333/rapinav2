@@ -6,13 +6,11 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/dude333/rapinav2/internal/contabil/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
-	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
 
@@ -36,11 +34,11 @@ func init() {
 }
 
 func atualizar(cmd *cobra.Command, args []string) {
-	connStr := "file:/tmp/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-	db := sqlx.MustConnect("sqlite3", connStr)
-
-	c := repositorio.NovoCVM(os.TempDir())
-	s, err := repositorio.NovoSqlite(db)
+	c, err := repositorio.NovoCVM()
+	if err != nil {
+		panic(err)
+	}
+	s, err := repositorio.NovoSqlite()
 	if err != nil {
 		panic(err)
 	}

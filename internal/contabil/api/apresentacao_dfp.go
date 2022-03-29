@@ -14,7 +14,6 @@ import (
 	"github.com/dude333/rapinav2/internal/contabil/dominio"
 	"github.com/dude333/rapinav2/internal/contabil/repositorio"
 	"github.com/dude333/rapinav2/internal/contabil/servico"
-	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )
 
@@ -22,10 +21,10 @@ type htmlDFP struct {
 	svc dominio.Serviço
 }
 
-func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
+func New(e *echo.Echo, dataDir string) {
 
-	sqlite, _ := repositorio.NovoSqlite(db)
-	api := repositorio.NovoCVM(dataDir)
+	sqlite, _ := repositorio.NovoSqlite()
+	api, _ := repositorio.NovoCVM(repositorio.DirBD(dataDir))
 	svc := servico.NovoServiço(api, sqlite)
 	handler := &htmlDFP{svc: svc}
 

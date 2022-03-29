@@ -11,7 +11,6 @@ import (
 
 	"github.com/dude333/rapinav2/frontend"
 	"github.com/dude333/rapinav2/internal/contabil/api"
-	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 )
@@ -32,9 +31,7 @@ func init() {
 func servidor(cmd *cobra.Command, args []string) {
 	e := echo.New()
 
-	connStr := "file:/tmp/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-	db := sqlx.MustConnect("sqlite3", connStr)
-	api.New(e, db, "/tmp")
+	api.New(e, "/tmp")
 
 	contentFS, err := fs.Sub(frontend.ContentFS, "public")
 	if err != nil {

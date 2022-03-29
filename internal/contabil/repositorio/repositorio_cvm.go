@@ -19,6 +19,8 @@ import (
 	"golang.org/x/text/transform"
 )
 
+// cvmDFP é usada para armazenar os dados (linhas) dos arquivos de DFP para
+// ser posteriormente transformada no modelo Conta, do domínio contábil.
 type cvmDFP struct {
 	CNPJ        string
 	Nome        string // Nome da empresa
@@ -79,12 +81,27 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 // no site da CVM.
 type cvm struct {
 	infra
+	cfg
 }
 
-func NovoCVM(dirDados string) dominio.RepositórioImportação {
-	return &cvm{
-		infra: &localInfra{dirDados: dirDados},
+func NovoCVM(configs ...ConfigFn) (dominio.RepositórioImportação, error) {
+	var cvm cvm
+	for _, cfg := range configs {
+		cfg(&cvm.cfg)
 	}
+
+	if cvm.dirDados == "" {
+		cvm.dirDados = os.TempDir()
+	} else {
+		err := os.MkdirAll(cvm.dirDados, os.ModePerm)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cvm.infra = &localInfra{dirDados: cvm.dirDados}
+
+	return &cvm, nil
 }
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
