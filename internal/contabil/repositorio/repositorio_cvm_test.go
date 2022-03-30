@@ -44,7 +44,7 @@ func Test_cvm_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c, err := NovoCVM(ComLimiteAnual(5))
+			c, err := NovoCVM()
 			if err != nil {
 				t.Fatal(err)
 			}

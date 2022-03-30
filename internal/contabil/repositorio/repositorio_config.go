@@ -28,10 +28,8 @@ func init() {
 
 // cfg contém as configurações usadas nos construtores deste repositório.
 type cfg struct {
-	dirBD            string // Diretório onde o banco de dados será armazenado
-	dirDados         string // Diretório com dados baixados da CMV (temporários)
-	limiteAnual      int    // Limite de anos de DFP a serem baixados da CVM (0 = todos)
-	limiteTrimestral int    // Limite de anos de ITR a serem baixados da CVM (0 = todos)
+	dirBD    string // Diretório onde o banco de dados será armazenado
+	dirDados string // Diretório com dados baixados da CMV (temporários)
 }
 
 type ConfigFn func(*cfg)
@@ -49,15 +47,5 @@ func DirBD(dir string) ConfigFn {
 func DirDados(dir string) ConfigFn {
 	return func(c *cfg) {
 		c.dirDados = dir
-	}
-}
-func ComLimiteAnual(anos int) ConfigFn {
-	return func(c *cfg) {
-		c.limiteAnual = anos
-	}
-}
-func ComLimiteTrimestral(anos int) ConfigFn {
-	return func(c *cfg) {
-		c.limiteTrimestral = anos
 	}
 }
