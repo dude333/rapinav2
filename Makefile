@@ -33,7 +33,7 @@ $(FE_BUILD): $(FE_SOURCES)
 frontend: $(FE_BUILD)
 
 win: $(wildcard *.go) $(FE_BUILD)
-	GOOS=windows GOARCH=386 CGO_ENABLED=1 CC=i686-w64-mingw32-gcc CXX=i686-w64-mingw32-g++ CGO_LDFLAGS="-lssp -w"  go build ${LDFLAGS} -o ${BINARYDIR}/$(WINBINARY) $(BUILDDIR)
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc-win32 CXX=x86_64-w64-mingw32-cpp-win32 CGO_LDFLAGS="-lssp -w"  go build ${LDFLAGS} -o ${BINARYDIR}/$(WINBINARY) $(BUILDDIR)
 
 osx:  $(SOURCES)
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC=o64-clang CXX=o64-clang++ CGO_LDFLAGS="-w" go build ${LDFLAGS} -o ${BINARYDIR} $(BUILDDIR)
