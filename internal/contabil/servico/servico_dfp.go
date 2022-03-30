@@ -42,7 +42,7 @@ func NovoServiço(
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (s *serviço) Importar(ano int) error {
+func (s *serviço) Importar(ano int, trimestral bool) error {
 	if s.api == nil {
 		return ErrRepositórioInválido
 	}
@@ -53,7 +53,7 @@ func (s *serviço) Importar(ano int) error {
 
 	// result retorna o registro após a leitura de cada linha
 	// do arquivo importado
-	for result := range s.api.Importar(ctx, ano) {
+	for result := range s.api.Importar(ctx, ano, trimestral) {
 		if result.Error != nil {
 			return result.Error
 		}

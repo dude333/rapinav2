@@ -47,7 +47,8 @@ func atualizar(cmd *cobra.Command, args []string) {
 
 	ctx := cmd.Context()
 
-	anoi := 2010
+	// anoi := 2010
+	anoi := 2018
 	anof, err := strconv.Atoi(time.Now().Format("2006"))
 	if err != nil {
 		progress.Error(err)
@@ -59,19 +60,23 @@ func atualizar(cmd *cobra.Command, args []string) {
 		anof = anoi
 	}
 
-	for ano := anof; ano >= anoi; ano-- {
+	trimestral := false
+	for passo := 1; passo <= 2; passo++ {
+		for ano := anof; ano >= anoi; ano-- {
 
-		for result := range c.Importar(ctx, ano) {
-			if result.Error != nil {
-				progress.Error(result.Error)
-				continue
+			for result := range c.Importar(ctx, ano, trimestral) {
+				if result.Error != nil {
+					progress.Error(result.Error)
+					continue
+				}
+				err = s.Salvar(ctx, result.Empresa)
+				if err != nil {
+					fmt.Println("*", err)
+				}
 			}
-			err = s.Salvar(ctx, result.Empresa)
-			if err != nil {
-				fmt.Println("*", err)
-			}
-		}
 
-	} // next ano
+		} // próx. ano
+		trimestral = true
+	} // próx. passo
 
 }

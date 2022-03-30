@@ -34,7 +34,7 @@ var empresa = dominio.Empresa{
 
 type mockService struct{}
 
-func (m *mockService) Importar(ano int) error {
+func (m *mockService) Importar(ano int, trim bool) error {
 	return nil
 }
 func (m *mockService) Relatório(cnpj string, ano int) (*dominio.Empresa, error) {

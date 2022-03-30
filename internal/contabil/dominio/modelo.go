@@ -32,6 +32,7 @@ type Conta struct {
 	Descr        string
 	Consolidado  bool   // Individual ou Consolidado
 	Grupo        string // BPA, BPP, DRE, DFC...
+	DataIniExerc string // AAAA-MM-DD
 	DataFimExerc string // AAAA-MM-DD
 	Meses        int    // Meses acumulados desde o início do período
 	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
@@ -90,7 +91,7 @@ type ResultadoImportação struct {
 }
 
 type RepositórioImportação interface {
-	Importar(ctx context.Context, ano int) <-chan ResultadoImportação
+	Importar(ctx context.Context, ano int, trimestral bool) <-chan ResultadoImportação
 }
 
 type RepositórioLeitura interface {
@@ -108,7 +109,7 @@ type RepositórioLeituraEscrita interface {
 }
 
 type Serviço interface {
-	Importar(ano int) error
+	Importar(ano int, trimestral bool) error
 	Relatório(cnpj string, ano int) (*Empresa, error)
 	Empresas(nome string) []string
 }

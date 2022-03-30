@@ -23,6 +23,7 @@ func init() {
 	for _, t := range tipo {
 		// Por hora serão usados apenas os dados consolidados
 		Config.Filtros = append(Config.Filtros, "dfp_cia_aberta_"+t+"_con")
+		Config.Filtros = append(Config.Filtros, "itr_cia_aberta_"+t+"_con")
 	}
 }
 

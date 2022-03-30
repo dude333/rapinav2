@@ -70,7 +70,7 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []string {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int) <-chan contábil.ResultadoImportação {
+func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan contábil.ResultadoImportação {
 	results := make(chan contábil.ResultadoImportação)
 	go func() {
 		defer close(results)
@@ -101,7 +101,8 @@ func Test_registro_Importar(t *testing.T) {
 		bd  contábil.RepositórioLeituraEscrita
 	}
 	type args struct {
-		ano int
+		ano        int
+		trimestral bool
 	}
 	tests := []struct {
 		name    string
@@ -143,7 +144,7 @@ func Test_registro_Importar(t *testing.T) {
 				tt.fields.api,
 				tt.fields.bd,
 			)
-			err := r.Importar(tt.args.ano)
+			err := r.Importar(tt.args.ano, tt.args.trimestral)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("registro.Importar() error = %v, wantErr %v", err, tt.wantErr)
 			}

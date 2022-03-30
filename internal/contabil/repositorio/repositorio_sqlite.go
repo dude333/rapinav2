@@ -116,6 +116,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 			Descr:        sc.Descr,
 			Consolidado:  sc.Consolidado != 0,
 			Grupo:        sc.Grupo,
+			DataIniExerc: sc.DataIniExerc,
 			DataFimExerc: sc.DataFimExerc,
 			Meses:        12,
 			OrdemExerc:   "",
@@ -183,6 +184,7 @@ type sqliteConta struct {
 	Descr        string  `db:"descr"`
 	Grupo        string  `db:"grupo"`
 	Consolidado  int     `db:"consolidado"`
+	DataIniExerc string  `db:"data_ini_exerc"`
 	DataFimExerc string  `db:"data_fim_exerc"`
 	Meses        int     `db:"meses"` // Meses acumulados desde o início do exercício
 	Valor        float64 `db:"valor"`
@@ -229,13 +231,13 @@ func (s *sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Emp
 		return err
 	}
 
-	return inserirContas(ctx, s.db, id, e.Contas, 12)
+	return inserirContas(ctx, s.db, id, e.Contas)
 }
 
 // inserirContas insere os registro das contas, sendo que deve ter sido garantido
 // previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta, meses int) error {
+func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.Conta) error {
 	if len(contas) == 0 {
 		return nil
 	}
@@ -245,8 +247,8 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 	}
 
 	stmt, err := tx.Prepare(`INSERT INTO contas 
-		(id_empresa, codigo, descr, grupo, consolidado, data_fim_exerc, meses, valor, escala, moeda) 
-		VALUES (?,?,?,?,?,?,?,?,?,?)`)
+		(id_empresa, codigo, descr, grupo, consolidado, data_ini_exerc, data_fim_exerc, meses, valor, escala, moeda) 
+		VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
 		return err
 	}
@@ -266,8 +268,9 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		args = append(args, contas[i].Descr)
 		args = append(args, contas[i].Grupo)
 		args = append(args, boolToInt(contas[i].Consolidado))
+		args = append(args, contas[i].DataIniExerc)
 		args = append(args, contas[i].DataFimExerc)
-		args = append(args, meses)
+		args = append(args, contas[i].Meses)
 		args = append(args, contas[i].Total.Valor)
 		args = append(args, contas[i].Total.Escala)
 		args = append(args, contas[i].Total.Moeda)
@@ -280,6 +283,8 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 			if sqliteErr.Code != sqlite3.ErrConstraint {
 				_ = tx.Rollback()
 				return err
+			} else {
+				progress.Error(sqliteErr)
 			}
 		}
 	}
@@ -350,19 +355,20 @@ var tabelas = []struct {
 			descr          VARCHAR NOT NULL,
 			grupo          VARCHAR NOT NULL,
 			consolidado    INTEGER NOT NULL,
+			data_ini_exerc VARCHAR,
 			data_fim_exerc VARCHAR NOT NULL,
 			meses          INTEGER NOT NULL,
 			valor          REAL NOT NULL,
 			escala         INTEGER NOT NULL,
 			moeda          VARCHAR,
-			PRIMARY KEY (id_empresa, codigo)
+			PRIMARY KEY (id_empresa, codigo, meses)
 		)`,
 		down: `DROP TABLE contas`,
 	},
 }
 
 const (
-	_ver_                 = 8
+	_ver_                 = 12
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL

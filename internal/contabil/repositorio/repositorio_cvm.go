@@ -31,6 +31,7 @@ type cvmDFP struct {
 	Código       string
 	Descr        string
 	GrupoDFP     string
+	DataIniExerc string // AAAA-MM-DD
 	DataFimExerc string // AAAA-MM-DD
 	Meses        int    // Número de meses acumulados desde o início do exercício
 	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
@@ -64,6 +65,7 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 		Descr:        c.Descr,
 		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
 		Grupo:        grp,
+		DataIniExerc: c.DataIniExerc,
 		DataFimExerc: c.DataFimExerc,
 		Meses:        c.Meses,
 		OrdemExerc:   c.OrdemExerc,
@@ -105,14 +107,19 @@ func NovoCVM(configs ...ConfigFn) (dominio.RepositórioImportação, error) {
 }
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
-// ano do site da CVM.
-func (c *cvm) Importar(ctx context.Context, ano int) <-chan dominio.ResultadoImportação {
+// ano do site da CVM. Com trimestral == true, é baixado o arquivo de ITRs.
+func (c *cvm) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.ResultadoImportação {
 	results := make(chan dominio.ResultadoImportação)
+
+	arqFn := arquivoDFP
+	if trimestral {
+		arqFn = arquivoITR
+	}
 
 	go func() {
 		defer close(results)
 
-		url, zip, err := arquivoDFP(ano)
+		url, zip, err := arqFn(ano)
 		if err != nil {
 			results <- dominio.ResultadoImportação{Error: err}
 			return
@@ -144,6 +151,16 @@ func arquivoDFP(ano int) (url, zip string, err error) {
 	}
 	zip = fmt.Sprintf(`dfp_cia_aberta_%d.zip`, ano)
 	url = `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/` + zip
+
+	return url, zip, nil
+}
+
+func arquivoITR(ano int) (url, zip string, err error) {
+	if ano < 2000 || ano > 3000 {
+		return "", "", ErrAnoInválidoFn(ano)
+	}
+	zip = fmt.Sprintf(`itr_cia_aberta_%d.zip`, ano)
+	url = `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/` + zip
 
 	return url, zip, nil
 }
@@ -437,6 +454,7 @@ func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
 		Código:       itens[c.posCdConta],
 		Descr:        itens[c.posDsConta],
 		GrupoDFP:     itens[c.posGrupoDFP],
+		DataIniExerc: dtIni,
 		DataFimExerc: itens[c.posDtFimExerc],
 		Meses:        m,
 		OrdemExerc:   itens[c.posOrdemExerc],
@@ -472,7 +490,7 @@ func meses(ini, fim string) (int, error) {
 
 	if anoF != anoI {
 		meses = (anoF - anoI) * 12
-		meses = meses - mesI + mesF
+		meses = meses - mesI + mesF + 1
 	} else {
 		meses = mesF - mesI + 1
 	}

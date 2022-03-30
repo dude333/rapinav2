@@ -14,8 +14,9 @@ import (
 
 func Test_cvm_Importar(t *testing.T) {
 	type args struct {
-		ctx context.Context
-		ano int
+		ctx        context.Context
+		ano        int
+		trimestral bool
 	}
 	tests := []struct {
 		name    string
@@ -60,7 +61,7 @@ func Test_cvm_Importar(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			for result := range c.Importar(tt.args.ctx, tt.args.ano) {
+			for result := range c.Importar(tt.args.ctx, tt.args.ano, tt.args.trimestral) {
 				if (result.Error != nil) != tt.wantErr {
 					t.Errorf("RepositórioImportaçãoDFP.Importar() error = %v, wantErr %v", result.Error, tt.wantErr)
 					return
@@ -90,6 +91,12 @@ func Test_meses(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name:    "deveria retornar 12 meses",
+			args:    args{ini: "2018-07-01", fim: "2019-06-30"},
+			want:    12,
+			wantErr: false,
+		},
+		{
 			name:    "deveria retornar erro",
 			args:    args{ini: "2021-01-01", fim: "2021-12"},
 			want:    0,
@@ -115,7 +122,7 @@ func Test_meses(t *testing.T) {
 		},
 		{
 			name:    "deveria retornar 6 meses",
-			args:    args{ini: "2020-09-01", fim: "2021-03-31"},
+			args:    args{ini: "2020-10-01", fim: "2021-03-31"},
 			want:    6,
 			wantErr: false,
 		},
