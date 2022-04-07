@@ -12,10 +12,11 @@ import (
 
 // Empresa listada na B3, com dados obtidos na CVM.
 type Empresa struct {
-	CNPJ   string
-	Nome   string
-	Ano    int
-	Contas []Conta
+	CNPJ         string
+	Nome         string
+	Ano          int
+	DataIniExerc string
+	Contas       []Conta
 }
 
 func (d Empresa) Válida() bool {

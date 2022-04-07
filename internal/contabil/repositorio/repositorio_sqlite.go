@@ -172,10 +172,11 @@ func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.Empresa) error {
 }
 
 type sqliteEmpresa struct {
-	ID   int    `db:"id"`
-	CNPJ string `db:"cnpj"`
-	Nome string `db:"nome"`
-	Ano  int    `db:"ano"`
+	ID           int    `db:"id"`
+	CNPJ         string `db:"cnpj"`
+	Nome         string `db:"nome"`
+	Ano          int    `db:"ano"`
+	DataIniExerc string `db:"data_ini_exerc"`
 }
 
 type sqliteConta struct {
@@ -194,9 +195,10 @@ type sqliteConta struct {
 
 func (s *sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Empresa) error {
 	d := sqliteEmpresa{
-		CNPJ: e.CNPJ,
-		Nome: e.Nome,
-		Ano:  e.Ano,
+		CNPJ:         e.CNPJ,
+		Nome:         e.Nome,
+		Ano:          e.Ano,
+		DataIniExerc: e.DataIniExerc,
 	}
 
 	idRegistro := func() (int, error) {
@@ -219,9 +221,10 @@ func (s *sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Emp
 		}
 		s.limpo[k] = true
 		// Criar novo registro
-		query := `INSERT INTO empresas (cnpj, nome, ano) VALUES (:cnpj, :nome, :ano)`
+		query := `INSERT INTO empresas (cnpj, nome, ano, data_ini_exerc) VALUES (:cnpj, :nome, :ano, :data_ini_exerc)`
 		_, err = s.db.NamedExecContext(ctx, query, &d)
 		if err != nil {
+			progress.Debug("Falha ao inserir %v", d)
 			return err
 		}
 	}
@@ -241,12 +244,19 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 	if len(contas) == 0 {
 		return nil
 	}
+
+	var dataIniExerc string
+	err := db.GetContext(ctx, &dataIniExerc, `SELECT data_ini_exerc FROM empresas WHERE id=?`, id)
+	if err != nil {
+		return err
+	}
+
 	tx, err := db.Beginx()
 	if err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare(`INSERT INTO contas 
+	stmt, err := tx.Prepare(`INSERT or IGNORE INTO contas 
 		(id_empresa, codigo, descr, grupo, consolidado, data_ini_exerc, data_fim_exerc, meses, valor, escala, moeda) 
 		VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
 	if err != nil {
@@ -262,6 +272,19 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 
 	for i := range contas {
 
+		// pular registros com início do exercício diferente do início do
+		// exercício anual, ou seja, ignora registros trimestrais e armazena
+		// apenas os dados acumulados desde o início do exercício anual:
+		// 3, 6, 9 e 12 meses.
+		if dataIniExerc != "" && dataIniExerc != contas[i].DataIniExerc {
+			progress.Debug("Ignorando registro trimestral não acumulado %d:%v", id, contas[i])
+			continue
+		}
+		if contas[i].Meses%3 != 0 || contas[i].Meses > 12 {
+			progress.Debug("Ignorando registro com meses != 3,6,9,12 %d:%v", id, contas[i])
+			continue
+		}
+
 		var args []interface{}
 		args = append(args, id)
 		args = append(args, contas[i].Código)
@@ -276,9 +299,10 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 		args = append(args, contas[i].Total.Moeda)
 
 		_, err = stmt.ExecContext(ctx, args...)
+		// Erros no banco de dados estão sendo ignorados ("INSERT or IGNORE INTO")
 		if err != nil {
-			// Ignora erro em caso de registro duplicado (id_empresa + codigo), pois se
-			// trata de erro no arquivo da CVM (raramente acontece)
+			// Ignora erro em caso de registro duplicado (id_empresa + codigo),
+			// pois se trata de erro no arquivo da CVM (raramente acontece)
 			sqliteErr := err.(sqlite3.Error)
 			if sqliteErr.Code != sqlite3.ErrConstraint {
 				_ = tx.Rollback()
@@ -339,10 +363,11 @@ var tabelas = []struct {
 		nome:   "empresas",
 		versão: _ver_,
 		up: `CREATE TABLE IF NOT EXISTS empresas (
-			id     INTEGER PRIMARY KEY AUTOINCREMENT,
-			cnpj   VARCHAR NOT NULL,
-			nome   VARCHAR NOT NULL,
-			ano    INT NOT NULL,
+			id             INTEGER PRIMARY KEY AUTOINCREMENT,
+			cnpj           VARCHAR NOT NULL,
+			nome           VARCHAR NOT NULL,
+			ano            INT NOT NULL,
+			data_ini_exerc VARCHAR,
 			UNIQUE (cnpj, ano)
 		)`,
 		down: `DROP TABLE empresas`,
@@ -368,7 +393,7 @@ var tabelas = []struct {
 }
 
 const (
-	_ver_                 = 12
+	_ver_                 = 13
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL
