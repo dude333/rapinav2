@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package servico
+package serviço
 
 import "errors"
 

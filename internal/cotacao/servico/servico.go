@@ -17,7 +17,7 @@
 //     |   API  |    |  BD   |   <= Repositórios
 //     '--------'    '-------'
 //
-package servico
+package serviço
 
 import (
 	"context"
