@@ -17,8 +17,14 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type Serviço interface {
+	Importar(ano int, trimestral bool) error
+	Relatório(cnpj string, ano int) (*dominio.Empresa, error)
+	Empresas(nome string) []string
+}
+
 type htmlDFP struct {
-	svc dominio.Serviço
+	svc Serviço
 }
 
 func New(e *echo.Echo, dataDir string) {

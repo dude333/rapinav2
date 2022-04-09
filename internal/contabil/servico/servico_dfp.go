@@ -21,28 +21,47 @@ package servico
 
 import (
 	"context"
-	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
-	"github.com/dude333/rapinav2/pkg/progress"
 	"time"
+
+	"github.com/dude333/rapinav2/internal/contabil/dominio"
+	"github.com/dude333/rapinav2/pkg/progress"
 )
+
+type Importação interface {
+	Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado
+}
+
+type Leitura interface {
+	Ler(ctx context.Context, cnpj string, ano int) (*dominio.Empresa, error)
+	Empresas(ctx context.Context, nome string) []string
+}
+
+type Escrita interface {
+	Salvar(ctx context.Context, empresa *dominio.Empresa) error
+}
+
+type LeituraEscrita interface {
+	Leitura
+	Escrita
+}
 
 // serviço é um serviço que implementa RepositórioImportação e
 // busca os relatórios contábeis de uma serviço em vários repositórios (API e BD).
-type serviço struct {
-	api contábil.RepositórioImportação
-	bd  contábil.RepositórioLeituraEscrita
+type Serviço struct {
+	api Importação
+	bd  LeituraEscrita
 }
 
 func NovoServiço(
-	api contábil.RepositórioImportação,
-	bd contábil.RepositórioLeituraEscrita) contábil.Serviço {
+	api Importação,
+	bd LeituraEscrita) *Serviço {
 
-	return &serviço{api: api, bd: bd}
+	return &Serviço{api: api, bd: bd}
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (s *serviço) Importar(ano int, trimestral bool) error {
+func (s *Serviço) Importar(ano int, trimestral bool) error {
 	if s.api == nil {
 		return ErrRepositórioInválido
 	}
@@ -65,16 +84,16 @@ func (s *serviço) Importar(ano int, trimestral bool) error {
 	return nil
 }
 
-func (s *serviço) Relatório(cnpj string, ano int) (*contábil.Empresa, error) {
+func (s *Serviço) Relatório(cnpj string, ano int) (*dominio.Empresa, error) {
 	if s.bd == nil {
-		return &contábil.Empresa{}, ErrRepositórioInválido
+		return &dominio.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
 	dfp, err := s.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
 }
 
-func (s *serviço) Empresas(nome string) []string {
+func (s *Serviço) Empresas(nome string) []string {
 	if s.bd == nil {
 		return []string{}
 	}

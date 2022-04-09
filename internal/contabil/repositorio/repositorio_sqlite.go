@@ -25,8 +25,8 @@ import (
 	"strconv"
 )
 
-// sqlite implementa RepositórioLeituraEscrita
-type sqlite struct {
+// Sqlite implementa RepositórioLeituraEscrita
+type Sqlite struct {
 	db *sqlx.DB
 
 	// limpo serve para sinalizar se os dados de um determinado CNPJ+ANO
@@ -40,8 +40,8 @@ type sqlite struct {
 	cfg
 }
 
-func NovoSqlite(configs ...ConfigFn) (contábil.RepositórioLeituraEscrita, error) {
-	var s sqlite
+func NovoSqlite(configs ...ConfigFn) (*Sqlite, error) {
+	var s Sqlite
 	for _, cfg := range configs {
 		cfg(&s.cfg)
 	}
@@ -79,7 +79,7 @@ func NovoSqlite(configs ...ConfigFn) (contábil.RepositórioLeituraEscrita, erro
 	return &s, nil
 }
 
-func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {
+func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {
 	var sd sqliteEmpresa
 	err := s.db.GetContext(ctx, &sd, `SELECT * FROM empresas WHERE cnpj=? AND ano=?`, &cnpj, &ano)
 	if err == sql.ErrNoRows {
@@ -134,7 +134,7 @@ func (s *sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empr
 	return &empresa, err
 }
 
-func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
+func (s *Sqlite) Empresas(ctx context.Context, nome string) []string {
 	if len(s.cache) == 0 {
 		err := s.db.SelectContext(ctx, &s.cache,
 			`SELECT DISTINCT(nome) FROM empresas ORDER BY nome`)
@@ -165,7 +165,7 @@ func (s *sqlite) Empresas(ctx context.Context, nome string) []string {
 	return ret
 }
 
-func (s *sqlite) Salvar(ctx context.Context, empresa *contábil.Empresa) error {
+func (s *Sqlite) Salvar(ctx context.Context, empresa *contábil.Empresa) error {
 	// progress.Status("%-60s %4d\n", empresa.Nome, len(empresa.Contas))
 
 	return s.inserirOuAtualizarEmpresa(ctx, empresa)
@@ -193,7 +193,7 @@ type sqliteConta struct {
 	Moeda        string  `db:"moeda"`
 }
 
-func (s *sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Empresa) error {
+func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contábil.Empresa) error {
 	d := sqliteEmpresa{
 		CNPJ:         e.CNPJ,
 		Nome:         e.Nome,

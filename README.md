@@ -71,3 +71,41 @@
     * Modelos: `Ativo`
     * Dados obtidos da B3
     * O resultado é salvo no banco de dados
+
+
+## Banco de Dados
+
+1. Empresas
+    * id
+    * Nome
+    * CNPJ
+    * Ano
+    * MesesAcumulados
+
+2. Contas
+    * id_empresa
+    * etc.
+
+=======
+
+1. Empresas
+    * id
+    * Nome
+    * CNPJ
+    * Ano
+
+2. DPF (necessário carregar primeiro para apagar todos os 
+dados dessa empresa/ano nas tabelas Empresas, DFP e ITR antes de iniciar a inserção)
+    * id_empresa
+    * etc.
+
+3. ITR
+    * id_empresa
+    * meses_acumulados
+    * etc.
+
+## Arquitetura
+
+* Value object: https://levelup.gitconnected.com/practical-ddd-in-golang-value-object-4fc97bcad70
+* Entity: https://levelup.gitconnected.com/practical-ddd-in-golang-entity-40d32bdad2a3
+* Domain service: https://levelup.gitconnected.com/practical-ddd-in-golang-domain-service-4418a1650274

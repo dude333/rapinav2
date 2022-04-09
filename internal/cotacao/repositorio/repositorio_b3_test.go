@@ -20,7 +20,7 @@ func Test_b3_Importar(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	b3 := repositório.B3(os.TempDir())
+	b3 := repositório.NovoB3(os.TempDir())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

@@ -5,7 +5,6 @@
 package dominio
 
 import (
-	"context"
 	"fmt"
 	"time"
 )
@@ -26,31 +25,9 @@ type Ativos []Ativo
 
 // Repositório --------------------------------------------
 
-type ResultadoImportaçãoDFP struct {
+type Resultado struct {
 	Ativo *Ativo
 	Error error
-}
-
-type RepositórioImportaçãoAtivo interface {
-	Importar(ctx context.Context, dia Data) <-chan ResultadoImportaçãoDFP
-}
-
-type RepositórioLeituraAtivo interface {
-	Cotação(ctx context.Context, código string, data Data) (*Ativo, error)
-}
-
-type RepositórioEscritaAtivo interface {
-	Salvar(ctx context.Context, ativo *Ativo) error
-}
-
-type RepositórioLeituraEscritaAtivo interface {
-	RepositórioLeituraAtivo
-	RepositórioEscritaAtivo
-}
-
-// Serviço ------------------------------------------------
-type ServiçoAtivo interface {
-	Cotação(código string, data Data) (*Ativo, error)
 }
 
 // ========================================================

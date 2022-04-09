@@ -7,34 +7,35 @@ package servico_test
 import (
 	"context"
 	"fmt"
-	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
-	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 	"reflect"
 	"strconv"
 	"testing"
 	"time"
+
+	domínio "github.com/dude333/rapinav2/internal/contabil/dominio"
+	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 )
 
 var (
-	_cache    map[uint32]*contábil.Empresa
-	_exemplos = []*contábil.Empresa{}
+	_cache    map[uint32]*domínio.Empresa
+	_exemplos = []*domínio.Empresa{}
 )
 
 func init() {
-	_cache = make(map[uint32]*contábil.Empresa)
+	_cache = make(map[uint32]*domínio.Empresa)
 
 	for i := 1; i <= 10; i++ {
-		r := contábil.Empresa{
+		r := domínio.Empresa{
 			CNPJ: fmt.Sprintf("%010d", i),
 			Nome: fmt.Sprintf("Empresa %02d", i),
 			Ano:  2021,
-			Contas: []contábil.Conta{
+			Contas: []domínio.Conta{
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),
 					Grupo:        "Grupo DFP",
 					DataFimExerc: "2021-12-31",
-					Total: contábil.Dinheiro{
+					Total: domínio.Dinheiro{
 						Valor:  float64(i),
 						Escala: 1000,
 						Moeda:  "R$",
@@ -50,13 +51,13 @@ func init() {
 
 type repoBD struct{}
 
-func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Empresa, error) {
+func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*domínio.Empresa, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
 }
 
-func (r *repoBD) Salvar(ctx context.Context, e *contábil.Empresa) error {
+func (r *repoBD) Salvar(ctx context.Context, e *domínio.Empresa) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
 	_cache[uint32(y)] = e
@@ -70,13 +71,13 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []string {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan contábil.ResultadoImportação {
-	results := make(chan contábil.ResultadoImportação)
+func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan domínio.Resultado {
+	results := make(chan domínio.Resultado)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := contábil.ResultadoImportação{
+			result := domínio.Resultado{
 				Empresa: ex,
 				Error:   nil,
 			}
@@ -97,8 +98,8 @@ func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan cont�
 
 func Test_registro_Importar(t *testing.T) {
 	type fields struct {
-		api contábil.RepositórioImportação
-		bd  contábil.RepositórioLeituraEscrita
+		api serviço.Importação
+		bd  serviço.LeituraEscrita
 	}
 	type args struct {
 		ano        int
@@ -169,8 +170,8 @@ func Test_registro_Importar(t *testing.T) {
 
 func Test_dfp_Empresas(t *testing.T) {
 	type fields struct {
-		api contábil.RepositórioImportação
-		bd  contábil.RepositórioLeituraEscrita
+		api serviço.Importação
+		bd  serviço.LeituraEscrita
 	}
 	type args struct {
 		nome string

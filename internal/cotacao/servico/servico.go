@@ -21,21 +21,39 @@ package servico
 
 import (
 	"context"
-	cotação "github.com/dude333/rapinav2/internal/cotacao/dominio"
 	"time"
+
+	domínio "github.com/dude333/rapinav2/internal/cotacao/dominio"
 )
 
-// ativo é um serviço que implementa RepositórioImportaçãoAtivo e busca
-// cotações de um ativo em vários repositórios (API e BD).
-type ativo struct {
-	api []cotação.RepositórioImportaçãoAtivo
-	bd  cotação.RepositórioLeituraEscritaAtivo
+type Importação interface {
+	Importar(ctx context.Context, dia domínio.Data) <-chan domínio.Resultado
 }
 
-func NovoAtivo(
-	api []cotação.RepositórioImportaçãoAtivo,
-	bd cotação.RepositórioLeituraEscritaAtivo) cotação.ServiçoAtivo {
-	return &ativo{
+type Leitura interface {
+	Cotação(ctx context.Context, código string, data domínio.Data) (*domínio.Ativo, error)
+}
+
+type Escrita interface {
+	Salvar(ctx context.Context, ativo *domínio.Ativo) error
+}
+
+type LeituraEscrita interface {
+	Leitura
+	Escrita
+}
+
+// Serviço é um serviço que implementa Importação e busca
+// cotações de um Ativo em vários repositórios (API e BD).
+type Serviço struct {
+	api []Importação
+	bd  LeituraEscrita
+}
+
+func NovoServiço(
+	api []Importação,
+	bd LeituraEscrita) *Serviço {
+	return &Serviço{
 		api: api,
 		bd:  bd,
 	}
@@ -46,7 +64,7 @@ func NovoAtivo(
 // valor encontado ou o erro de todos os repositórios. Caso a cotação seja
 // encontrada via API, ela será armazenada no bando de dados para agilizar a
 // próxima leitura do mesmo código, na mesma data.
-func (a *ativo) Cotação(código string, dia cotação.Data) (*cotação.Ativo, error) {
+func (a *Serviço) Cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
 	atv, err := a.cotaçãoBD(código, dia)
 	if err != nil {
 		return a.cotaçãoAPI(código, dia)
@@ -54,7 +72,7 @@ func (a *ativo) Cotação(código string, dia cotação.Data) (*cotação.Ativo,
 	return atv, err
 }
 
-func (a *ativo) cotaçãoBD(código string, dia cotação.Data) (*cotação.Ativo, error) {
+func (a *Serviço) cotaçãoBD(código string, dia domínio.Data) (*domínio.Ativo, error) {
 	if a.bd == nil {
 		return nil, ErrRepositórioInválido
 	}
@@ -67,12 +85,12 @@ func (a *ativo) cotaçãoBD(código string, dia cotação.Data) (*cotação.Ativ
 	return nil, ErrCotaçãoNãoEncontrada
 }
 
-func (a *ativo) cotaçãoAPI(código string, dia cotação.Data) (*cotação.Ativo, error) {
+func (a *Serviço) cotaçãoAPI(código string, dia domínio.Data) (*domínio.Ativo, error) {
 	if len(a.api) < 1 {
 		return nil, ErrRepositórioInválido
 	}
 
-	var atv *cotação.Ativo
+	var atv *domínio.Ativo
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 

@@ -5,7 +5,6 @@
 package dominio
 
 import (
-	"context"
 	"fmt"
 	"strings"
 )
@@ -86,31 +85,7 @@ func init() {
 
 // -- REPOSITÓRIO & SERVIÇO --
 
-type ResultadoImportação struct {
+type Resultado struct {
 	Empresa *Empresa
 	Error   error
-}
-
-type RepositórioImportação interface {
-	Importar(ctx context.Context, ano int, trimestral bool) <-chan ResultadoImportação
-}
-
-type RepositórioLeitura interface {
-	Ler(ctx context.Context, cnpj string, ano int) (*Empresa, error)
-	Empresas(ctx context.Context, nome string) []string
-}
-
-type RepositórioEscrita interface {
-	Salvar(ctx context.Context, empresa *Empresa) error
-}
-
-type RepositórioLeituraEscrita interface {
-	RepositórioLeitura
-	RepositórioEscrita
-}
-
-type Serviço interface {
-	Importar(ano int, trimestral bool) error
-	Relatório(cnpj string, ano int) (*Empresa, error)
-	Empresas(nome string) []string
 }

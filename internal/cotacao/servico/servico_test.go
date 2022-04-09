@@ -53,14 +53,14 @@ func init() {
 // apiMockOk implementa domínio.RepositórioLeituraAtivo
 type apiMockOk struct{}
 
-func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan cotação.ResultadoImportaçãoDFP {
+func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan cotação.Resultado {
 	// _cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
-	results := make(chan cotação.ResultadoImportaçãoDFP)
+	results := make(chan cotação.Resultado)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := cotação.ResultadoImportaçãoDFP{
+			result := cotação.Resultado{
 				Error: nil,
 				Ativo: ex,
 			}
@@ -79,14 +79,14 @@ func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan co
 // apiMockFail implementa domínio.RepositórioLeituraAtivo
 type apiMockFail struct{}
 
-func (r *apiMockFail) Importar(ctx context.Context, data cotação.Data) <-chan cotação.ResultadoImportaçãoDFP {
+func (r *apiMockFail) Importar(ctx context.Context, data cotação.Data) <-chan cotação.Resultado {
 	// _cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
-	results := make(chan cotação.ResultadoImportaçãoDFP)
+	results := make(chan cotação.Resultado)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := cotação.ResultadoImportaçãoDFP{
+			result := cotação.Resultado{
 				Error: nil,
 				Ativo: ex,
 			}
@@ -124,8 +124,8 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 	d1, _ := cotação.NovaData("2021-10-09")
 
 	type fields struct {
-		api []cotação.RepositórioImportaçãoAtivo
-		bd  cotação.RepositórioLeituraEscritaAtivo
+		api []Importação
+		bd  LeituraEscrita
 	}
 	type args struct {
 		código string
@@ -141,7 +141,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar sem bd",
 			fields: fields{
-				api: []cotação.RepositórioImportaçãoAtivo{&apiMockFail{}},
+				api: []Importação{&apiMockFail{}},
 				bd:  nil, // testa se o serviço.Cotação ignora o bd caso seja 'nil'
 			},
 			args:    args{"TEST3", d1},
@@ -161,7 +161,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar",
 			fields: fields{
-				api: []cotação.RepositórioImportaçãoAtivo{&apiMockOk{}},
+				api: []Importação{&apiMockOk{}},
 				bd:  &bdMock{},
 			},
 			args:    args{"TEST3", d1},
@@ -171,7 +171,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar com dados do cache",
 			fields: fields{
-				api: []cotação.RepositórioImportaçãoAtivo{&apiMockFail{}},
+				api: []Importação{&apiMockFail{}},
 				bd:  &bdMock{},
 			},
 			args:    args{"TEST3", d1},
@@ -181,7 +181,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar com um repo bom e um ruim",
 			fields: fields{
-				api: []cotação.RepositórioImportaçãoAtivo{
+				api: []Importação{
 					&apiMockOk{},
 					&apiMockFail{},
 				},
@@ -194,7 +194,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 		{
 			name: "deveria funcionar com um repo ruim e um bom",
 			fields: fields{
-				api: []cotação.RepositórioImportaçãoAtivo{
+				api: []Importação{
 					&apiMockFail{},
 					&apiMockOk{},
 				},
@@ -207,7 +207,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NovoAtivo(
+			s := NovoServiço(
 				tt.fields.api,
 				tt.fields.bd,
 			)
