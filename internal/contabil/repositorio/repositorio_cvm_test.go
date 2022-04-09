@@ -7,9 +7,10 @@ package repositorio
 import (
 	"context"
 	"fmt"
-	contábil "github.com/dude333/rapinav2/internal/contabil/dominio"
 	"os"
 	"testing"
+
+	rapina "github.com/dude333/rapinav2/internal"
 )
 
 func Test_cvm_Importar(t *testing.T) {
@@ -21,7 +22,7 @@ func Test_cvm_Importar(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    <-chan contábil.Resultado
+		want    <-chan rapina.Resultado
 		wantErr bool
 	}{
 		{
@@ -30,7 +31,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2020,
 			},
-			want:    make(<-chan contábil.Resultado),
+			want:    make(<-chan rapina.Resultado),
 			wantErr: false,
 		},
 		{
@@ -39,7 +40,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2019,
 			},
-			want:    make(<-chan contábil.Resultado),
+			want:    make(<-chan rapina.Resultado),
 			wantErr: false,
 		},
 	}

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package dominio
+package rapina
 
 import (
 	"fmt"

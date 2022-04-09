@@ -13,14 +13,14 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dude333/rapinav2/internal/contabil/dominio"
+	rapina "github.com/dude333/rapinav2/internal"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 )
 
 // cvmDFP é usada para armazenar os dados (linhas) dos arquivos de DFP para
-// ser posteriormente transformada no modelo Conta, do domínio contábil.
+// ser posteriormente transformada no modelo Conta, do domínio rapina.
 type cvmDFP struct {
 	CNPJ        string
 	Nome        string // Nome da empresa
@@ -40,7 +40,7 @@ type cvmDFP struct {
 	Moeda        string
 }
 
-func (c *cvmDFP) converteConta() dominio.Conta {
+func (c *cvmDFP) converteConta() rapina.Conta {
 
 	contém := func(str string) bool {
 		return strings.Contains(c.GrupoDFP, str)
@@ -60,7 +60,7 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 		grp = "DVA"
 	}
 
-	conta := dominio.Conta{
+	conta := rapina.Conta{
 		Código:       c.Código,
 		Descr:        c.Descr,
 		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
@@ -69,7 +69,7 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 		DataFimExerc: c.DataFimExerc,
 		Meses:        c.Meses,
 		OrdemExerc:   c.OrdemExerc,
-		Total: dominio.Dinheiro{
+		Total: rapina.Dinheiro{
 			Valor:  c.Valor,
 			Escala: c.Escala,
 			Moeda:  c.Moeda,
@@ -108,8 +108,8 @@ func NovoCVM(configs ...ConfigFn) (*CVM, error) {
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
 // ano do site da CVM. Com trimestral == true, é baixado o arquivo de ITRs.
-func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado {
-	results := make(chan dominio.Resultado)
+func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan rapina.Resultado {
+	results := make(chan rapina.Resultado)
 
 	arqFn := arquivoDFP
 	if trimestral {
@@ -121,13 +121,13 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dom
 
 		url, zip, err := arqFn(ano)
 		if err != nil {
-			results <- dominio.Resultado{Error: err}
+			results <- rapina.Resultado{Error: err}
 			return
 		}
 
 		arquivos, err := c.infra.DownloadAndUnzip(url, zip, Config.Filtros)
 		if err != nil {
-			results <- dominio.Resultado{Error: err}
+			results <- rapina.Resultado{Error: err}
 			return
 		}
 		defer func() {
@@ -165,7 +165,7 @@ func arquivoITR(ano int) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dominio.Resultado) error {
+func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- rapina.Resultado) error {
 	fh, err := os.Open(arquivo)
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- dom
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.Resultado) {
+func enviarDFP(empresas map[string][]*cvmDFP, results chan<- rapina.Resultado) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -212,7 +212,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.Resultado) 
 			continue
 		}
 
-		contas := make(map[string][]dominio.Conta)
+		contas := make(map[string][]rapina.Conta)
 
 		for _, reg := range registros {
 			c := reg.converteConta()
@@ -228,7 +228,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.Resultado) 
 				continue
 			}
 
-			empresa := dominio.Empresa{
+			empresa := rapina.Empresa{
 				CNPJ:   registros[0].CNPJ,
 				Nome:   registros[0].Nome,
 				Ano:    a,
@@ -236,9 +236,9 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- dominio.Resultado) 
 			}
 
 			if empresa.Válida() {
-				results <- dominio.Resultado{Empresa: &empresa}
+				results <- rapina.Resultado{Empresa: &empresa}
 			} else {
-				results <- dominio.Resultado{Error: ErrDFPInválida}
+				results <- rapina.Resultado{Error: ErrDFPInválida}
 			}
 		}
 	} // next k

@@ -12,30 +12,30 @@ import (
 	"testing"
 	"time"
 
-	domínio "github.com/dude333/rapinav2/internal/contabil/dominio"
+	rapina "github.com/dude333/rapinav2/internal"
 	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 )
 
 var (
-	_cache    map[uint32]*domínio.Empresa
-	_exemplos = []*domínio.Empresa{}
+	_cache    map[uint32]*rapina.Empresa
+	_exemplos = []*rapina.Empresa{}
 )
 
 func init() {
-	_cache = make(map[uint32]*domínio.Empresa)
+	_cache = make(map[uint32]*rapina.Empresa)
 
 	for i := 1; i <= 10; i++ {
-		r := domínio.Empresa{
+		r := rapina.Empresa{
 			CNPJ: fmt.Sprintf("%010d", i),
 			Nome: fmt.Sprintf("Empresa %02d", i),
 			Ano:  2021,
-			Contas: []domínio.Conta{
+			Contas: []rapina.Conta{
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),
 					Grupo:        "Grupo DFP",
 					DataFimExerc: "2021-12-31",
-					Total: domínio.Dinheiro{
+					Total: rapina.Dinheiro{
 						Valor:  float64(i),
 						Escala: 1000,
 						Moeda:  "R$",
@@ -51,13 +51,13 @@ func init() {
 
 type repoBD struct{}
 
-func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*domínio.Empresa, error) {
+func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*rapina.Empresa, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
 }
 
-func (r *repoBD) Salvar(ctx context.Context, e *domínio.Empresa) error {
+func (r *repoBD) Salvar(ctx context.Context, e *rapina.Empresa) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
 	_cache[uint32(y)] = e
@@ -71,13 +71,13 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []string {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan domínio.Resultado {
-	results := make(chan domínio.Resultado)
+func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan rapina.Resultado {
+	results := make(chan rapina.Resultado)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := domínio.Resultado{
+			result := rapina.Resultado{
 				Empresa: ex,
 				Error:   nil,
 			}
@@ -141,7 +141,7 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoServiço(
+			r := serviço.NovoSvcEmpresa(
 				tt.fields.api,
 				tt.fields.bd,
 			)
@@ -196,7 +196,7 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoServiço(
+			r := serviço.NovoSvcEmpresa(
 				tt.fields.api,
 				tt.fields.bd,
 			)

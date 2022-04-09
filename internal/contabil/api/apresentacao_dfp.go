@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dude333/rapinav2/internal/contabil/dominio"
+	rapina "github.com/dude333/rapinav2/internal"
 	"github.com/dude333/rapinav2/internal/contabil/repositorio"
 	"github.com/dude333/rapinav2/internal/contabil/servico"
 	"github.com/labstack/echo/v4"
@@ -19,7 +19,7 @@ import (
 
 type Serviço interface {
 	Importar(ano int, trimestral bool) error
-	Relatório(cnpj string, ano int) (*dominio.Empresa, error)
+	Relatório(cnpj string, ano int) (*rapina.Empresa, error)
 	Empresas(nome string) []string
 }
 
@@ -31,7 +31,7 @@ func New(e *echo.Echo, dataDir string) {
 
 	sqlite, _ := repositorio.NovoSqlite()
 	api, _ := repositorio.NovoCVM(repositorio.DirBD(dataDir))
-	svc := servico.NovoServiço(api, sqlite)
+	svc := servico.NovoSvcEmpresa(api, sqlite)
 	handler := &htmlDFP{svc: svc}
 
 	e.GET("/api/dfp", handler.dfp)

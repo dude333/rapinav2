@@ -9,22 +9,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/dude333/rapinav2/internal/contabil/dominio"
+	rapina "github.com/dude333/rapinav2/internal"
 	"github.com/labstack/echo/v4"
 )
 
-var empresa = dominio.Empresa{
+var empresa = rapina.Empresa{
 	CNPJ: "123",
 	Nome: "Web",
 	Ano:  2021,
-	Contas: []dominio.Conta{{
+	Contas: []rapina.Conta{{
 		Código:       "c1",
 		Descr:        "d1",
 		Consolidado:  false,
 		Grupo:        "g1",
 		DataFimExerc: "dt1",
 		OrdemExerc:   "x",
-		Total: dominio.Dinheiro{
+		Total: rapina.Dinheiro{
 			Valor:  123,
 			Escala: 1,
 			Moeda:  "R$",
@@ -37,7 +37,7 @@ type mockService struct{}
 func (m *mockService) Importar(ano int, trim bool) error {
 	return nil
 }
-func (m *mockService) Relatório(cnpj string, ano int) (*dominio.Empresa, error) {
+func (m *mockService) Relatório(cnpj string, ano int) (*rapina.Empresa, error) {
 	c := empresa
 	c.CNPJ = cnpj
 	c.Ano = ano
