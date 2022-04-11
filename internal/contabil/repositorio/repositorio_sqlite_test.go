@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	rapina "github.com/dude333/rapinav2/internal"
+	contábil "github.com/dude333/rapinav2/internal/contabil"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -29,9 +30,9 @@ func Test_inserirDFP(t *testing.T) {
 
 	t.Run("criar e inserir dados", func(t *testing.T) {
 
-		var contas []rapina.Conta
+		var contas []contábil.Conta
 		for n := 1; n <= 10; n++ {
-			c := rapina.Conta{
+			c := contábil.Conta{
 				Código:       fmt.Sprintf("C%03d", n),
 				Descr:        fmt.Sprintf("D%03d", n),
 				Grupo:        fmt.Sprintf("G%03d", n),
@@ -46,14 +47,16 @@ func Test_inserirDFP(t *testing.T) {
 			contas = append(contas, c)
 		}
 
-		empresa := rapina.Empresa{
-			CNPJ:   "123",
-			Nome:   "N1",
+		dfp := contábil.DemonstraçãoFinanceira{
+			Empresa: rapina.Empresa{
+				CNPJ: "123",
+				Nome: "N1",
+			},
 			Ano:    2020,
 			Contas: contas,
 		}
 
-		err := s.Salvar(context.Background(), &empresa)
+		err := s.Salvar(context.Background(), &dfp)
 		if err != nil {
 			t.Logf("%v", err)
 		}

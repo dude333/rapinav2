@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	rapina "github.com/dude333/rapinav2/internal"
+	contábil "github.com/dude333/rapinav2/internal/contabil"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
@@ -40,7 +41,7 @@ type cvmDFP struct {
 	Moeda        string
 }
 
-func (c *cvmDFP) converteConta() rapina.Conta {
+func (c *cvmDFP) converteConta() contábil.Conta {
 
 	contém := func(str string) bool {
 		return strings.Contains(c.GrupoDFP, str)
@@ -60,7 +61,7 @@ func (c *cvmDFP) converteConta() rapina.Conta {
 		grp = "DVA"
 	}
 
-	conta := rapina.Conta{
+	conta := contábil.Conta{
 		Código:       c.Código,
 		Descr:        c.Descr,
 		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
@@ -108,8 +109,8 @@ func NovoCVM(configs ...ConfigFn) (*CVM, error) {
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
 // ano do site da CVM. Com trimestral == true, é baixado o arquivo de ITRs.
-func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan rapina.Resultado {
-	results := make(chan rapina.Resultado)
+func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan contábil.Resultado {
+	results := make(chan contábil.Resultado)
 
 	arqFn := arquivoDFP
 	if trimestral {
@@ -121,13 +122,13 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan rap
 
 		url, zip, err := arqFn(ano)
 		if err != nil {
-			results <- rapina.Resultado{Error: err}
+			results <- contábil.Resultado{Error: err}
 			return
 		}
 
 		arquivos, err := c.infra.DownloadAndUnzip(url, zip, Config.Filtros)
 		if err != nil {
-			results <- rapina.Resultado{Error: err}
+			results <- contábil.Resultado{Error: err}
 			return
 		}
 		defer func() {
@@ -165,7 +166,7 @@ func arquivoITR(ano int) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- rapina.Resultado) error {
+func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- contábil.Resultado) error {
 	fh, err := os.Open(arquivo)
 	if err != nil {
 		return err
@@ -199,7 +200,7 @@ func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- rap
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*cvmDFP, results chan<- rapina.Resultado) {
+func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -212,7 +213,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- rapina.Resultado) {
 			continue
 		}
 
-		contas := make(map[string][]rapina.Conta)
+		contas := make(map[string][]contábil.Conta)
 
 		for _, reg := range registros {
 			c := reg.converteConta()
@@ -228,17 +229,19 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- rapina.Resultado) {
 				continue
 			}
 
-			empresa := rapina.Empresa{
-				CNPJ:   registros[0].CNPJ,
-				Nome:   registros[0].Nome,
+			empresa := contábil.DemonstraçãoFinanceira{
+				Empresa: rapina.Empresa{
+					CNPJ: registros[0].CNPJ,
+					Nome: registros[0].Nome,
+				},
 				Ano:    a,
 				Contas: contas[ano],
 			}
 
 			if empresa.Válida() {
-				results <- rapina.Resultado{Empresa: &empresa}
+				results <- contábil.Resultado{Empresa: &empresa}
 			} else {
-				results <- rapina.Resultado{Error: ErrDFPInválida}
+				results <- contábil.Resultado{Error: ErrDFPInválida}
 			}
 		}
 	} // next k

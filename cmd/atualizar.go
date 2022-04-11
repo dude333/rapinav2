@@ -5,11 +5,11 @@
 package cmd
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/dude333/rapinav2/internal/contabil/repositorio"
+	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/spf13/cobra"
 )
@@ -42,10 +42,12 @@ func atualizar(cmd *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	svc, err := serviço.NovoDemonstraçãoFinanceira(c, s)
+	if err != nil {
+		panic(err)
+	}
 
 	progress.Status("{%d}", flags.atualizar.ano)
-
-	ctx := cmd.Context()
 
 	// anoi := 2010
 	anoi := 2018
@@ -64,15 +66,10 @@ func atualizar(cmd *cobra.Command, args []string) {
 	for passo := 1; passo <= 2; passo++ {
 		for ano := anof; ano >= anoi; ano-- {
 
-			for result := range c.Importar(ctx, ano, trimestral) {
-				if result.Error != nil {
-					progress.Error(result.Error)
-					continue
-				}
-				err = s.Salvar(ctx, result.Empresa)
-				if err != nil {
-					fmt.Println("*", err)
-				}
+			err := svc.Importar(ano, trimestral)
+			if err != nil {
+				progress.Error(err)
+				continue
 			}
 
 		} // próx. ano

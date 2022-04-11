@@ -10,14 +10,17 @@ import (
 	"testing"
 
 	rapina "github.com/dude333/rapinav2/internal"
+	contábil "github.com/dude333/rapinav2/internal/contabil"
 	"github.com/labstack/echo/v4"
 )
 
-var empresa = rapina.Empresa{
-	CNPJ: "123",
-	Nome: "Web",
-	Ano:  2021,
-	Contas: []rapina.Conta{{
+var dfp = contábil.DemonstraçãoFinanceira{
+	Empresa: rapina.Empresa{
+		CNPJ: "123",
+		Nome: "Web",
+	},
+	Ano: 2021,
+	Contas: []contábil.Conta{{
 		Código:       "c1",
 		Descr:        "d1",
 		Consolidado:  false,
@@ -37,11 +40,11 @@ type mockService struct{}
 func (m *mockService) Importar(ano int, trim bool) error {
 	return nil
 }
-func (m *mockService) Relatório(cnpj string, ano int) (*rapina.Empresa, error) {
-	c := empresa
-	c.CNPJ = cnpj
-	c.Ano = ano
-	return &c, nil
+func (m *mockService) Relatório(cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error) {
+	d := dfp
+	d.CNPJ = cnpj
+	d.Ano = ano
+	return &d, nil
 }
 func (m *mockService) Empresas(nome string) []string {
 	return nil

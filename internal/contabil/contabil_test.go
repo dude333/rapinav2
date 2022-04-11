@@ -2,9 +2,13 @@
 //
 // SPDX-License-Identifier: MIT
 
-package rapina
+package contábil
 
-import "testing"
+import (
+	"testing"
+
+	rapina "github.com/dude333/rapinav2/internal"
+)
 
 func benchmarkVálida(c Conta, b *testing.B) {
 	for n := 0; n < b.N; n++ {
@@ -20,7 +24,7 @@ var cc = []Conta{
 		Grupo:        "DF Individual - Balanço Patrimonial Passivo",
 		DataFimExerc: "2020-12-31",
 		OrdemExerc:   "ÚLTIMO",
-		Total: Dinheiro{
+		Total: rapina.Dinheiro{
 			Valor:  123.45,
 			Escala: 1000,
 			Moeda:  "R$",
@@ -33,7 +37,7 @@ var cc = []Conta{
 		Grupo:        "DF Consolidado - Demonstração do Fluxo de Caixa (Método Direto)",
 		DataFimExerc: "2020-12-31",
 		OrdemExerc:   "ÚLTIMO",
-		Total: Dinheiro{
+		Total: rapina.Dinheiro{
 			Valor:  123.45,
 			Escala: 1000,
 			Moeda:  "R$",
@@ -45,7 +49,7 @@ var cc = []Conta{
 		Grupo:        "DF Consolidado - Demonstração de Valor Adicionado",
 		DataFimExerc: "2020-12-31",
 		OrdemExerc:   "ÚLTIMO",
-		Total: Dinheiro{
+		Total: rapina.Dinheiro{
 			Valor:  123.45,
 			Escala: 1000,
 			Moeda:  "R$",

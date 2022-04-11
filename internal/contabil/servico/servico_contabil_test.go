@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package servico_test
+package serviço_test
 
 import (
 	"context"
@@ -13,23 +13,27 @@ import (
 	"time"
 
 	rapina "github.com/dude333/rapinav2/internal"
+	contábil "github.com/dude333/rapinav2/internal/contabil"
 	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
+	"github.com/dude333/rapinav2/pkg/progress"
 )
 
 var (
-	_cache    map[uint32]*rapina.Empresa
-	_exemplos = []*rapina.Empresa{}
+	_cache    map[uint32]*contábil.DemonstraçãoFinanceira
+	_exemplos = []*contábil.DemonstraçãoFinanceira{}
 )
 
 func init() {
-	_cache = make(map[uint32]*rapina.Empresa)
+	_cache = make(map[uint32]*contábil.DemonstraçãoFinanceira)
 
 	for i := 1; i <= 10; i++ {
-		r := rapina.Empresa{
-			CNPJ: fmt.Sprintf("%010d", i),
-			Nome: fmt.Sprintf("Empresa %02d", i),
-			Ano:  2021,
-			Contas: []rapina.Conta{
+		r := contábil.DemonstraçãoFinanceira{
+			Empresa: rapina.Empresa{
+				CNPJ: fmt.Sprintf("%010d", i),
+				Nome: fmt.Sprintf("Empresa %02d", i),
+			},
+			Ano: 2021,
+			Contas: []contábil.Conta{
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),
@@ -51,16 +55,17 @@ func init() {
 
 type repoBD struct{}
 
-func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*rapina.Empresa, error) {
+func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
 }
 
-func (r *repoBD) Salvar(ctx context.Context, e *rapina.Empresa) error {
+func (r *repoBD) Salvar(_ context.Context, e *contábil.DemonstraçãoFinanceira) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
 	_cache[uint32(y)] = e
+	progress.Debug("Saving %#v", e)
 
 	return nil
 }
@@ -71,13 +76,13 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []string {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan rapina.Resultado {
-	results := make(chan rapina.Resultado)
+func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan contábil.Resultado {
+	results := make(chan contábil.Resultado)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := rapina.Resultado{
+			result := contábil.Resultado{
 				Empresa: ex,
 				Error:   nil,
 			}
@@ -112,13 +117,13 @@ func Test_registro_Importar(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "deveria funcionar sem bd",
+			name: "não deveria funcionar sem bd",
 			fields: fields{
 				api: &repoAPI{},
 				bd:  nil,
 			},
 			args:    args{},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "não deveria funcionar sem api e bd",
@@ -141,11 +146,17 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoSvcEmpresa(
+			r, err := serviço.NovoDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.bd,
 			)
-			err := r.Importar(tt.args.ano, tt.args.trimestral)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("serviço.NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return
+			}
+			err = r.Importar(tt.args.ano, tt.args.trimestral)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("registro.Importar() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -186,7 +197,7 @@ func Test_dfp_Empresas(t *testing.T) {
 		{
 			name: "deveria funcionar",
 			fields: fields{
-				api: nil,
+				api: &repoAPI{},
 				bd:  &repoBD{},
 			},
 			args:    args{nome: "a"},
@@ -196,10 +207,16 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := serviço.NovoSvcEmpresa(
+			r, err := serviço.NovoDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.bd,
 			)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("serviço.NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err != nil {
+				return
+			}
 			if got := r.Empresas(tt.args.nome); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("dfp.Empresas() = %v, want %v", got, tt.want)
 			}

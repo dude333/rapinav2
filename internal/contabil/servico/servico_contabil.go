@@ -17,27 +17,32 @@
 //     |   API  |    |  BD   |   <= Repositórios
 //     '--------'    '-------'
 //
-package servico
+package serviço
 
 import (
 	"context"
+	"errors"
 	"time"
 
-	rapina "github.com/dude333/rapinav2/internal"
+	contábil "github.com/dude333/rapinav2/internal/contabil"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
+var (
+	ErrRepositórioInválido = errors.New("repositório inválido")
+)
+
 type Importação interface {
-	Importar(ctx context.Context, ano int, trimestral bool) <-chan rapina.Resultado
+	Importar(ctx context.Context, ano int, trimestral bool) <-chan contábil.Resultado
 }
 
 type Leitura interface {
-	Ler(ctx context.Context, cnpj string, ano int) (*rapina.Empresa, error)
+	Ler(ctx context.Context, cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error)
 	Empresas(ctx context.Context, nome string) []string
 }
 
 type Escrita interface {
-	Salvar(ctx context.Context, empresa *rapina.Empresa) error
+	Salvar(ctx context.Context, empresa *contábil.DemonstraçãoFinanceira) error
 }
 
 type LeituraEscrita interface {
@@ -45,24 +50,24 @@ type LeituraEscrita interface {
 	Escrita
 }
 
-// Empresa é um serviço que busca os relatórios contábeis de uma empresa
+// DemonstraçãoFinanceira é um serviço que busca os relatórios contábeis de uma empresa
 // em vários repositórios (API e BD).
-type Empresa struct {
+type DemonstraçãoFinanceira struct {
 	api Importação
 	bd  LeituraEscrita
 }
 
-func NovoSvcEmpresa(api Importação, bd LeituraEscrita) *Empresa {
-	return &Empresa{api: api, bd: bd}
+func NovoDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
+	if api == nil || bd == nil {
+		return &DemonstraçãoFinanceira{}, ErrRepositórioInválido
+	}
+
+	return &DemonstraçãoFinanceira{api: api, bd: bd}, nil
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (e *Empresa) Importar(ano int, trimestral bool) error {
-	if e.api == nil {
-		return ErrRepositórioInválido
-	}
-
+func (e *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
@@ -71,26 +76,28 @@ func (e *Empresa) Importar(ano int, trimestral bool) error {
 	// do arquivo importado
 	for result := range e.api.Importar(ctx, ano, trimestral) {
 		if result.Error != nil {
-			return result.Error
+			progress.Error(result.Error)
+			continue
 		}
-		if e.bd != nil {
-			_ = e.bd.Salvar(context.Background(), result.Empresa)
+		err := e.bd.Salvar(ctx, result.Empresa)
+		if err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-func (e *Empresa) Relatório(cnpj string, ano int) (*rapina.Empresa, error) {
+func (e *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error) {
 	if e.bd == nil {
-		return &rapina.Empresa{}, ErrRepositórioInválido
+		return &contábil.DemonstraçãoFinanceira{}, ErrRepositórioInválido
 	}
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
 	dfp, err := e.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
 }
 
-func (e *Empresa) Empresas(nome string) []string {
+func (e *DemonstraçãoFinanceira) Empresas(nome string) []string {
 	if e.bd == nil {
 		return []string{}
 	}
