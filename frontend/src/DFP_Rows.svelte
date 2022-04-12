@@ -26,7 +26,7 @@
 
     function format(n) {
         if (!n) return "-";
-        return Math.round(n / 10e6).toLocaleString("pt-BR");
+        return Math.round(n / 10e5).toLocaleString("pt-BR");
     }
 </script>
 
