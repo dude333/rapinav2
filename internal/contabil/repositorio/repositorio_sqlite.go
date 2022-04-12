@@ -100,7 +100,7 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Demo
 			Grupo:        sc.Grupo,
 			DataIniExerc: sc.DataIniExerc,
 			DataFimExerc: sc.DataFimExerc,
-			Meses:        12,
+			Meses:        sc.Meses,
 			OrdemExerc:   "",
 			Total: rapina.Dinheiro{
 				Valor:  sc.Valor,
@@ -262,7 +262,8 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contábil.
 			progress.Debug("Ignorando registro trimestral não acumulado %d:%v", id, contas[i])
 			continue
 		}
-		if contas[i].Meses%3 != 0 || contas[i].Meses > 12 {
+		balancPatrim := dataIniExerc == "" && dataIniExerc == contas[i].DataIniExerc
+		if !balancPatrim && (contas[i].Meses%3 != 0 || contas[i].Meses > 12) {
 			progress.Debug("Ignorando registro com meses != 3,6,9,12 %d:%v", id, contas[i])
 			continue
 		}

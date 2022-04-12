@@ -50,7 +50,7 @@ func servidor(cmd *cobra.Command, args []string) {
 
 	e := echo.New()
 
-	api.New(e, db, "/tmp")
+	api.NewAPI(e, db, "/tmp")
 
 	contentFS, err := fs.Sub(frontend.ContentFS, "public")
 	if err != nil {

@@ -18,7 +18,7 @@ import (
 )
 
 type Serviço interface {
-	Importar(ano int, trimestral bool) error
+	// Importar(ano int, trimestral bool) error
 	Relatório(cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error)
 	Empresas(nome string) []string
 }
@@ -27,7 +27,7 @@ type htmlDFP struct {
 	svc Serviço
 }
 
-func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
+func NewAPI(e *echo.Echo, db *sqlx.DB, dataDir string) {
 	svc, err := serviço.NovoDemonstraçãoFinanceira(db)
 	if err != nil {
 		panic(err)
@@ -90,6 +90,9 @@ func (h *htmlDFP) dfp(c echo.Context) error {
 		}
 
 		for _, c := range dfp.Contas {
+			if c.Meses != 12 {
+				continue
+			}
 			key := c.Código
 			m, ok := mapContas[key]
 			if !ok {
