@@ -5,12 +5,15 @@
 package cmd
 
 import (
+	"os"
+	"path"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/dude333/rapinav2/internal/contabil/repositorio"
 	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
+	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
 
@@ -34,15 +37,22 @@ func init() {
 }
 
 func atualizar(cmd *cobra.Command, args []string) {
-	c, err := repositorio.NovoCVM()
+	dirDB := os.TempDir()
+	dirDB = strings.ReplaceAll(dirDB, "\\", "/")
+	err := os.MkdirAll(dirDB, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
-	s, err := repositorio.NovoSqlite()
+
+	filename := "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+	connStr := "file:" + path.Join(dirDB, filename)
+
+	db, err := sqlx.Connect("sqlite3", connStr)
 	if err != nil {
 		panic(err)
 	}
-	svc, err := serviço.NovoDemonstraçãoFinanceira(c, s)
+
+	svc, err := serviço.NovoDemonstraçãoFinanceira(db)
 	if err != nil {
 		panic(err)
 	}

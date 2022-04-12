@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package serviço_test
+package serviço
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 
 	rapina "github.com/dude333/rapinav2/internal"
 	contábil "github.com/dude333/rapinav2/internal/contabil"
-	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -103,8 +102,8 @@ func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan cont�
 
 func Test_registro_Importar(t *testing.T) {
 	type fields struct {
-		api serviço.Importação
-		bd  serviço.LeituraEscrita
+		api Importação
+		db  LeituraEscrita
 	}
 	type args struct {
 		ano        int
@@ -120,7 +119,7 @@ func Test_registro_Importar(t *testing.T) {
 			name: "não deveria funcionar sem bd",
 			fields: fields{
 				api: &repoAPI{},
-				bd:  nil,
+				db:  nil,
 			},
 			args:    args{},
 			wantErr: true,
@@ -129,7 +128,7 @@ func Test_registro_Importar(t *testing.T) {
 			name: "não deveria funcionar sem api e bd",
 			fields: fields{
 				api: nil,
-				bd:  nil,
+				db:  nil,
 			},
 			args:    args{},
 			wantErr: true,
@@ -138,7 +137,7 @@ func Test_registro_Importar(t *testing.T) {
 			name: "deveria funcionar",
 			fields: fields{
 				api: &repoAPI{},
-				bd:  &repoBD{},
+				db:  &repoBD{},
 			},
 			args:    args{},
 			wantErr: false,
@@ -146,12 +145,12 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := serviço.NovoDemonstraçãoFinanceira(
+			r, err := novoDemonstraçãoFinanceira(
 				tt.fields.api,
-				tt.fields.bd,
+				tt.fields.db,
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("serviço.NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil {
 				return
@@ -160,7 +159,7 @@ func Test_registro_Importar(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("registro.Importar() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			if err != nil || tt.fields.bd == nil {
+			if err != nil || tt.fields.db == nil {
 				return
 			}
 			// Verifica se os dados foram salvos no "banco de dados"
@@ -181,8 +180,8 @@ func Test_registro_Importar(t *testing.T) {
 
 func Test_dfp_Empresas(t *testing.T) {
 	type fields struct {
-		api serviço.Importação
-		bd  serviço.LeituraEscrita
+		api Importação
+		bd  LeituraEscrita
 	}
 	type args struct {
 		nome string
@@ -207,12 +206,12 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := serviço.NovoDemonstraçãoFinanceira(
+			r, err := novoDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.bd,
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("serviço.NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil {
 				return

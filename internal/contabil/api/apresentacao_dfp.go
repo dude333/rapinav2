@@ -12,8 +12,8 @@ import (
 	"time"
 
 	contábil "github.com/dude333/rapinav2/internal/contabil"
-	"github.com/dude333/rapinav2/internal/contabil/repositorio"
 	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )
 
@@ -27,11 +27,8 @@ type htmlDFP struct {
 	svc Serviço
 }
 
-func New(e *echo.Echo, dataDir string) {
-
-	sqlite, _ := repositorio.NovoSqlite()
-	api, _ := repositorio.NovoCVM(repositorio.DirBD(dataDir))
-	svc, err := serviço.NovoDemonstraçãoFinanceira(api, sqlite)
+func New(e *echo.Echo, db *sqlx.DB, dataDir string) {
+	svc, err := serviço.NovoDemonstraçãoFinanceira(db)
 	if err != nil {
 		panic(err)
 	}

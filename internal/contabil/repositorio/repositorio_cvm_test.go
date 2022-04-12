@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 	contábil "github.com/dude333/rapinav2/internal/contabil"
-	"os"
+	"github.com/jmoiron/sqlx"
 	"testing"
 )
 
@@ -45,18 +45,21 @@ func Test_cvm_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var db *sqlx.DB
+			if testing.Short() {
+				db = sqlx.MustConnect("sqlite3", ":memory:")
+				db.SetMaxOpenConns(1)
+			} else {
+				connStr := "file:/tmp/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+				db = sqlx.MustConnect("sqlite3", connStr)
+			}
+
 			c, err := NovoCVM()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			var cfg ConfigFn
-			if testing.Short() {
-				cfg = RodarBDNaMemória()
-			} else {
-				cfg = DirBD(os.TempDir())
-			}
-			s, err := NovoSqlite(cfg)
+			s, err := NovoSqlite(db)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -29,23 +29,12 @@ func init() {
 
 // cfg contém as configurações usadas nos construtores deste repositório.
 type cfg struct {
-	dirBD    string // Diretório onde o banco de dados será armazenado
-	dirDados string // Diretório com dados baixados da CMV (temporários)
+	dirDados string // Diretório de dados temporários
 }
 
 type ConfigFn func(*cfg)
 
-func RodarBDNaMemória() ConfigFn {
-	return func(c *cfg) {
-		c.dirBD = ":memory:"
-	}
-}
-func DirBD(dir string) ConfigFn {
-	return func(c *cfg) {
-		c.dirBD = dir
-	}
-}
-func DirDados(dir string) ConfigFn {
+func CfgDirDados(dir string) ConfigFn {
 	return func(c *cfg) {
 		c.dirDados = dir
 	}

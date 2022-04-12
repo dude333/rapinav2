@@ -25,7 +25,9 @@ import (
 	"time"
 
 	contábil "github.com/dude333/rapinav2/internal/contabil"
+	"github.com/dude333/rapinav2/internal/contabil/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
+	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -57,7 +59,23 @@ type DemonstraçãoFinanceira struct {
 	bd  LeituraEscrita
 }
 
-func NovoDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
+func NovoDemonstraçãoFinanceira(db *sqlx.DB) (*DemonstraçãoFinanceira, error) {
+	dfp := DemonstraçãoFinanceira{}
+
+	repoCVM, err := repositorio.NovoCVM()
+	if err != nil {
+		return &dfp, err
+	}
+
+	repoSqlite, err := repositorio.NovoSqlite(db)
+	if err != nil {
+		return &dfp, err
+	}
+
+	return novoDemonstraçãoFinanceira(repoCVM, repoSqlite)
+}
+
+func novoDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
 	if api == nil || bd == nil {
 		return &DemonstraçãoFinanceira{}, ErrRepositórioInválido
 	}
@@ -69,7 +87,7 @@ func NovoDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*Demonst
 // no banco de dados.
 func (e *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
 	// result retorna o registro após a leitura de cada linha

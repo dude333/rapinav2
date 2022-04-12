@@ -7,8 +7,6 @@ package repositorio
 import (
 	"context"
 	"database/sql"
-	"os"
-	"path"
 	"strings"
 	"unicode"
 
@@ -42,33 +40,13 @@ type Sqlite struct {
 	cfg
 }
 
-func NovoSqlite(configs ...ConfigFn) (*Sqlite, error) {
+func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
 	var s Sqlite
 	for _, cfg := range configs {
 		cfg(&s.cfg)
 	}
 
-	if s.dirBD == ":memory:" {
-		s.db = sqlx.MustConnect("sqlite3", ":memory:")
-		s.db.SetMaxOpenConns(1)
-	} else {
-		if s.dirBD == "" {
-			s.dirBD = ".bd"
-		}
-		err := os.MkdirAll(s.dirBD, os.ModePerm)
-		if err != nil {
-			return nil, err
-		}
-
-		filename := "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-		dir := strings.ReplaceAll(s.dirBD, "\\", "/")
-		connStr := "file:" + path.Join(dir, filename)
-
-		s.db, err = sqlx.Connect("sqlite3", connStr)
-		if err != nil {
-			return nil, err
-		}
-	}
+	s.db = db
 
 	err := criarTabelas(s.db)
 	if err != nil {
