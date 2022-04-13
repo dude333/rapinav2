@@ -59,8 +59,7 @@ func atualizar(cmd *cobra.Command, args []string) {
 
 	progress.Status("{%d}", flags.atualizar.ano)
 
-	// anoi := 2010
-	anoi := 2018
+	anoi := 2010
 	anof, err := strconv.Atoi(time.Now().Format("2006"))
 	if err != nil {
 		progress.Error(err)
