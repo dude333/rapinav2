@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	cotação "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	cotação "github.com/dude333/rapinav2/internal/cotacao"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"

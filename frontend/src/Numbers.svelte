@@ -1,5 +1,5 @@
 <script>
-	export let ah = 0;
+	// export let ah = 0;
 	export let n = 0;
 	export let av = 0;
 	
@@ -22,16 +22,16 @@
 		min-width: 4rem;
         text-align: center;
 	}
-	.ah, 
+	/* .ah,  */
 	.av {
 		font-size: 0.7em;
 		vertical-align: middle;
 		position: relative;
 		align-self: center;
 	}
-	.ah:before {
+	/* .ah:before {
 		content: '↕ ';
-	}
+	} */
 	.av:after {
 		content: ' ↔';
 	}

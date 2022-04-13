@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package dominio
+package cotação
 
 import (
 	"fmt"

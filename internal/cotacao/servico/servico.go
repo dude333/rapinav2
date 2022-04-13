@@ -23,7 +23,7 @@ import (
 	"context"
 	"time"
 
-	domínio "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	domínio "github.com/dude333/rapinav2/internal/cotacao"
 )
 
 type Importação interface {

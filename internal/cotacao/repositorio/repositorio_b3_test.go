@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	domínio "github.com/dude333/rapinav2/internal/cotacao/dominio"
+	cotação "github.com/dude333/rapinav2/internal/cotacao"
 	repositório "github.com/dude333/rapinav2/internal/cotacao/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
@@ -25,7 +25,7 @@ func Test_b3_Importar(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
-	dia, _ := domínio.NovaData("2021-10-08")
+	dia, _ := cotação.NovaData("2021-10-08")
 	count := 10
 	for result := range b3.Importar(ctx, dia) {
 		if result.Error != nil {
