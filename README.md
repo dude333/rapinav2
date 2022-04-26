@@ -2,50 +2,39 @@
 ## Estrutura
 
 ```
-|--relatório
-   |--repositorio
-      |--sqlite.go
-   |--apresentacao
-      |--excel.go
-      |--web.go
-   |--servico
+internal/
+├── config.go
+├── dinheiro.go
+├── empresa.go
+├── contabil/
+│   ├── api/
+│   │   ├── api_dfp.go                 => api para apresentação das demonstrações financeiras
+│   │   └── api_dfp_test.go
+│   ├── contabil.go => entidades
+│   ├── contabil_test.go
+│   ├── repositorio/
+│   │   ├── repositorio_config.go
+│   │   ├── repositorio_cvm.go         => baixa dados de DPF e ITR da CVM
+│   │   ├── repositorio_cvm_test.go
+│   │   ├── repositorio_erros.go
+│   │   ├── repositorio_infra.go       => interface para serviços de download e compressão de arquivos
+│   │   ├── repositorio_sqlite.go      => armazena dados no sqlite
+│   │   └── repositorio_sqlite_test.go
+│   └── servico/
+│       ├── servico_contabil.go        => lógica do processamento dos dados
+│       └── servico_contabil_test.go
+└── cotacao/
+    ├── ativo.go
+    ├── repositorio/
+    │   ├── repositorio_b3.go          => baixa arquivo cotações, armazena no BD e retorna cotação de um ativo
+    │   ├── repositorio_b3_test.go
+    │   ├── repositorio_consts.go
+    │   └── repositorio_infra.go       => interface para serviços de download e compressão de arquivos
+    └── servico/
+        ├── erros.go
+        ├── servico.go                 => retorna a cotação de um ativo com dados dos repositórios (B3, banco de dados...)
+        └── servico_test.go
 
-|--contabil
-   |--repositorio
-      |--b3.go
-      |--infra.go
-   |--apresentacao
-      |--...
-   |--servico
-      |--empresa.go
-      |--fii.go
-   |--dominio
-      |--empresa.go
-      |--fii.go
-
-|--dividendos
-   |--repositorio
-      |--b3.go
-      |--infra.go
-   |--apresentacao
-      |--...
-   |--servico
-      |--empresa.go
-      |--fii.go
-   |--dominio
-      |--empresa.go
-      |--fii.go
-
-|--cotacao
-   |--repositorio
-      |--b3.go          => baixa arquivo cotações, armazena no BD e retorna cotação de um ativo
-      |--infra.go       => rotinas de download e unzip de arquivos
-   |--apresentacao
-      |--...
-   |--servico
-      |--ativo.go       => retorna a cotação de um ativo com dados dos repositórios (B3, banco de dados...)
-   |--dominio
-      |--ativo.go
 
 ```
 
