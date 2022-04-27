@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,10 +17,14 @@ import (
 var flags = struct {
 	verbose   bool
 	atualizar flagsAtualizar
+	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
+	tempDir   string // arquivos temporários
 }{}
 
 const (
 	configFileName = "rapina.conf"
+	dataSrcDefault = "file:.dados/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+	tempDirDefault = ".dados/"
 )
 
 var cfgFile string
@@ -52,10 +57,6 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", `arquivo de configuração (default = ./`+configFileName+`)`)
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	str := `Uso:{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
@@ -94,10 +95,24 @@ func initConfig() {
 		viper.SetConfigName(configFileName)
 	}
 
+	viper.SetConfigType("env")
+
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Usando arquivo de configuração:", viper.ConfigFileUsed())
 	}
+
+	flags.dataSrc = dataSrcDefault
+	if viper.IsSet("dataSrc") {
+		flags.dataSrc = viper.GetString("dataSrc")
+	}
+	progress.Debug("Usando dataSrc = %s", flags.dataSrc)
+
+	flags.tempDir = tempDirDefault
+	if viper.IsSet("tempDir") {
+		flags.tempDir = viper.GetString("tempDir")
+	}
+	progress.Debug("Usando tempDir = %s", flags.tempDir)
 }

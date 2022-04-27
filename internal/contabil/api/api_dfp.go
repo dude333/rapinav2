@@ -28,7 +28,7 @@ type htmlDFP struct {
 }
 
 func NewAPI(e *echo.Echo, db *sqlx.DB, dataDir string) {
-	svc, err := serviço.NovoDemonstraçãoFinanceira(db)
+	svc, err := serviço.NovoDemonstraçãoFinanceira(db, dataDir)
 	if err != nil {
 		panic(err)
 	}

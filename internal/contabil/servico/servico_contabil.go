@@ -59,10 +59,10 @@ type DemonstraçãoFinanceira struct {
 	bd  LeituraEscrita
 }
 
-func NovoDemonstraçãoFinanceira(db *sqlx.DB) (*DemonstraçãoFinanceira, error) {
+func NovoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
 	dfp := DemonstraçãoFinanceira{}
 
-	repoCVM, err := repositorio.NovoCVM()
+	repoCVM, err := repositorio.NovoCVM(repositorio.CfgDirDados(tempDir))
 	if err != nil {
 		return &dfp, err
 	}

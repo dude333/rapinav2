@@ -5,10 +5,7 @@
 package cmd
 
 import (
-	"os"
-	"path"
 	"strconv"
-	"strings"
 	"time"
 
 	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
@@ -37,22 +34,13 @@ func init() {
 }
 
 func atualizar(cmd *cobra.Command, args []string) {
-	dirDB := os.TempDir()
-	dirDB = strings.ReplaceAll(dirDB, "\\", "/")
-	err := os.MkdirAll(dirDB, os.ModePerm)
+	db, err := sqlx.Connect("sqlite3", flags.dataSrc)
 	if err != nil {
-		panic(err)
+		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
+		return
 	}
 
-	filename := "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-	connStr := "file:" + path.Join(dirDB, filename)
-
-	db, err := sqlx.Connect("sqlite3", connStr)
-	if err != nil {
-		panic(err)
-	}
-
-	svc, err := serviço.NovoDemonstraçãoFinanceira(db)
+	svc, err := serviço.NovoDemonstraçãoFinanceira(db, flags.tempDir)
 	if err != nil {
 		panic(err)
 	}
