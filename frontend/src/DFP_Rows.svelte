@@ -31,8 +31,16 @@
 </script>
 
 <style>
-    .code {
+    tr:nth-child(2n) {
+        background-color: #f9fcf9;
+    }
+    .code,
+    .descr {
+        font-size: 0.8rem;
+        font-weight: 400;
         white-space: nowrap;
+        padding-left: 0.5em !important;
+        padding-right: 0.5em !important;
     }
 </style>
 
@@ -46,9 +54,14 @@
             >{subcontas ? (opened ? "(-)" : "(+)") : ""}</span
         >
     </td>
-    <td>{descr}</td>
+    <td class="descr">{descr}</td>
     {#each totais as total, i}
-        <td><Numbers av={i < (totais.length-1) ? (total/totais[i+1])-1 : 0} n={format(total)} /></td>
+        <td
+            ><Numbers
+                av={i < totais.length - 1 ? total / totais[i + 1] - 1 : 0}
+                n={format(total)}
+            /></td
+        >
     {/each}
 </tr>
 
