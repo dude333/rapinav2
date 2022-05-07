@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cmd
+package main
 
 import (
 	"context"

@@ -7,7 +7,7 @@ package contábil
 import (
 	"strings"
 
-	rapina "github.com/dude333/rapinav2/internal"
+	rapina "github.com/dude333/rapinav2"
 )
 
 // DemonstraçãoFinanceira contém a demonstração financeira de uma empresa

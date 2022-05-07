@@ -1,4 +1,4 @@
-BUILDDIR     = .
+BUILDDIR     = cmd/*
 SOURCEDIR    = .
 SOURCES     := $(shell find $(SOURCEDIR) -name '*.go' | grep -v "_test.go")
 

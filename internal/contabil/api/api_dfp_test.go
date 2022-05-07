@@ -9,7 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	rapina "github.com/dude333/rapinav2/internal"
+	rapina "github.com/dude333/rapinav2"
 	contábil "github.com/dude333/rapinav2/internal/contabil"
 	"github.com/labstack/echo/v4"
 )

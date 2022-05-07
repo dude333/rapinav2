@@ -7,7 +7,7 @@ package contábil
 import (
 	"testing"
 
-	rapina "github.com/dude333/rapinav2/internal"
+	rapina "github.com/dude333/rapinav2"
 )
 
 func benchmarkVálida(c Conta, b *testing.B) {
