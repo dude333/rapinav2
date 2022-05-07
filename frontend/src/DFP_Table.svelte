@@ -100,6 +100,7 @@ SPDX-License-Identifier: MIT
         <th>Descr.</th>
         {#each dfp.anos as ano}
           <th style="text-align:center">{ano}</th>
+          <th style="text-align:center; font-size: 0.56rem;">AV</th>
         {/each}
       </tr>
 

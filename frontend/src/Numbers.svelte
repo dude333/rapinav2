@@ -1,15 +1,26 @@
 <script>
 	// export let ah = 0;
 	export let n = 0;
-	export let av = 0;
-	
-	function format(n, p) {
-		return Number(parseFloat(n).toFixed(p)).toLocaleString('pt-BR');
+	export let p = 0;
+	export let prefix = "";
+	export let sufix = "";
+
+	function format(n, p, prefix, sufix) {
+		if (!n) return "-";
+		if (Math.abs(n) >= 1e6) {
+			n = Math.round(n / 1e6);
+			sufix = "M " + sufix;
+		} else if (Math.abs(n) >= 1e3) {
+			n = Math.round(n / 1e3);
+			sufix = "K " + sufix;
+		}
+		n = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: p, maximumFractionDigits: p }).format(n)
+		return prefix + n + sufix;
 	}
 </script>
 
 <style>
-	.numbers {
+	/* .numbers {
         font-size: 0.8rem;
 		font-weight: 400;
 		min-width: 5rem;
@@ -22,20 +33,20 @@
 		padding: 0 0.3rem;
 		min-width: 4rem;
         text-align: center;
-	}
+	} */
 	/* .ah,  */
-	.av {
+	/* .av {
 		font-size: 0.7em;
 		vertical-align: middle;
 		position: relative;
 		align-self: center;
-	}
+	} */
 	/* .ah:before {
 		content: '↕ ';
 	} */
-	.av:after {
+	/* .av:after {
 		content: ' ↔';
-	}
+	} */
 	.red {
 		color: red;
 	}
@@ -43,6 +54,5 @@
 
 <div class="numbers">
 	<!-- <span class="ah {ah < 0 ? 'red' : ''}">{format(ah*100, 1)}%</span> -->
-	<span class="n  {n  < 0 ? 'red' : ''}">{n}</span>
-	<span class="av {av < 0 ? 'red' : ''}">{format(av*100, 1)}%</span>
+	<span class="n  {n < 0 ? 'red' : ''}">{format(n, p, prefix, sufix)}</span>
 </div>
