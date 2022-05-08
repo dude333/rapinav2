@@ -7,10 +7,12 @@ package serviço
 import (
 	"context"
 	"fmt"
-	cotação "github.com/dude333/rapinav2/pkg/cotacao"
 	"reflect"
 	"testing"
 	"time"
+
+	rapina "github.com/dude333/rapinav2"
+	cotação "github.com/dude333/rapinav2/pkg/cotacao"
 )
 
 var (
@@ -21,17 +23,17 @@ var (
 
 func init() {
 	const m = "R$"
-	d, _ := cotação.NovaData("2021-10-14")
+	d, _ := rapina.NovaData("2021-10-14")
 
 	_cache = make(map[string]cotação.Ativo)
 
 	_ativo1 = cotação.Ativo{
 		Código:       "TEST3",
 		Data:         d,
-		Abertura:     cotação.Dinheiro{Valor: 1, Moeda: m},
-		Máxima:       cotação.Dinheiro{Valor: 2, Moeda: m},
-		Mínima:       cotação.Dinheiro{Valor: 0.8, Moeda: m},
-		Encerramento: cotação.Dinheiro{Valor: 1.6, Moeda: m},
+		Abertura:     rapina.Dinheiro{Valor: 1, Moeda: m},
+		Máxima:       rapina.Dinheiro{Valor: 2, Moeda: m},
+		Mínima:       rapina.Dinheiro{Valor: 0.8, Moeda: m},
+		Encerramento: rapina.Dinheiro{Valor: 1.6, Moeda: m},
 		Volume:       1000000,
 	}
 
@@ -39,10 +41,10 @@ func init() {
 		r := cotação.Ativo{
 			Código:       fmt.Sprintf("TEST%d", i),
 			Data:         d,
-			Abertura:     cotação.Dinheiro{Valor: 1, Moeda: m},
-			Máxima:       cotação.Dinheiro{Valor: 2, Moeda: m},
-			Mínima:       cotação.Dinheiro{Valor: 0.8, Moeda: m},
-			Encerramento: cotação.Dinheiro{Valor: 1.6, Moeda: m},
+			Abertura:     rapina.Dinheiro{Valor: 1, Moeda: m},
+			Máxima:       rapina.Dinheiro{Valor: 2, Moeda: m},
+			Mínima:       rapina.Dinheiro{Valor: 0.8, Moeda: m},
+			Encerramento: rapina.Dinheiro{Valor: 1.6, Moeda: m},
 			Volume:       1000000,
 		}
 		_exemplos = append(_exemplos, &r)
@@ -53,7 +55,7 @@ func init() {
 // apiMockOk implementa domínio.RepositórioLeituraAtivo
 type apiMockOk struct{}
 
-func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan cotação.Resultado {
+func (r *apiMockOk) Importar(ctx context.Context, data rapina.Data) <-chan cotação.Resultado {
 	// _cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
 	results := make(chan cotação.Resultado)
 	go func() {
@@ -79,7 +81,7 @@ func (r *apiMockOk) Importar(ctx context.Context, data cotação.Data) <-chan co
 // apiMockFail implementa domínio.RepositórioLeituraAtivo
 type apiMockFail struct{}
 
-func (r *apiMockFail) Importar(ctx context.Context, data cotação.Data) <-chan cotação.Resultado {
+func (r *apiMockFail) Importar(ctx context.Context, data rapina.Data) <-chan cotação.Resultado {
 	// _cache[_ativo1.Código+_ativo1.Data.String()] = _ativo1
 	results := make(chan cotação.Resultado)
 	go func() {
@@ -105,7 +107,7 @@ func (r *apiMockFail) Importar(ctx context.Context, data cotação.Data) <-chan 
 // bdMock implementa domínio.RepositórioLeituraEscritaAtivo
 type bdMock struct{}
 
-func (r *bdMock) Cotação(ctx context.Context, código string, data cotação.Data) (*cotação.Ativo, error) {
+func (r *bdMock) Cotação(ctx context.Context, código string, data rapina.Data) (*cotação.Ativo, error) {
 	ativo, ok := _cache[código+data.String()]
 	if !ok {
 		return &cotação.Ativo{}, ErrCotaçãoNãoEncontrada
@@ -121,7 +123,7 @@ func (r *bdMock) Salvar(ctx context.Context, ativo *cotação.Ativo) error {
 // TESTES -------------------------------------------------
 
 func TestServiçoAtivo_Cotação(t *testing.T) {
-	d1, _ := cotação.NovaData("2021-10-09")
+	d1, _ := rapina.NovaData("2021-10-09")
 
 	type fields struct {
 		api []Importação
@@ -129,7 +131,7 @@ func TestServiçoAtivo_Cotação(t *testing.T) {
 	}
 	type args struct {
 		código string
-		data   cotação.Data
+		data   rapina.Data
 	}
 	tests := []struct {
 		name    string

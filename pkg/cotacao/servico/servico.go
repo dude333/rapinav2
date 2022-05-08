@@ -23,15 +23,16 @@ import (
 	"context"
 	"time"
 
+	rapina "github.com/dude333/rapinav2"
 	domínio "github.com/dude333/rapinav2/pkg/cotacao"
 )
 
 type Importação interface {
-	Importar(ctx context.Context, dia domínio.Data) <-chan domínio.Resultado
+	Importar(ctx context.Context, dia rapina.Data) <-chan domínio.Resultado
 }
 
 type Leitura interface {
-	Cotação(ctx context.Context, código string, data domínio.Data) (*domínio.Ativo, error)
+	Cotação(ctx context.Context, código string, data rapina.Data) (*domínio.Ativo, error)
 }
 
 type Escrita interface {
@@ -64,7 +65,7 @@ func NovoServiço(
 // valor encontado ou o erro de todos os repositórios. Caso a cotação seja
 // encontrada via API, ela será armazenada no bando de dados para agilizar a
 // próxima leitura do mesmo código, na mesma data.
-func (a *Serviço) Cotação(código string, dia domínio.Data) (*domínio.Ativo, error) {
+func (a *Serviço) Cotação(código string, dia rapina.Data) (*domínio.Ativo, error) {
 	atv, err := a.cotaçãoBD(código, dia)
 	if err != nil {
 		return a.cotaçãoAPI(código, dia)
@@ -72,7 +73,7 @@ func (a *Serviço) Cotação(código string, dia domínio.Data) (*domínio.Ativo
 	return atv, err
 }
 
-func (a *Serviço) cotaçãoBD(código string, dia domínio.Data) (*domínio.Ativo, error) {
+func (a *Serviço) cotaçãoBD(código string, dia rapina.Data) (*domínio.Ativo, error) {
 	if a.bd == nil {
 		return nil, ErrRepositórioInválido
 	}
@@ -85,7 +86,7 @@ func (a *Serviço) cotaçãoBD(código string, dia domínio.Data) (*domínio.Ati
 	return nil, ErrCotaçãoNãoEncontrada
 }
 
-func (a *Serviço) cotaçãoAPI(código string, dia domínio.Data) (*domínio.Ativo, error) {
+func (a *Serviço) cotaçãoAPI(código string, dia rapina.Data) (*domínio.Ativo, error) {
 	if len(a.api) < 1 {
 		return nil, ErrRepositórioInválido
 	}

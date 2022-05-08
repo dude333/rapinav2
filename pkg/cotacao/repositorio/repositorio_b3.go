@@ -9,13 +9,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
+	rapina "github.com/dude333/rapinav2"
 	cotação "github.com/dude333/rapinav2/pkg/cotacao"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
-	"os"
-	"strconv"
-	"strings"
 )
 
 // B3 implementa RepositórioImportaçãoAtivo. Busca a cotação de ativos
@@ -32,7 +34,7 @@ func NovoB3(dirDados string) *B3 {
 
 // Importar baixa o arquivo de cotações de todas as empresas de um determinado
 // dia do site da B3.
-func (b *B3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.Resultado {
+func (b *B3) Importar(ctx context.Context, dia rapina.Data) <-chan cotação.Resultado {
 	results := make(chan cotação.Resultado)
 
 	go func() {
@@ -69,7 +71,7 @@ func (b *B3) Importar(ctx context.Context, dia cotação.Data) <-chan cotação.
 	return results
 }
 
-func arquivoCotação(dia cotação.Data) (url, zip string, err error) {
+func arquivoCotação(dia rapina.Data) (url, zip string, err error) {
 	data := dia.String()
 	if len(data) != len("2021-05-03") {
 		return "", "", ErrDataInválidaFn(data)
@@ -154,7 +156,7 @@ func analisarLinha(linha string) (*cotação.Ativo, error) {
 	}
 
 	código := strings.TrimSpace(linha[12:24])
-	data, err := cotação.NovaData(linha[2:6] + "-" + linha[6:8] + "-" + linha[8:10])
+	data, err := rapina.NovaData(linha[2:6] + "-" + linha[6:8] + "-" + linha[8:10])
 	if err != nil {
 		return &cotação.Ativo{}, err
 	}
@@ -182,10 +184,10 @@ func analisarLinha(linha string) (*cotação.Ativo, error) {
 	return &cotação.Ativo{
 		Código:       código,
 		Data:         data,
-		Abertura:     cotação.Dinheiro{Valor: vals[0], Moeda: r},
-		Máxima:       cotação.Dinheiro{Valor: vals[1], Moeda: r},
-		Mínima:       cotação.Dinheiro{Valor: vals[2], Moeda: r},
-		Encerramento: cotação.Dinheiro{Valor: vals[3], Moeda: r},
+		Abertura:     rapina.Dinheiro{Valor: vals[0], Moeda: r},
+		Máxima:       rapina.Dinheiro{Valor: vals[1], Moeda: r},
+		Mínima:       rapina.Dinheiro{Valor: vals[2], Moeda: r},
+		Encerramento: rapina.Dinheiro{Valor: vals[3], Moeda: r},
 		Volume:       vals[4],
 	}, nil
 }
