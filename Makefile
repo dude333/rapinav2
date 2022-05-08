@@ -25,7 +25,7 @@ $(BINARY): $(SOURCES) $(FE_BUILD)
 	go build ${LDFLAGS} -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
 
 run: $(FE_BUILD)
-	go run rapina.go servidor
+	go run cmd/*.go servidor
 
 $(FE_BUILD): $(FE_SOURCES)
 	cd $(FE_DIR) && pnpm run build || npm run build
