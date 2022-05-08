@@ -7,7 +7,7 @@ package repositorio
 import (
 	"context"
 	"fmt"
-	contábil "github.com/dude333/rapinav2/internal/contabil"
+	contábil "github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/jmoiron/sqlx"
 	"testing"
 )

@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	rapina "github.com/dude333/rapinav2"
-	contábil "github.com/dude333/rapinav2/internal/contabil"
+	contábil "github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )

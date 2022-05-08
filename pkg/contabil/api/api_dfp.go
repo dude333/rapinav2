@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	contábil "github.com/dude333/rapinav2/internal/contabil"
-	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
+	contábil "github.com/dude333/rapinav2/pkg/contabil"
+	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )

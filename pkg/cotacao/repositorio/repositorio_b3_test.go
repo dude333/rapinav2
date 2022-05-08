@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	cotação "github.com/dude333/rapinav2/internal/cotacao"
-	repositório "github.com/dude333/rapinav2/internal/cotacao/repositorio"
+	cotação "github.com/dude333/rapinav2/pkg/cotacao"
+	repositório "github.com/dude333/rapinav2/pkg/cotacao/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 

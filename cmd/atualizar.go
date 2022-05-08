@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	serviço "github.com/dude333/rapinav2/internal/contabil/servico"
+	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"

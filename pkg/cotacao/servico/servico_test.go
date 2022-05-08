@@ -7,7 +7,7 @@ package serviço
 import (
 	"context"
 	"fmt"
-	cotação "github.com/dude333/rapinav2/internal/cotacao"
+	cotação "github.com/dude333/rapinav2/pkg/cotacao"
 	"reflect"
 	"testing"
 	"time"

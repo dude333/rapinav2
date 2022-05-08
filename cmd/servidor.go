@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	"github.com/dude333/rapinav2/frontend"
-	"github.com/dude333/rapinav2/internal/contabil/api"
+	"github.com/dude333/rapinav2/pkg/contabil/api"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"

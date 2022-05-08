@@ -11,7 +11,7 @@ import (
 	"unicode"
 
 	rapina "github.com/dude333/rapinav2"
-	contábil "github.com/dude333/rapinav2/internal/contabil"
+	contábil "github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/text/runes"

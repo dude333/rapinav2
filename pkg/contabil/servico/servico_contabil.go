@@ -24,8 +24,8 @@ import (
 	"errors"
 	"time"
 
-	contábil "github.com/dude333/rapinav2/internal/contabil"
-	"github.com/dude333/rapinav2/internal/contabil/repositorio"
+	contábil "github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/contabil/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 )
