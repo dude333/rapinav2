@@ -10,7 +10,6 @@ import (
 
 	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
-	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 )
 
@@ -34,12 +33,6 @@ func init() {
 }
 
 func atualizar(cmd *cobra.Command, args []string) {
-	db, err := sqlx.Connect("sqlite3", flags.dataSrc)
-	if err != nil {
-		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
-		return
-	}
-
 	svc, err := serviço.NovoDemonstraçãoFinanceira(db, flags.tempDir)
 	if err != nil {
 		panic(err)

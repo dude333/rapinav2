@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/dude333/rapinav2/pkg/progress"
+	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -17,6 +18,7 @@ import (
 var flags = struct {
 	verbose   bool
 	atualizar flagsAtualizar
+	relatorio flagsRelatorio
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
 	tempDir   string // arquivos temporários
 }{}
@@ -27,6 +29,7 @@ const (
 	tempDirDefault = ".dados/"
 )
 
+var db *sqlx.DB
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -44,12 +47,18 @@ var rootCmd = &cobra.Command{
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.ExecuteContext(context.Background()); err != nil {
-		fmt.Println(err)
+		progress.Error(err)
 		os.Exit(1)
 	}
 }
 
 func init() {
+	var err error
+	if db, err = sqlx.Connect("sqlite3", flags.dataSrc); err != nil {
+		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
+		os.Exit(1)
+	}
+
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.

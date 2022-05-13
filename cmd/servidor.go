@@ -10,9 +10,7 @@ import (
 	"net/http"
 
 	"github.com/dude333/rapinav2/frontend"
-	"github.com/dude333/rapinav2/pkg/contabil/api"
-	"github.com/dude333/rapinav2/pkg/progress"
-	"github.com/jmoiron/sqlx"
+	"github.com/dude333/rapinav2/pkg/contabil/apresentacao/api"
 	"github.com/labstack/echo/v4"
 	"github.com/spf13/cobra"
 )
@@ -31,12 +29,6 @@ func init() {
 }
 
 func servidor(cmd *cobra.Command, args []string) {
-	db, err := sqlx.Connect("sqlite3", flags.dataSrc)
-	if err != nil {
-		progress.ErrorMsg("Erro ao abrir o banco de dados, verificar se o diretório/arquivo existe: %s", flags.dataSrc)
-		return
-	}
-
 	e := echo.New()
 
 	api.NewAPI(e, db, flags.tempDir)
