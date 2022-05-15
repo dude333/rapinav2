@@ -29,7 +29,6 @@ const (
 	tempDirDefault = ".dados/"
 )
 
-var db *sqlx.DB
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -118,12 +117,21 @@ func initConfig() {
 		flags.tempDir = viper.GetString("tempDir")
 	}
 	progress.Debug("Usando tempDir = %s", flags.tempDir)
+}
 
-	// Conexão com o banco de dados deve ser feita após
-	// inicialização de flags.dataSrc
+var _db *sqlx.DB
+
+func openDatabase() *sqlx.DB {
+	if _db != nil {
+		return _db // abre o banco de dados apenas umas vez
+	}
 	var err error
-	if db, err = sqlx.Connect("sqlite3", flags.dataSrc); err != nil {
+	_db, err := sqlx.Open("sqlite3", flags.dataSrc)
+	if err != nil {
 		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
 		os.Exit(1)
 	}
+	_db.SetMaxOpenConns(1)
+
+	return _db
 }

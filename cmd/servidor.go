@@ -31,7 +31,7 @@ func init() {
 func servidor(cmd *cobra.Command, args []string) {
 	e := echo.New()
 
-	api.NewAPI(e, db, flags.tempDir)
+	api.NewAPI(e, openDatabase(), flags.tempDir)
 
 	contentFS, err := fs.Sub(frontend.ContentFS, "public")
 	if err != nil {

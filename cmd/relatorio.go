@@ -35,5 +35,5 @@ func init() {
 }
 
 func relatorio(cmd *cobra.Command, args []string) {
-	csv.ImprimirCSV(db)
+	csv.ImprimirCSV(openDatabase())
 }

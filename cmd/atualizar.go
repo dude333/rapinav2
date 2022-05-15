@@ -33,7 +33,7 @@ func init() {
 }
 
 func atualizar(cmd *cobra.Command, args []string) {
-	svc, err := serviço.NovoDemonstraçãoFinanceira(db, flags.tempDir)
+	svc, err := serviço.NovoDemonstraçãoFinanceira(openDatabase(), flags.tempDir)
 	if err != nil {
 		panic(err)
 	}
