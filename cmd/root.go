@@ -53,12 +53,6 @@ func Execute() {
 }
 
 func init() {
-	var err error
-	if db, err = sqlx.Connect("sqlite3", flags.dataSrc); err != nil {
-		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
-		os.Exit(1)
-	}
-
 	cobra.OnInitialize(initConfig)
 
 	// Here you will define your flags and configuration settings.
@@ -124,4 +118,12 @@ func initConfig() {
 		flags.tempDir = viper.GetString("tempDir")
 	}
 	progress.Debug("Usando tempDir = %s", flags.tempDir)
+
+	// Conexão com o banco de dados deve ser feita após
+	// inicialização de flags.dataSrc
+	var err error
+	if db, err = sqlx.Connect("sqlite3", flags.dataSrc); err != nil {
+		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
+		os.Exit(1)
+	}
 }
