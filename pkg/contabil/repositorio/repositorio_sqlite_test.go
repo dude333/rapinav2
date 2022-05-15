@@ -7,6 +7,7 @@ package repositorio
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	rapina "github.com/dude333/rapinav2"
@@ -63,4 +64,79 @@ func Test_inserirDFP(t *testing.T) {
 			t.Logf("%v", err)
 		}
 	})
+}
+
+func Test_ordenar(t *testing.T) {
+	type args struct {
+		orig   []string
+		transf []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "deveria funcionar",
+			args: args{
+				orig:   []string{"AAAaA", "BbB", "AaaaA", "AA", "bônus", "açaí", "aliás", "caçapa"},
+				transf: []string{"aaaaa", "bbb", "aaaaa", "aa", "bonus", "acai", "alias", "cacapa"},
+			},
+			want: []string{"AA", "AAAaA", "AaaaA", "açaí", "aliás", "BbB", "bônus", "caçapa"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := ordenar(tt.args.orig, tt.args.transf); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ordenar() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSqlite_Empresas(t *testing.T) {
+	type fields struct {
+		db    *sqlx.DB
+		limpo map[string]bool
+		cache []string
+		cfg   cfg
+	}
+	type args struct {
+		ctx  context.Context
+		nome string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   []string
+	}{
+		{
+			name: "deveria funcionar",
+			fields: fields{
+				db:    &sqlx.DB{}, // vai funcionar desde que o db só seja lido caso cache esteja vazio
+				limpo: map[string]bool{},
+				cache: []string{"Ótimo", "zinco", "Base", "Zircônio", "azul", "capaz", "Exceção", "óculos", "Também"},
+				cfg:   cfg{},
+			},
+			args: args{
+				ctx:  nil,
+				nome: "",
+			},
+			want: []string{"azul", "Base", "capaz", "Exceção", "óculos", "Ótimo", "Também", "zinco", "Zircônio"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Sqlite{
+				db:    tt.fields.db,
+				limpo: tt.fields.limpo,
+				cache: tt.fields.cache,
+				cfg:   tt.fields.cfg,
+			}
+			if got := s.Empresas(tt.args.ctx, tt.args.nome); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Sqlite.Empresas() = %#v, want %v", got, tt.want)
+			}
+		})
+	}
 }

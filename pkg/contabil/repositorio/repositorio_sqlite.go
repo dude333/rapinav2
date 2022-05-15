@@ -7,6 +7,7 @@ package repositorio
 import (
 	"context"
 	"database/sql"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -134,6 +135,7 @@ func (s *Sqlite) Empresas(ctx context.Context, nome string) []string {
 	}
 
 	var ret []string
+	var toSort []string
 	for _, n := range s.cache {
 		x, _, err := transform.String(t, n)
 		if err != nil {
@@ -142,9 +144,43 @@ func (s *Sqlite) Empresas(ctx context.Context, nome string) []string {
 		x = strings.ToLower(x)
 		if strings.HasPrefix(x, nome) {
 			ret = append(ret, n)
+			toSort = append(toSort, x)
 		}
 	}
-	return ret
+	return ordenar(ret, toSort)
+}
+
+// ordenar ordenada a []string "orig" com base na []string
+// transformada "transf". Serve para ordenar []string com acentos
+// ou outros sinais diacríticos.
+func ordenar(orig, transf []string) []string {
+	s := NewSlice(transf)
+	sort.Sort(s)
+
+	ord := make([]string, len(transf))
+	for i, j := range s.idx {
+		ord[i] = orig[j]
+	}
+
+	return ord
+}
+
+func NewSlice(str []string) *Slice {
+	s := &Slice{StringSlice: str, idx: make([]int, len(str))}
+	for i := range s.idx {
+		s.idx[i] = i
+	}
+	return s
+}
+
+type Slice struct {
+	sort.StringSlice
+	idx []int
+}
+
+func (s Slice) Swap(i, j int) {
+	s.StringSlice.Swap(i, j)
+	s.idx[i], s.idx[j] = s.idx[j], s.idx[i]
 }
 
 func (s *Sqlite) Salvar(ctx context.Context, dfp *contábil.DemonstraçãoFinanceira) error {
@@ -392,18 +428,22 @@ func criarTabelas(db *sqlx.DB) (err error) {
 
 	ver := func(tabela string) int {
 		var versão int
-		_ = db.Get(&versão, `SELECT versao FROM tabelas WHERE nome=?`, tabela)
+		err := db.Get(&versão, `SELECT versao FROM tabelas WHERE nome=?`, tabela)
+		if err != nil {
+			progress.Debug("Erro ao buscar versão da tabela %s: %v", tabela, err)
+		}
 		return versão
 	}
 
 	_, _ = db.Exec(sqlCreateTableTabelas)
 
 	for _, t := range tabelas {
-		if ver(t.nome) == t.versão {
+		v := ver(t.nome)
+		if v == t.versão {
 			continue
 		}
-		progress.Status(`Apagando tabela "%s" e recriando nova versão (v%d)`,
-			t.nome, t.versão)
+		progress.Status(`Apagando tabela "%s", versão %d, e recriando nova versão (v%d)`,
+			t.nome, v, t.versão)
 
 		_, _ = db.Exec(t.down)
 		_, err := db.Exec(t.up)
