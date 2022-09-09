@@ -36,6 +36,9 @@ type ConfigFn func(*cfg)
 
 func CfgDirDados(dir string) ConfigFn {
 	return func(c *cfg) {
+		if len(dir) == 0 {
+			return
+		}
 		c.dirDados = dir
 	}
 }

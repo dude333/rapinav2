@@ -68,27 +68,45 @@ func Test_inserirDFP(t *testing.T) {
 
 func Test_ordenar(t *testing.T) {
 	type args struct {
-		orig   []string
+		orig   []rapina.Empresa
 		transf []string
 	}
 	tests := []struct {
 		name string
 		args args
-		want []string
+		want []rapina.Empresa
 	}{
 		{
 			name: "deveria funcionar",
 			args: args{
-				orig:   []string{"AAAaA", "BbB", "AaaaA", "AA", "bônus", "açaí", "aliás", "caçapa"},
+				orig: []rapina.Empresa{
+					{CNPJ: "1", Nome: "AAAaA"},
+					{CNPJ: "2", Nome: "BbB"},
+					{CNPJ: "3", Nome: "AaaaA"},
+					{CNPJ: "4", Nome: "AA"},
+					{CNPJ: "5", Nome: "bônus"},
+					{CNPJ: "6", Nome: "açaí"},
+					{CNPJ: "7", Nome: "aliás"},
+					{CNPJ: "8", Nome: "caçapa"},
+				},
 				transf: []string{"aaaaa", "bbb", "aaaaa", "aa", "bonus", "acai", "alias", "cacapa"},
 			},
-			want: []string{"AA", "AAAaA", "AaaaA", "açaí", "aliás", "BbB", "bônus", "caçapa"},
+			want: []rapina.Empresa{
+				{CNPJ: "4", Nome: "AA"},
+				{CNPJ: "1", Nome: "AAAaA"},
+				{CNPJ: "3", Nome: "AaaaA"},
+				{CNPJ: "6", Nome: "açaí"},
+				{CNPJ: "7", Nome: "aliás"},
+				{CNPJ: "2", Nome: "BbB"},
+				{CNPJ: "5", Nome: "bônus"},
+				{CNPJ: "8", Nome: "caçapa"},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := ordenar(tt.args.orig, tt.args.transf); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ordenar() = %v, want %v", got, tt.want)
+				t.Errorf("ordenar() = %#v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -98,7 +116,7 @@ func TestSqlite_Empresas(t *testing.T) {
 	type fields struct {
 		db    *sqlx.DB
 		limpo map[string]bool
-		cache []string
+		cache []rapina.Empresa
 		cfg   cfg
 	}
 	type args struct {
@@ -109,30 +127,50 @@ func TestSqlite_Empresas(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   []string
+		want   []rapina.Empresa
 	}{
 		{
 			name: "deveria funcionar",
 			fields: fields{
 				db:    &sqlx.DB{}, // vai funcionar desde que o db só seja lido caso cache esteja vazio
 				limpo: map[string]bool{},
-				cache: []string{"Ótimo", "zinco", "Base", "Zircônio", "azul", "capaz", "Exceção", "óculos", "Também"},
-				cfg:   cfg{},
+				cache: []rapina.Empresa{
+					{CNPJ: "", Nome: "Ótimo"},
+					{CNPJ: "", Nome: "zinco"},
+					{CNPJ: "", Nome: "Base"},
+					{CNPJ: "", Nome: "Zircônio"},
+					{CNPJ: "", Nome: "azul"},
+					{CNPJ: "", Nome: "capaz"},
+					{CNPJ: "", Nome: "Exceção"},
+					{CNPJ: "", Nome: "óculos"},
+					{CNPJ: "", Nome: "Também"},
+				},
+				cfg: cfg{},
 			},
 			args: args{
 				ctx:  nil,
 				nome: "",
 			},
-			want: []string{"azul", "Base", "capaz", "Exceção", "óculos", "Ótimo", "Também", "zinco", "Zircônio"},
+			want: []rapina.Empresa{
+				{CNPJ: "", Nome: "azul"},
+				{CNPJ: "", Nome: "Base"},
+				{CNPJ: "", Nome: "capaz"},
+				{CNPJ: "", Nome: "Exceção"},
+				{CNPJ: "", Nome: "óculos"},
+				{CNPJ: "", Nome: "Ótimo"},
+				{CNPJ: "", Nome: "Também"},
+				{CNPJ: "", Nome: "zinco"},
+				{CNPJ: "", Nome: "Zircônio"},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Sqlite{
-				db:    tt.fields.db,
-				limpo: tt.fields.limpo,
-				cache: tt.fields.cache,
-				cfg:   tt.fields.cfg,
+				db:            tt.fields.db,
+				limpo:         tt.fields.limpo,
+				cacheEmpresas: tt.fields.cache,
+				cfg:           tt.fields.cfg,
 			}
 			if got := s.Empresas(tt.args.ctx, tt.args.nome); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Sqlite.Empresas() = %#v, want %v", got, tt.want)

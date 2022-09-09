@@ -57,3 +57,9 @@ type Resultado struct {
 	Empresa *DemonstraçãoFinanceira
 	Error   error
 }
+
+type Serviço interface {
+	// Importar(ano int, trimestral bool) error
+	Relatório(cnpj string, ano int) (*DemonstraçãoFinanceira, error)
+	Empresas(nome string) []rapina.Empresa
+}

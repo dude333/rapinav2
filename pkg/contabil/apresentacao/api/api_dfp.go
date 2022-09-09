@@ -17,14 +17,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type Serviço interface {
-	// Importar(ano int, trimestral bool) error
-	Relatório(cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error)
-	Empresas(nome string) []string
-}
-
 type htmlDFP struct {
-	svc Serviço
+	svc contábil.Serviço
 }
 
 func NewAPI(e *echo.Echo, db *sqlx.DB, dataDir string) {
@@ -212,7 +206,11 @@ func sortSubcontas(contas []jsonConta) []jsonConta {
 func (h *htmlDFP) empresas(c echo.Context) error {
 	nome := c.Param("nome")
 
-	lista := h.svc.Empresas(nome)
+	empresas := h.svc.Empresas(nome)
+	lista := make([]string, len(empresas))
+	for i := range empresas {
+		lista[i] = empresas[i].Nome
+	}
 
 	ret := jsonEmpresas{Empresas: lista}
 

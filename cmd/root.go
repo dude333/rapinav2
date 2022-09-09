@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"os"
 
+	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -103,7 +105,7 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Usando arquivo de configuração:", viper.ConfigFileUsed())
+		progress.Debug("Usando arquivo de configuração: %v", viper.ConfigFileUsed())
 	}
 
 	flags.dataSrc = dataSrcDefault
@@ -121,7 +123,7 @@ func initConfig() {
 
 var _db *sqlx.DB
 
-func openDatabase() *sqlx.DB {
+func db() *sqlx.DB {
 	if _db != nil {
 		return _db // abre o banco de dados apenas umas vez
 	}
@@ -134,4 +136,28 @@ func openDatabase() *sqlx.DB {
 	_db.SetMaxOpenConns(1)
 
 	return _db
+}
+
+func promptUser(list []rapina.Empresa) (result string) {
+	templates := &promptui.SelectTemplates{
+		Help: `{{ "Use estas teclas para navegar:" | faint }} {{ .NextKey | faint }} ` +
+			`{{ .PrevKey | faint }} {{ .PageDownKey | faint }} {{ .PageUpKey | faint }} ` +
+			`{{ if .Search }} {{ "and" | faint }} {{ .SearchKey | faint }} {{ "toggles search" | faint }}{{ end }}`,
+	}
+
+	prompt := promptui.Select{
+		Label:     "Selecione a Empresa",
+		Items:     list,
+		Size:      10,
+		Templates: templates,
+	}
+
+	_, result, err := prompt.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	return
 }

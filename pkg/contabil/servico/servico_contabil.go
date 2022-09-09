@@ -24,6 +24,7 @@ import (
 	"errors"
 	"time"
 
+	rapina "github.com/dude333/rapinav2"
 	contábil "github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/contabil/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
@@ -40,7 +41,7 @@ type Importação interface {
 
 type Leitura interface {
 	Ler(ctx context.Context, cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error)
-	Empresas(ctx context.Context, nome string) []string
+	Empresas(ctx context.Context, nome string) []rapina.Empresa
 }
 
 type Escrita interface {
@@ -115,9 +116,9 @@ func (e *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*contábil.
 	return dfp, err
 }
 
-func (e *DemonstraçãoFinanceira) Empresas(nome string) []string {
+func (e *DemonstraçãoFinanceira) Empresas(nome string) []rapina.Empresa {
 	if e.bd == nil {
-		return []string{}
+		return []rapina.Empresa{}
 	}
 	progress.Debug("Empresas(%s)", nome)
 	lista := e.bd.Empresas(context.Background(), nome)

@@ -37,7 +37,7 @@ type Sqlite struct {
 	// feito de uma única vez.
 	limpo map[string]bool
 
-	cache []string
+	cacheEmpresas []rapina.Empresa
 	cfg
 }
 
@@ -55,7 +55,7 @@ func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
 	}
 
 	s.limpo = make(map[string]bool)
-	s.cache = make([]string, 0, 500)
+	s.cacheEmpresas = make([]rapina.Empresa, 0, 500)
 
 	return &s, nil
 }
@@ -117,10 +117,10 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Demo
 	return &dfp, err
 }
 
-func (s *Sqlite) Empresas(ctx context.Context, nome string) []string {
-	if len(s.cache) == 0 {
-		err := s.db.SelectContext(ctx, &s.cache,
-			`SELECT DISTINCT(nome) FROM empresas ORDER BY nome`)
+func (s *Sqlite) Empresas(ctx context.Context, nome string) []rapina.Empresa {
+	if len(s.cacheEmpresas) == 0 {
+		err := s.db.SelectContext(ctx, &s.cacheEmpresas,
+			`SELECT DISTINCT(cnpj), nome FROM empresas ORDER BY nome`)
 		if err != nil {
 			progress.Error(err)
 			return nil
@@ -134,16 +134,16 @@ func (s *Sqlite) Empresas(ctx context.Context, nome string) []string {
 		return nil
 	}
 
-	var ret []string
+	var ret []rapina.Empresa
 	var toSort []string
-	for _, n := range s.cache {
-		x, _, err := transform.String(t, n)
+	for _, empr := range s.cacheEmpresas {
+		x, _, err := transform.String(t, empr.Nome)
 		if err != nil {
 			return nil
 		}
 		x = strings.ToLower(x)
 		if strings.HasPrefix(x, nome) {
-			ret = append(ret, n)
+			ret = append(ret, empr)
 			toSort = append(toSort, x)
 		}
 	}
@@ -153,11 +153,11 @@ func (s *Sqlite) Empresas(ctx context.Context, nome string) []string {
 // ordenar ordenada a []string "orig" com base na []string
 // transformada "transf". Serve para ordenar []string com acentos
 // ou outros sinais diacríticos.
-func ordenar(orig, transf []string) []string {
+func ordenar(orig []rapina.Empresa, transf []string) []rapina.Empresa {
 	s := NewSlice(transf)
 	sort.Sort(s)
 
-	ord := make([]string, len(transf))
+	ord := make([]rapina.Empresa, len(transf))
 	for i, j := range s.idx {
 		ord[i] = orig[j]
 	}

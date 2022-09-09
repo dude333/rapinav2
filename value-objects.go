@@ -5,14 +5,20 @@
 package rapina
 
 import (
-	"fmt"
 	"time"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 // Empresa ------------------------------------------------
 type Empresa struct {
 	CNPJ string
 	Nome string
+}
+
+func (e Empresa) String() string {
+	return e.CNPJ + " - " + e.Nome
 }
 
 // Dinheiro -----------------------------------------------
@@ -23,7 +29,8 @@ type Dinheiro struct {
 }
 
 func (d Dinheiro) String() string {
-	return fmt.Sprintf(`%s %.2f`, d.Moeda, d.Valor*float64(d.Escala))
+	p := message.NewPrinter(language.BrazilianPortuguese)
+	return p.Sprintf(`%s %.2f`, d.Moeda, d.Valor*float64(d.Escala))
 }
 
 // Data ---------------------------------------------------
