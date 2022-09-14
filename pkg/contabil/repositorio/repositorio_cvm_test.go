@@ -72,10 +72,12 @@ func Test_cvm_Importar(t *testing.T) {
 				if result.Error != nil {
 					fmt.Printf("=> %+v\n", result.Error)
 				}
-				err = s.Salvar(tt.args.ctx, result.Empresa)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para Empresa = %s | %s | %d", err, tt.wantErr,
-						result.Empresa.CNPJ, result.Empresa.Nome, result.Empresa.Ano)
+				if result.Empresa != nil {
+					err = s.Salvar(tt.args.ctx, result.Empresa)
+					if (err != nil) != tt.wantErr {
+						t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para Empresa = %s | %s | %d", err, tt.wantErr,
+							result.Empresa.CNPJ, result.Empresa.Nome, result.Empresa.Ano)
+					}
 				}
 			}
 		})

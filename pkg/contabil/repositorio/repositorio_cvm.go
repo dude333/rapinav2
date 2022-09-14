@@ -267,7 +267,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, hash string, results chan<- contá
 	} // next k
 
 	results <- contábil.Resultado{Hash: hash}
-	progress.Status("Linhas processadas: %d", num)
+	progress.Debug("Linhas processadas: %d", num)
 }
 
 // próxChave retora a chave com a próxima chave:

@@ -105,20 +105,20 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		progress.Debug("Usando arquivo de configuração: %v", viper.ConfigFileUsed())
+		progress.Debug("Arquivo de configuração: %v", viper.ConfigFileUsed())
 	}
 
 	flags.dataSrc = dataSrcDefault
 	if viper.IsSet("dataSrc") {
 		flags.dataSrc = viper.GetString("dataSrc")
 	}
-	progress.Debug("Usando dataSrc = %s", flags.dataSrc)
+	progress.Debug("dataSrc = %s", flags.dataSrc)
 
 	flags.tempDir = tempDirDefault
 	if viper.IsSet("tempDir") {
 		flags.tempDir = viper.GetString("tempDir")
 	}
-	progress.Debug("Usando tempDir = %s", flags.tempDir)
+	progress.Debug("tempDir = %s", flags.tempDir)
 }
 
 var _db *sqlx.DB

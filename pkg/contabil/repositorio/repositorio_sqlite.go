@@ -195,7 +195,7 @@ func (s Slice) Swap(i, j int) {
 }
 
 func (s *Sqlite) Salvar(ctx context.Context, dfp *contábil.DemonstraçãoFinanceira) error {
-	// progress.Status("%-60s %4d\n", empresa.Nome, len(empresa.Contas))
+	// progress.Debug("%-60s %4d\n", dfp.Nome, len(dfp.Contas))
 
 	return s.inserirOuAtualizarEmpresa(ctx, dfp)
 }
