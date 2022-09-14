@@ -46,7 +46,7 @@ func (m *mockService) Relatório(cnpj string, ano int) (*contábil.Demonstraçã
 	d.Ano = ano
 	return &d, nil
 }
-func (m *mockService) Empresas(nome string) []string {
+func (m *mockService) Empresas(nome string) []rapina.Empresa {
 	return nil
 }
 

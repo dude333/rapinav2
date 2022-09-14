@@ -60,6 +60,15 @@ func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.Demon
 	return _cache[uint32(y)], nil
 }
 
+func (r repoBD) Hashes() []string {
+	var hashes []string
+	return hashes
+}
+
+func (r repoBD) SalvarHash(ctx context.Context, hash string) error {
+	return nil
+}
+
 func (r *repoBD) Salvar(_ context.Context, e *contábil.DemonstraçãoFinanceira) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
@@ -69,8 +78,12 @@ func (r *repoBD) Salvar(_ context.Context, e *contábil.DemonstraçãoFinanceira
 	return nil
 }
 
-func (r repoBD) Empresas(ctx context.Context, nome string) []string {
-	return []string{"a", "b", "c"}
+func (r repoBD) Empresas(ctx context.Context, nome string) []rapina.Empresa {
+	return []rapina.Empresa{
+		{Nome: "a", CNPJ: "cnpjA"},
+		{Nome: "b", CNPJ: "cnpjB"},
+		{Nome: "c", CNPJ: "cnpjC"},
+	}
 }
 
 type repoAPI struct{}
@@ -190,7 +203,7 @@ func Test_dfp_Empresas(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    []string
+		want    []rapina.Empresa
 		wantErr bool
 	}{
 		{
@@ -199,8 +212,12 @@ func Test_dfp_Empresas(t *testing.T) {
 				api: &repoAPI{},
 				bd:  &repoBD{},
 			},
-			args:    args{nome: "a"},
-			want:    []string{"a", "b", "c"},
+			args: args{nome: "a"},
+			want: []rapina.Empresa{
+				{Nome: "a", CNPJ: "cnpjA"},
+				{Nome: "b", CNPJ: "cnpjB"},
+				{Nome: "c", CNPJ: "cnpjC"},
+			},
 			wantErr: false,
 		},
 	}

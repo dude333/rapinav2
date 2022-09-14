@@ -42,10 +42,12 @@ type Importação interface {
 type Leitura interface {
 	Ler(ctx context.Context, cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error)
 	Empresas(ctx context.Context, nome string) []rapina.Empresa
+	Hashes() []string
 }
 
 type Escrita interface {
 	Salvar(ctx context.Context, empresa *contábil.DemonstraçãoFinanceira) error
+	SalvarHash(ctx context.Context, hash string) error
 }
 
 type LeituraEscrita interface {
@@ -63,12 +65,15 @@ type DemonstraçãoFinanceira struct {
 func NovoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
 	dfp := DemonstraçãoFinanceira{}
 
-	repoCVM, err := repositorio.NovoCVM(repositorio.CfgDirDados(tempDir))
+	repoSqlite, err := repositorio.NovoSqlite(db)
 	if err != nil {
 		return &dfp, err
 	}
 
-	repoSqlite, err := repositorio.NovoSqlite(db)
+	repoCVM, err := repositorio.NovoCVM(
+		repositorio.CfgDirDados(tempDir),
+		repositorio.CfgArquivosJáProcessados(repoSqlite.Hashes()),
+	)
 	if err != nil {
 		return &dfp, err
 	}
@@ -98,9 +103,17 @@ func (e *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 			progress.Error(result.Error)
 			continue
 		}
-		err := e.bd.Salvar(ctx, result.Empresa)
-		if err != nil {
-			return err
+		if len(result.Hash) > 0 {
+			err := e.bd.SalvarHash(ctx, result.Hash)
+			if err != nil {
+				progress.ErrorMsg("erro salvando hash: %v", err)
+			}
+		}
+		if result.Empresa != nil {
+			err := e.bd.Salvar(ctx, result.Empresa)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

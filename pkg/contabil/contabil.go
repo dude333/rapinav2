@@ -55,6 +55,7 @@ func (c Conta) Válida() bool {
 
 type Resultado struct {
 	Empresa *DemonstraçãoFinanceira
+	Hash    string
 	Error   error
 }
 

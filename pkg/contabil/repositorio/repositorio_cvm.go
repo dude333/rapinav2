@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -136,14 +137,33 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan con
 		}()
 
 		for _, arquivo := range arquivos {
-			progress.Running(arquivo)
+			progress.Running(arquivo.path)
+
+			// Ignora arquivos já processados
+			if c.existe(arquivo.hash) {
+				progress.RunFail()
+				progress.Warning("Arquivo %s já foi processado anteriormente", filepath.Base(arquivo.path))
+				continue
+			}
 			// Processa o arquivo e envia o resultado para o canal 'results'
 			_ = processarArquivoDFP(ctx, arquivo, results)
 			progress.RunOK()
 		}
-
 	}()
+
 	return results
+}
+
+func (c CVM) existe(hash string) bool {
+	if len(hash) == 0 {
+		return false
+	}
+	for i := range c.arquivosJáProcessados {
+		if c.arquivosJáProcessados[i] == hash {
+			return true
+		}
+	}
+	return false
 }
 
 func arquivoDFP(ano int) (url, zip string, err error) {
@@ -166,8 +186,8 @@ func arquivoITR(ano int) (url, zip string, err error) {
 	return url, zip, nil
 }
 
-func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- contábil.Resultado) error {
-	fh, err := os.Open(arquivo)
+func processarArquivoDFP(ctx context.Context, arquivo Arquivo, results chan<- contábil.Resultado) error {
+	fh, err := os.Open(arquivo.path)
 	if err != nil {
 		return err
 	}
@@ -192,7 +212,7 @@ func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- con
 		empresas[k] = append(empresas[k], dfp)
 	}
 
-	enviarDFP(empresas, results)
+	enviarDFP(empresas, arquivo.hash, results)
 
 	return nil
 }
@@ -200,7 +220,7 @@ func processarArquivoDFP(ctx context.Context, arquivo string, results chan<- con
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado) {
+func enviarDFP(empresas map[string][]*cvmDFP, hash string, results chan<- contábil.Resultado) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -245,6 +265,8 @@ func enviarDFP(empresas map[string][]*cvmDFP, results chan<- contábil.Resultado
 			}
 		}
 	} // next k
+
+	results <- contábil.Resultado{Hash: hash}
 	progress.Status("Linhas processadas: %d", num)
 }
 

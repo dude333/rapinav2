@@ -150,6 +150,17 @@ func (s *Sqlite) Empresas(ctx context.Context, nome string) []rapina.Empresa {
 	return ordenar(ret, toSort)
 }
 
+func (s *Sqlite) Hashes() []string {
+	var hashes []string
+	_ = s.db.Select(&hashes, `SELECT DISTINCT(hash) FROM hashes`)
+	return hashes
+}
+
+func (s *Sqlite) SalvarHash(ctx context.Context, hash string) error {
+	_, err := s.db.ExecContext(ctx, `INSERT OR REPLACE INTO hashes (hash) VALUES ($1)`, hash)
+	return err
+}
+
 // ordenar ordenada a []string "orig" com base na []string
 // transformada "transf". Serve para ordenar []string com acentos
 // ou outros sinais diacríticos.
@@ -409,10 +420,20 @@ var tabelas = []struct {
 		)`,
 		down: `DROP TABLE contas`,
 	},
+	{
+		nome:   "hashes",
+		versão: _ver_,
+		up: `CREATE TABLE IF NOT EXISTS hashes (
+			id             INTEGER PRIMARY KEY AUTOINCREMENT,
+			hash           VARCHAR NOT NULL,
+			UNIQUE (hash)
+		)`,
+		down: "DROP TABLE hashes",
+	},
 }
 
 const (
-	_ver_                 = 13
+	_ver_                 = 14
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL
