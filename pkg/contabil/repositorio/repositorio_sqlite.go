@@ -400,7 +400,7 @@ var tabelas = []struct {
 			data_ini_exerc VARCHAR,
 			UNIQUE (cnpj, ano)
 		)`,
-		down: `DROP TABLE empresas`,
+		down: `DROP TABLE IF EXISTS empresas`,
 	},
 	{nome: "contas",
 		versão: _ver_,
@@ -418,7 +418,7 @@ var tabelas = []struct {
 			moeda          VARCHAR,
 			PRIMARY KEY (id_empresa, codigo, meses)
 		)`,
-		down: `DROP TABLE contas`,
+		down: `DROP TABLE IF EXISTS contas`,
 	},
 	{
 		nome:   "hashes",
@@ -428,7 +428,7 @@ var tabelas = []struct {
 			hash           VARCHAR NOT NULL,
 			UNIQUE (hash)
 		)`,
-		down: "DROP TABLE hashes",
+		down: "DROP TABLE IF EXISTS hashes",
 	},
 }
 
