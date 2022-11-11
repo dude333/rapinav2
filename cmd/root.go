@@ -26,7 +26,7 @@ var flags = struct {
 }{}
 
 const (
-	configFileName = "rapina.conf"
+	configFileName = "rapina.yaml"
 	dataSrcDefault = "file:.dados/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
 	tempDirDefault = ".dados/"
 )
@@ -99,7 +99,7 @@ func initConfig() {
 		viper.SetConfigName(configFileName)
 	}
 
-	viper.SetConfigType("env")
+	viper.SetConfigType("yaml")
 
 	viper.AutomaticEnv() // read in environment variables that match
 

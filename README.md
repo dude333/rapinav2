@@ -54,6 +54,27 @@ internal/
         * BPA, BPP, DFC
         * FII
     * O resultado é salvo no banco de dados
+    
+    2.1. Relatório CSV
+        * Dados (na horizontal):
+            Ano
+            Pat. Líq.
+            Receita Líq.
+            EBITDA
+            Res. Fin.
+            Lucro Líq.
+            Mrg. Líq.
+            ROE
+            Caixa
+            Dívida
+            D. L. / EBITDA
+            FCO
+            CAPEX
+            FCF
+            FCL CAPEX
+            Prov.
+            Payout
+
 
 3. Dividendos
     * Pasta: `dividendos`

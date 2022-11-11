@@ -51,6 +51,38 @@ func (c Conta) Válida() bool {
 			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
 }
 
+type ConfigConta struct {
+	AtivoTotal        []string
+	AtivoCirc         []string
+	AtivoNCirc        []string
+	Caixa             []string
+	AplicFinanceiras  []string
+	Estoque           []string
+	ContasARecebCirc  []string
+	ContasARecebNCirc []string
+	PassivoTotal      []string
+	PassivoCirc       []string
+	PassivoNCirc      []string
+	Equity            []string
+	DividaCirc        []string
+	DividaNCirc       []string
+	DividendosJCP     []string
+	DividendosMin     []string
+	Vendas            []string
+	CustoVendas       []string
+	DespesasOp        []string
+	EBIT              []string
+	ResulFinanc       []string
+	ResulOpDescont    []string
+	LucLiq            []string
+	FCO               []string
+	FCI               []string
+	FCF               []string
+	Deprec            []string
+	JurosCapProp      []string
+	Dividendos        []string
+}
+
 // -- REPOSITÓRIO & SERVIÇO --
 
 type Resultado struct {

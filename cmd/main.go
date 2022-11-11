@@ -10,7 +10,7 @@ import (
 
 func main() {
 	// defer profile.Start().Stop()
-	progress.SetDebug(false)
+	progress.SetDebug(true)
 
 	Execute()
 }
