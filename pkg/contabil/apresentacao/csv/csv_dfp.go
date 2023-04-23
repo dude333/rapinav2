@@ -12,7 +12,7 @@ import (
 	"os"
 
 	rapina "github.com/dude333/rapinav2"
-	contábil "github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/contabil"
 	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
@@ -20,7 +20,7 @@ import (
 )
 
 type CSV struct {
-	svc contábil.Serviço
+	svc contabil.Serviço
 }
 
 func NovoCSV(db *sqlx.DB) (*CSV, error) {
@@ -51,7 +51,7 @@ func Relatório(db *sqlx.DB, cnpj string, ano int) error {
 		return err
 	}
 
-	var dfps []*contábil.DemonstraçãoFinanceira
+	var dfps []*contabil.DemonstraçãoFinanceira
 
 	for a := ano; ; a-- {
 		dfp, err := c.svc.Relatório(cnpj, a)

@@ -17,7 +17,7 @@ import (
 // e períodos.
 
 // ContaYaml armazena os dados importados do arquivo yaml (deve ser convertido
-// em contábil.ConfigConta).
+// em contabil.ConfigConta).
 // Formato: [["1", "Descrição 1"], ["1.1", "Descrição 1.1"]]
 type Modelo struct {
 	AtivoTotal        [][]string `yaml:"AtivoTotal"`

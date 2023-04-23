@@ -13,26 +13,26 @@ import (
 	"time"
 
 	rapina "github.com/dude333/rapinav2"
-	contábil "github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
 var (
-	_cache    map[uint32]*contábil.DemonstraçãoFinanceira
-	_exemplos = []*contábil.DemonstraçãoFinanceira{}
+	_cache    map[uint32]*contabil.DemonstraçãoFinanceira
+	_exemplos = []*contabil.DemonstraçãoFinanceira{}
 )
 
 func init() {
-	_cache = make(map[uint32]*contábil.DemonstraçãoFinanceira)
+	_cache = make(map[uint32]*contabil.DemonstraçãoFinanceira)
 
 	for i := 1; i <= 10; i++ {
-		r := contábil.DemonstraçãoFinanceira{
+		r := contabil.DemonstraçãoFinanceira{
 			Empresa: rapina.Empresa{
 				CNPJ: fmt.Sprintf("%010d", i),
 				Nome: fmt.Sprintf("Empresa %02d", i),
 			},
 			Ano: 2021,
-			Contas: []contábil.Conta{
+			Contas: []contabil.Conta{
 				{
 					Código:       fmt.Sprintf("%d.%d", i, i),
 					Descr:        fmt.Sprintf("Descrição %d", i),
@@ -54,7 +54,7 @@ func init() {
 
 type repoBD struct{}
 
-func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error) {
+func (r repoBD) Ler(ctx context.Context, cnpj string, ano int) (*contabil.DemonstraçãoFinanceira, error) {
 	x := fmt.Sprintf("%s%d", cnpj, ano)
 	y, _ := strconv.Atoi(x)
 	return _cache[uint32(y)], nil
@@ -69,7 +69,7 @@ func (r repoBD) SalvarHash(ctx context.Context, hash string) error {
 	return nil
 }
 
-func (r *repoBD) Salvar(_ context.Context, e *contábil.DemonstraçãoFinanceira) error {
+func (r *repoBD) Salvar(_ context.Context, e *contabil.DemonstraçãoFinanceira) error {
 	x := fmt.Sprintf("%s%d", e.CNPJ, e.Ano)
 	y, _ := strconv.Atoi(x)
 	_cache[uint32(y)] = e
@@ -88,13 +88,13 @@ func (r repoBD) Empresas(ctx context.Context, nome string) []rapina.Empresa {
 
 type repoAPI struct{}
 
-func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan contábil.Resultado {
-	results := make(chan contábil.Resultado)
+func (r *repoAPI) Importar(ctx context.Context, ano int, trim bool) <-chan contabil.Resultado {
+	results := make(chan contabil.Resultado)
 	go func() {
 		defer close(results)
 
 		for _, ex := range _exemplos {
-			result := contábil.Resultado{
+			result := contabil.Resultado{
 				Empresa: ex,
 				Error:   nil,
 			}

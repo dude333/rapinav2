@@ -25,7 +25,7 @@ import (
 	"time"
 
 	rapina "github.com/dude333/rapinav2"
-	contábil "github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/contabil/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
@@ -36,17 +36,17 @@ var (
 )
 
 type Importação interface {
-	Importar(ctx context.Context, ano int, trimestral bool) <-chan contábil.Resultado
+	Importar(ctx context.Context, ano int, trimestral bool) <-chan contabil.Resultado
 }
 
 type Leitura interface {
-	Ler(ctx context.Context, cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error)
+	Ler(ctx context.Context, cnpj string, ano int) (*contabil.DemonstraçãoFinanceira, error)
 	Empresas(ctx context.Context, nome string) []rapina.Empresa
 	Hashes() []string
 }
 
 type Escrita interface {
-	Salvar(ctx context.Context, empresa *contábil.DemonstraçãoFinanceira) error
+	Salvar(ctx context.Context, empresa *contabil.DemonstraçãoFinanceira) error
 	SalvarHash(ctx context.Context, hash string) error
 }
 
@@ -120,9 +120,9 @@ func (e *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 	return nil
 }
 
-func (e *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*contábil.DemonstraçãoFinanceira, error) {
+func (e *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*contabil.DemonstraçãoFinanceira, error) {
 	if e.bd == nil {
-		return &contábil.DemonstraçãoFinanceira{}, ErrRepositórioInválido
+		return &contabil.DemonstraçãoFinanceira{}, ErrRepositórioInválido
 	}
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
 	dfp, err := e.bd.Ler(context.Background(), cnpj, ano)

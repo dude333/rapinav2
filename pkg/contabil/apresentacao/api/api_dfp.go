@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	contábil "github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/contabil"
 	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 )
 
 type htmlDFP struct {
-	svc contábil.Serviço
+	svc contabil.Serviço
 }
 
 func NewAPI(e *echo.Echo, db *sqlx.DB, dataDir string) {

@@ -7,9 +7,10 @@ package repositorio
 import (
 	"context"
 	"fmt"
-	contábil "github.com/dude333/rapinav2/pkg/contabil"
-	"github.com/jmoiron/sqlx"
 	"testing"
+
+	"github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/jmoiron/sqlx"
 )
 
 func Test_cvm_Importar(t *testing.T) {
@@ -21,7 +22,7 @@ func Test_cvm_Importar(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    <-chan contábil.Resultado
+		want    <-chan contabil.Resultado
 		wantErr bool
 	}{
 		{
@@ -30,7 +31,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2020,
 			},
-			want:    make(<-chan contábil.Resultado),
+			want:    make(<-chan contabil.Resultado),
 			wantErr: false,
 		},
 		{
@@ -39,7 +40,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ctx: context.Background(),
 				ano: 2019,
 			},
-			want:    make(<-chan contábil.Resultado),
+			want:    make(<-chan contabil.Resultado),
 			wantErr: false,
 		},
 	}

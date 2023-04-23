@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package contábil
+package contabil
 
 import (
 	"testing"
