@@ -5,7 +5,6 @@
 package main
 
 import (
-	"strconv"
 	"time"
 
 	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
@@ -33,37 +32,32 @@ func init() {
 }
 
 func atualizar(cmd *cobra.Command, args []string) {
-	svc, err := serviço.NovoDemonstraçãoFinanceira(db(), flags.tempDir)
-	if err != nil {
-		panic(err)
-	}
-
 	progress.Status("{%d}", flags.atualizar.ano)
 
 	anoi := 2010
-	anof, err := strconv.Atoi(time.Now().Format("2006"))
-	if err != nil {
-		progress.Error(err)
-		return
-	}
+	anof := time.Now().Year()
 
 	if flags.atualizar.ano >= 2000 {
 		anoi = flags.atualizar.ano
 		anof = anoi
 	}
 
-	trimestral := false
-	for passo := 1; passo <= 2; passo++ {
-		for ano := anof; ano >= anoi; ano-- {
+	svc, err := serviço.NovoDemonstraçãoFinanceira(db(), flags.tempDir)
+	if err != nil {
+		panic(err)
+	}
 
+	importar := func(trimestral bool) {
+		for ano := anof; ano >= anoi; ano-- {
 			err := svc.Importar(ano, trimestral)
 			if err != nil {
 				progress.Error(err)
 				continue
 			}
+		}
+	}
 
-		} // próx. ano
-		trimestral = true
-	} // próx. passo
+	importar(false)
+	importar(true)
 
 }

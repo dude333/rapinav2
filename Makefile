@@ -2,10 +2,6 @@ BUILDDIR     = cmd/*
 SOURCEDIR    = .
 SOURCES     := $(shell find $(SOURCEDIR) -name '*.go' | grep -v "_test.go")
 
-FE_DIR       = frontend
-FE_SOURCES  := $(shell find $(FE_DIR)/src -type f) $(FE_DIR)/package.json
-FE_BUILD     = $(FE_DIR)/public/build/bundle.js
-
 BINARYDIR=.
 BINARY=rapina
 WINBINARY=rapina.exe
@@ -21,18 +17,10 @@ LDFLAGS=-ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD_TIME}"
 
 .DEFAULT_GOAL: $(BINARY)
 
-$(BINARY): $(SOURCES) $(FE_BUILD)
+$(BINARY): $(SOURCES)
 	go build ${LDFLAGS} -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
 
-run: $(FE_BUILD)
-	go run cmd/*.go servidor
-
-$(FE_BUILD): $(FE_SOURCES)
-	cd $(FE_DIR) && pnpm run build || npm run build
-
-frontend: $(FE_BUILD)
-
-win: $(wildcard *.go) $(FE_BUILD)
+win: $(wildcard *.go)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc-win32 CXX=x86_64-w64-mingw32-cpp-win32 CGO_LDFLAGS="-lssp -w"  go build ${LDFLAGS} -o ${BINARYDIR}/$(WINBINARY) $(BUILDDIR)
 
 osx:  $(SOURCES)

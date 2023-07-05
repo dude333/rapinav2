@@ -6,13 +6,10 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
-	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,7 +17,6 @@ import (
 var flags = struct {
 	verbose   bool
 	atualizar flagsAtualizar
-	relatorio flagsRelatorio
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
 	tempDir   string // arquivos temporários
 }{}
@@ -136,28 +132,4 @@ func db() *sqlx.DB {
 	_db.SetMaxOpenConns(1)
 
 	return _db
-}
-
-func promptUser(list []rapina.Empresa) (result string) {
-	templates := &promptui.SelectTemplates{
-		Help: `{{ "Use estas teclas para navegar:" | faint }} {{ .NextKey | faint }} ` +
-			`{{ .PrevKey | faint }} {{ .PageDownKey | faint }} {{ .PageUpKey | faint }} ` +
-			`{{ if .Search }} {{ "and" | faint }} {{ .SearchKey | faint }} {{ "toggles search" | faint }}{{ end }}`,
-	}
-
-	prompt := promptui.Select{
-		Label:     "Selecione a Empresa",
-		Items:     list,
-		Size:      10,
-		Templates: templates,
-	}
-
-	_, result, err := prompt.Run()
-
-	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return
-	}
-
-	return
 }
