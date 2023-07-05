@@ -13,7 +13,7 @@ import (
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
-	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
+	svc "github.com/dude333/rapinav2/pkg/contabil/servico"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/text/encoding/charmap"
@@ -24,7 +24,7 @@ type CSV struct {
 }
 
 func NovoCSV(db *sqlx.DB) (*CSV, error) {
-	svc, err := serviço.NovoDemonstraçãoFinanceira(db, "")
+	svc, err := svc.NovoDemonstraçãoFinanceira(db, "")
 	if err != nil {
 		return &CSV{}, err
 	}
