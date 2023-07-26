@@ -5,6 +5,7 @@
 package repositorio
 
 import (
+	"net/url"
 	"path"
 
 	ext "github.com/dude333/rapinav2/pkg/infra"
@@ -13,7 +14,7 @@ import (
 // infra define uma interface para que este respositório não fique amarrado
 // na implementação de uma única biblioteca externa.
 type infra interface {
-	DownloadAndUnzip(url, zip string, filtros []string) ([]Arquivo, error)
+	DownloadAndUnzip(url string, filtros []string) ([]Arquivo, error)
 	Cleanup(files []Arquivo) []string
 }
 
@@ -26,9 +27,14 @@ type localInfra struct {
 	dirDados string // diretório de dados
 }
 
-func (l localInfra) DownloadAndUnzip(url, arquivo string, filtros []string) ([]Arquivo, error) {
+func (l localInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arquivo, error) {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return []Arquivo{}, err
+	}
+	arquivo := path.Base(u.Path)
 	zip := path.Join(l.dirDados, arquivo)
-	arqs, err := ext.DownloadAndUnzip(url, zip, filtros)
+	arqs, err := ext.DownloadAndUnzip(urlString, zip, filtros)
 	if err != nil {
 		return []Arquivo{}, err
 	}

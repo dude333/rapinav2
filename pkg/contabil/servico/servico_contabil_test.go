@@ -158,12 +158,12 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := novoDemonstraçãoFinanceira(
+			r, err := novoSvcDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.db,
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NovoServiçoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil {
 				return
@@ -223,12 +223,12 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := novoDemonstraçãoFinanceira(
+			r, err := novoSvcDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.bd,
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NovoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NovoServiçoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err != nil {
 				return

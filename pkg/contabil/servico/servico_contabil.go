@@ -62,7 +62,7 @@ type DemonstraçãoFinanceira struct {
 	bd  LeituraEscrita
 }
 
-func NovoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
+func NovoServiçoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
 	dfp := DemonstraçãoFinanceira{}
 
 	repoSqlite, err := repositorio.NovoSqlite(db)
@@ -78,10 +78,10 @@ func NovoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoF
 		return &dfp, err
 	}
 
-	return novoDemonstraçãoFinanceira(repoCVM, repoSqlite)
+	return novoSvcDemonstraçãoFinanceira(repoCVM, repoSqlite)
 }
 
-func novoDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
+func novoSvcDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
 	if api == nil || bd == nil {
 		return &DemonstraçãoFinanceira{}, ErrRepositórioInválido
 	}
@@ -91,26 +91,26 @@ func novoDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*Demonst
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (e *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
+func (df *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
 	// result retorna o registro após a leitura de cada linha
 	// do arquivo importado
-	for result := range e.api.Importar(ctx, ano, trimestral) {
+	for result := range df.api.Importar(ctx, ano, trimestral) {
 		if result.Error != nil {
 			progress.Error(result.Error)
 			continue
 		}
 		if len(result.Hash) > 0 {
-			err := e.bd.SalvarHash(ctx, result.Hash)
+			err := df.bd.SalvarHash(ctx, result.Hash)
 			if err != nil {
 				progress.ErrorMsg("erro salvando hash: %v", err)
 			}
 		}
 		if result.Empresa != nil {
-			err := e.bd.Salvar(ctx, result.Empresa)
+			err := df.bd.Salvar(ctx, result.Empresa)
 			if err != nil {
 				return err
 			}
@@ -120,20 +120,20 @@ func (e *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 	return nil
 }
 
-func (e *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*contabil.DemonstraçãoFinanceira, error) {
-	if e.bd == nil {
+func (df *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*contabil.DemonstraçãoFinanceira, error) {
+	if df.bd == nil {
 		return &contabil.DemonstraçãoFinanceira{}, ErrRepositórioInválido
 	}
 	progress.Debug("Ler(%s, %d)", cnpj, ano)
-	dfp, err := e.bd.Ler(context.Background(), cnpj, ano)
+	dfp, err := df.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
 }
 
-func (e *DemonstraçãoFinanceira) Empresas(nome string) []rapina.Empresa {
-	if e.bd == nil {
+func (df *DemonstraçãoFinanceira) Empresas(nome string) []rapina.Empresa {
+	if df.bd == nil {
 		return []rapina.Empresa{}
 	}
 	progress.Debug("Empresas(%s)", nome)
-	lista := e.bd.Empresas(context.Background(), nome)
+	lista := df.bd.Empresas(context.Background(), nome)
 	return lista
 }

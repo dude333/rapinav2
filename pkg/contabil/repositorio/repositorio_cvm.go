@@ -113,21 +113,12 @@ func NovoCVM(configs ...ConfigFn) (*CVM, error) {
 func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan contabil.Resultado {
 	results := make(chan contabil.Resultado)
 
-	arqFn := arquivoDFP
-	if trimestral {
-		arqFn = arquivoITR
-	}
-
 	go func() {
 		defer close(results)
 
-		url, zip, err := arqFn(ano)
-		if err != nil {
-			results <- contabil.Resultado{Error: err}
-			return
-		}
+		url := urlArquivo(ano, trimestral)
 
-		arquivos, err := c.infra.DownloadAndUnzip(url, zip, Config.Filtros)
+		arquivos, err := c.infra.DownloadAndUnzip(url, Config.Filtros)
 		if err != nil {
 			results <- contabil.Resultado{Error: err}
 			return
@@ -166,24 +157,15 @@ func (c CVM) existe(hash string) bool {
 	return false
 }
 
-func arquivoDFP(ano int) (url, zip string, err error) {
-	if ano < 2000 || ano > 3000 {
-		return "", "", ErrAnoInválidoFn(ano)
-	}
-	zip = fmt.Sprintf(`dfp_cia_aberta_%d.zip`, ano)
-	url = `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/` + zip
-
-	return url, zip, nil
-}
-
-func arquivoITR(ano int) (url, zip string, err error) {
-	if ano < 2000 || ano > 3000 {
-		return "", "", ErrAnoInválidoFn(ano)
-	}
-	zip = fmt.Sprintf(`itr_cia_aberta_%d.zip`, ano)
-	url = `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/` + zip
-
-	return url, zip, nil
+func urlArquivo(ano int, trimestral bool) string {
+	tipo := func() string {
+		if trimestral {
+			return "ITR"
+		}
+		return "DFP"
+	}()
+	zip := fmt.Sprintf(`%s_cia_aberta_%d.zip`, tipo, ano)
+	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/` + tipo + `/DADOS/` + zip
 }
 
 func processarArquivoDFP(ctx context.Context, arquivo Arquivo, results chan<- contabil.Resultado) error {

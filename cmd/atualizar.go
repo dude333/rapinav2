@@ -42,7 +42,7 @@ func atualizar(cmd *cobra.Command, args []string) {
 		anof = anoi
 	}
 
-	svc, err := serviço.NovoDemonstraçãoFinanceira(db(), flags.tempDir)
+	svc, err := serviço.NovoServiçoDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
 		panic(err)
 	}
