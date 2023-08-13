@@ -63,15 +63,7 @@ func NovaDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoF
 		return &dfp, err
 	}
 
-	return novaDemonstraçãoFinanceira(repoCVM, repoSqlite)
-}
-
-func novaDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
-	if api == nil || bd == nil {
-		return &DemonstraçãoFinanceira{}, ErrRepositórioInválido
-	}
-
-	return &DemonstraçãoFinanceira{api: api, bd: bd}, nil
+	return &DemonstraçãoFinanceira{api: repoCVM, bd: repoSqlite}, nil
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva

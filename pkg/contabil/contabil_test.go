@@ -129,24 +129,6 @@ func Test_registro_Importar(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "não deveria funcionar sem bd",
-			fields: fields{
-				api: &repoAPI{},
-				db:  nil,
-			},
-			args:    args{},
-			wantErr: true,
-		},
-		{
-			name: "não deveria funcionar sem api e bd",
-			fields: fields{
-				api: nil,
-				db:  nil,
-			},
-			args:    args{},
-			wantErr: true,
-		},
-		{
 			name: "deveria funcionar",
 			fields: fields{
 				api: &repoAPI{},
@@ -158,17 +140,11 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := novaDemonstraçãoFinanceira(
-				tt.fields.api,
-				tt.fields.db,
-			)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NovoServiçoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
+			r := &DemonstraçãoFinanceira{
+				api: tt.fields.api,
+				bd:  tt.fields.db,
 			}
-			if err != nil {
-				return
-			}
-			err = r.Importar(tt.args.ano, tt.args.trimestral)
+			err := r.Importar(tt.args.ano, tt.args.trimestral)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("registro.Importar() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -223,15 +199,9 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := novaDemonstraçãoFinanceira(
-				tt.fields.api,
-				tt.fields.bd,
-			)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NovoServiçoDemonstraçãoFinanceira() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if err != nil {
-				return
+			r := &DemonstraçãoFinanceira{
+				api: tt.fields.api,
+				bd:  tt.fields.bd,
 			}
 			if got := r.Empresas(tt.args.nome); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("dfp.Empresas() = %v, want %v", got, tt.want)
