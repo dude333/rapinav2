@@ -43,8 +43,8 @@ type LeituraEscrita interface {
 // DemonstraçãoFinanceira é um serviço que busca os relatórios contábeis de uma empresa
 // em vários repositórios (API e BD).
 type DemonstraçãoFinanceira struct {
-	api Importação
-	bd  LeituraEscrita
+	api *repositorio.CVM
+	bd  *repositorio.Sqlite
 }
 
 func NovaDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
