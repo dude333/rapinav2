@@ -7,7 +7,7 @@ package main
 import (
 	"time"
 
-	serviço "github.com/dude333/rapinav2/pkg/contabil/servico"
+	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +42,7 @@ func atualizar(cmd *cobra.Command, args []string) {
 		anof = anoi
 	}
 
-	svc, err := serviço.NovoServiçoDemonstraçãoFinanceira(db(), flags.tempDir)
+	svc, err := contabil.NovoServiçoDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
 		panic(err)
 	}

@@ -1,98 +1,124 @@
-// SPDX-FileCopyrightText: 2022 Adriano Prado <dev@dude333.com>
+// SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
 //
 // SPDX-License-Identifier: MIT
 
 package contabil
 
 import (
-	"strings"
+	"context"
+	"errors"
+	"time"
 
 	rapina "github.com/dude333/rapinav2"
+	"github.com/dude333/rapinav2/pkg/contabil/dominio"
+	"github.com/dude333/rapinav2/pkg/contabil/repositorio"
+	"github.com/dude333/rapinav2/pkg/progress"
+	"github.com/jmoiron/sqlx"
 )
 
-// DemonstraçãoFinanceira contém a demonstração financeira de uma empresa
-// num dado ano (contém dados acumulados desde DataIniExerc).
+var (
+	ErrRepositórioInválido = errors.New("repositório inválido")
+)
+
+type Importação interface {
+	Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado
+}
+
+type Leitura interface {
+	Ler(ctx context.Context, cnpj string, ano int) (*dominio.DemonstraçãoFinanceira, error)
+	Empresas(ctx context.Context, nome string) []rapina.Empresa
+	Hashes() []string
+}
+
+type Escrita interface {
+	Salvar(ctx context.Context, empresa *dominio.DemonstraçãoFinanceira) error
+	SalvarHash(ctx context.Context, hash string) error
+}
+
+type LeituraEscrita interface {
+	Leitura
+	Escrita
+}
+
+// DemonstraçãoFinanceira é um serviço que busca os relatórios contábeis de uma empresa
+// em vários repositórios (API e BD).
 type DemonstraçãoFinanceira struct {
-	rapina.Empresa
-	Ano          int
-	DataIniExerc string
-	Contas       []Conta
+	api Importação
+	bd  LeituraEscrita
 }
 
-func (d DemonstraçãoFinanceira) Válida() bool {
-	return len(d.CNPJ) == len("17.836.901/0001-10") &&
-		len(d.Nome) > 0 &&
-		d.Ano >= 2000 && d.Ano < 2221 && // 2 séculos de rapina :)
-		len(d.Contas) > 0
+func NovoServiçoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
+	dfp := DemonstraçãoFinanceira{}
+
+	repoSqlite, err := repositorio.NovoSqlite(db)
+	if err != nil {
+		return &dfp, err
+	}
+
+	repoCVM, err := repositorio.NovoCVM(
+		repositorio.CfgDirDados(tempDir),
+		repositorio.CfgArquivosJáProcessados(repoSqlite.Hashes()),
+	)
+	if err != nil {
+		return &dfp, err
+	}
+
+	return novoSvcDemonstraçãoFinanceira(repoCVM, repoSqlite)
 }
 
-// Conta com os dados das Demonstrações Financeiras Padronizadas (DFP) ou
-// com as Informações Trimestrais (ITR).
-type Conta struct {
-	Código       string // 1, 1.01, 1.02...
-	Descr        string
-	Consolidado  bool   // Individual ou Consolidado
-	Grupo        string // BPA, BPP, DRE, DFC...
-	DataIniExerc string // AAAA-MM-DD
-	DataFimExerc string // AAAA-MM-DD
-	Meses        int    // Meses acumulados desde o início do período
-	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
-	Total        rapina.Dinheiro
+func novoSvcDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
+	if api == nil || bd == nil {
+		return &DemonstraçãoFinanceira{}, ErrRepositórioInválido
+	}
+
+	return &DemonstraçãoFinanceira{api: api, bd: bd}, nil
 }
 
-// Válida retorna verdadeiro se os dados da conta são válidos. Ignora os registros
-// do penúltimo ano, com exceção de 2009, uma vez que a CVM só disponibliza (pelo
-// menos em 2021) dados até 2010.
-func (c Conta) Válida() bool {
-	return len(c.Código) > 0 &&
-		len(c.Descr) > 0 &&
-		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
-		(c.OrdemExerc == "ÚLTIMO" ||
-			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
+// Importar importa os relatórios contábeis no ano especificado e os salva
+// no banco de dados.
+func (df *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
+	defer cancel()
+
+	// result retorna o registro após a leitura de cada linha
+	// do arquivo importado
+	for result := range df.api.Importar(ctx, ano, trimestral) {
+		if result.Error != nil {
+			progress.Error(result.Error)
+			continue
+		}
+		if len(result.Hash) > 0 {
+			err := df.bd.SalvarHash(ctx, result.Hash)
+			if err != nil {
+				progress.ErrorMsg("erro salvando hash: %v", err)
+			}
+		}
+		if result.Empresa != nil {
+			err := df.bd.Salvar(ctx, result.Empresa)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
-type ConfigConta struct {
-	AtivoTotal        []string
-	AtivoCirc         []string
-	AtivoNCirc        []string
-	Caixa             []string
-	AplicFinanceiras  []string
-	Estoque           []string
-	ContasARecebCirc  []string
-	ContasARecebNCirc []string
-	PassivoTotal      []string
-	PassivoCirc       []string
-	PassivoNCirc      []string
-	Equity            []string
-	DividaCirc        []string
-	DividaNCirc       []string
-	DividendosJCP     []string
-	DividendosMin     []string
-	Vendas            []string
-	CustoVendas       []string
-	DespesasOp        []string
-	EBIT              []string
-	ResulFinanc       []string
-	ResulOpDescont    []string
-	LucLiq            []string
-	FCO               []string
-	FCI               []string
-	FCF               []string
-	Deprec            []string
-	JurosCapProp      []string
-	Dividendos        []string
+func (df *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*dominio.DemonstraçãoFinanceira, error) {
+	if df.bd == nil {
+		return &dominio.DemonstraçãoFinanceira{}, ErrRepositórioInválido
+	}
+	progress.Debug("Ler(%s, %d)", cnpj, ano)
+	dfp, err := df.bd.Ler(context.Background(), cnpj, ano)
+	return dfp, err
 }
 
-// -- REPOSITÓRIO & SERVIÇO --
-
-type Resultado struct {
-	Empresa *DemonstraçãoFinanceira
-	Hash    string
-	Error   error
-}
-
-type Serviço interface {
-	// Importar(ano int, trimestral bool) error
-	Relatório(cnpj string, ano int) (*DemonstraçãoFinanceira, error)
-	Empresas(nome string) []rapina.Empresa
+func (df *DemonstraçãoFinanceira) Empresas(nome string) []rapina.Empresa {
+	if df.bd == nil {
+		return []rapina.Empresa{}
+	}
+	progress.Debug("Empresas(%s)", nome)
+	lista := df.bd.Empresas(context.Background(), nome)
+	return lista
 }

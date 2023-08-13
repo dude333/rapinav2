@@ -12,7 +12,7 @@ import (
 	"unicode"
 
 	rapina "github.com/dude333/rapinav2"
-	"github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/contabil/dominio"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"golang.org/x/text/runes"
@@ -60,7 +60,7 @@ func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
 	return &s, nil
 }
 
-func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contabil.DemonstraçãoFinanceira, error) {
+func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*dominio.DemonstraçãoFinanceira, error) {
 	var sd sqliteEmpresa
 	err := s.db.GetContext(ctx, &sd, `SELECT * FROM empresas WHERE cnpj=? AND ano=?`, &cnpj, &ano)
 	if err == sql.ErrNoRows {
@@ -71,7 +71,7 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contabil.Demon
 		return nil, err
 	}
 
-	dfp := contabil.DemonstraçãoFinanceira{
+	dfp := dominio.DemonstraçãoFinanceira{
 		Empresa: rapina.Empresa{
 			CNPJ: sd.CNPJ,
 			Nome: sd.Nome,
@@ -80,7 +80,7 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contabil.Demon
 		Contas: nil,
 	}
 
-	contas := make([]contabil.Conta, 0, 100)
+	contas := make([]dominio.Conta, 0, 100)
 	rows, err := s.db.QueryxContext(ctx,
 		`SELECT * FROM contas WHERE id_empresa=? ORDER BY codigo`, &sd.ID)
 	if err != nil {
@@ -94,7 +94,7 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*contabil.Demon
 			progress.Error(err)
 			return nil, err
 		}
-		conta := contabil.Conta{
+		conta := dominio.Conta{
 			Código:       sc.Código,
 			Descr:        sc.Descr,
 			Consolidado:  sc.Consolidado != 0,
@@ -194,7 +194,7 @@ func (s Slice) Swap(i, j int) {
 	s.idx[i], s.idx[j] = s.idx[j], s.idx[i]
 }
 
-func (s *Sqlite) Salvar(ctx context.Context, dfp *contabil.DemonstraçãoFinanceira) error {
+func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinanceira) error {
 	// progress.Debug("%-60s %4d\n", dfp.Nome, len(dfp.Contas))
 
 	return s.inserirOuAtualizarEmpresa(ctx, dfp)
@@ -222,7 +222,7 @@ type sqliteConta struct {
 	Moeda        string  `db:"moeda"`
 }
 
-func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contabil.DemonstraçãoFinanceira) error {
+func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *dominio.DemonstraçãoFinanceira) error {
 	d := sqliteEmpresa{
 		CNPJ:         e.CNPJ,
 		Nome:         e.Nome,
@@ -269,7 +269,7 @@ func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *contabil.Demo
 // inserirContas insere os registro das contas, sendo que deve ter sido garantido
 // previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []contabil.Conta) error {
+func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Conta) error {
 	if len(contas) == 0 {
 		return nil
 	}
