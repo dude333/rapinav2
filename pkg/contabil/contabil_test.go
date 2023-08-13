@@ -158,7 +158,7 @@ func Test_registro_Importar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := novoSvcDemonstraçãoFinanceira(
+			r, err := novaDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.db,
 			)
@@ -223,7 +223,7 @@ func Test_dfp_Empresas(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := novoSvcDemonstraçãoFinanceira(
+			r, err := novaDemonstraçãoFinanceira(
 				tt.fields.api,
 				tt.fields.bd,
 			)

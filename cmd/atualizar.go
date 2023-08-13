@@ -42,14 +42,14 @@ func atualizar(cmd *cobra.Command, args []string) {
 		anof = anoi
 	}
 
-	svc, err := contabil.NovoServiçoDemonstraçãoFinanceira(db(), flags.tempDir)
+	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
 		panic(err)
 	}
 
 	importar := func(trimestral bool) {
 		for ano := anof; ano >= anoi; ano-- {
-			err := svc.Importar(ano, trimestral)
+			err := dfp.Importar(ano, trimestral)
 			if err != nil {
 				progress.Error(err)
 				continue

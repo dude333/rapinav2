@@ -47,7 +47,7 @@ type DemonstraçãoFinanceira struct {
 	bd  LeituraEscrita
 }
 
-func NovoServiçoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
+func NovaDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
 	dfp := DemonstraçãoFinanceira{}
 
 	repoSqlite, err := repositorio.NovoSqlite(db)
@@ -63,10 +63,10 @@ func NovoServiçoDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*Demonst
 		return &dfp, err
 	}
 
-	return novoSvcDemonstraçãoFinanceira(repoCVM, repoSqlite)
+	return novaDemonstraçãoFinanceira(repoCVM, repoSqlite)
 }
 
-func novoSvcDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
+func novaDemonstraçãoFinanceira(api Importação, bd LeituraEscrita) (*DemonstraçãoFinanceira, error) {
 	if api == nil || bd == nil {
 		return &DemonstraçãoFinanceira{}, ErrRepositórioInválido
 	}
