@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"os"
+	"path/filepath"
 
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
@@ -109,12 +110,20 @@ func initConfig() {
 		flags.dataSrc = viper.GetString("dataSrc")
 	}
 	progress.Debug("dataSrc = %s", flags.dataSrc)
+	if err := createDir(flags.dataSrc); err != nil {
+		progress.Error(err)
+		os.Exit(1)
+	}
 
 	flags.tempDir = tempDirDefault
 	if viper.IsSet("tempDir") {
 		flags.tempDir = viper.GetString("tempDir")
 	}
 	progress.Debug("tempDir = %s", flags.tempDir)
+	if err := createDir(flags.tempDir); err != nil {
+		progress.Error(err)
+		os.Exit(1)
+	}
 }
 
 var _db *sqlx.DB
@@ -132,4 +141,9 @@ func db() *sqlx.DB {
 	_db.SetMaxOpenConns(1)
 
 	return _db
+}
+
+func createDir(filePath string) error {
+	dirPath := filepath.Dir(filePath)
+	return os.MkdirAll(dirPath, 0755)
 }

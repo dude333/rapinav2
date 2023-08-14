@@ -11,6 +11,7 @@ import (
 func main() {
 	// defer profile.Start().Stop()
 	progress.SetDebug(true)
+	progress.SetTrace(true)
 
 	Execute()
 }
