@@ -32,8 +32,8 @@ const (
 	// colorGreen  = "\033[32m"
 	colorYellow = "\033[33m"
 	colorBlue   = "\033[34m"
-	// colorPurple = "\033[35m"
-	colorCyan = "\033[36m"
+	colorPurple = "\033[35m"
+	colorCyan   = "\033[36m"
 	// colorWhite  = "\033[37m"
 )
 
@@ -42,6 +42,7 @@ type Progress struct {
 	running []byte
 	seq     int // sequence of spinners
 	debug   bool
+	trace   bool
 }
 
 var p *Progress
@@ -52,6 +53,10 @@ func init() {
 
 func SetDebug(on bool) {
 	p.debug = on
+}
+
+func SetTrace(on bool) {
+	p.trace = on
 }
 
 func Cursor(show bool) {
@@ -157,6 +162,23 @@ func Debug(format string, a ...interface{}) {
 	}
 
 	output([]byte(colorBlue))
+	outputln("--- " + fmt.Sprintf(format, a...))
+	output([]byte(colorReset))
+
+	if len(p.running) > 0 {
+		output(p.running)
+	}
+}
+
+func Trace(format string, a ...interface{}) {
+	if !p.trace {
+		return
+	}
+	if len(p.running) > 0 {
+		clearLine()
+	}
+
+	output([]byte(colorPurple))
 	outputln("--- " + fmt.Sprintf(format, a...))
 	output([]byte(colorReset))
 

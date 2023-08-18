@@ -32,9 +32,9 @@ type Sqlite struct {
 
 	// limpo serve para sinalizar se os dados de um determinado CNPJ+ANO
 	// foi limpo ao rodar a primeira vez (para evitar duplicação de dados
-	// ao rodar a coleta mais de uma vez). Portanto, o armazenamento do
-	// de *todas* as empresas em um determinado ano (CNPJ+ANO) deve ser
-	// feito de uma única vez.
+	// ao rodar a coleta mais de uma vez). Portanto, o armazenamento de
+	// *todas* as empresas em um determinado ano (CNPJ+ANO) deve ser feito
+	// uma única vez.
 	limpo map[string]bool
 
 	cacheEmpresas []rapina.Empresa
@@ -194,18 +194,11 @@ func (s Slice) Swap(i, j int) {
 	s.idx[i], s.idx[j] = s.idx[j], s.idx[i]
 }
 
-func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinanceira) error {
-	// progress.Debug("%-60s %4d\n", dfp.Nome, len(dfp.Contas))
-
-	return s.inserirOuAtualizarEmpresa(ctx, dfp)
-}
-
 type sqliteEmpresa struct {
-	ID           int    `db:"id"`
-	CNPJ         string `db:"cnpj"`
-	Nome         string `db:"nome"`
-	Ano          int    `db:"ano"`
-	DataIniExerc string `db:"data_ini_exerc"`
+	ID   int    `db:"id"`
+	CNPJ string `db:"cnpj"`
+	Nome string `db:"nome"`
+	Ano  int    `db:"ano"`
 }
 
 type sqliteConta struct {
@@ -216,18 +209,19 @@ type sqliteConta struct {
 	Consolidado  int     `db:"consolidado"`
 	DataIniExerc string  `db:"data_ini_exerc"`
 	DataFimExerc string  `db:"data_fim_exerc"`
-	Meses        int     `db:"meses"` // Meses acumulados desde o início do exercício
+	Meses        int     `db:"meses"` // diferença entre data_ini_exerc e data_fim_exerc
 	Valor        float64 `db:"valor"`
 	Escala       int     `db:"escala"`
 	Moeda        string  `db:"moeda"`
 }
 
-func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *dominio.DemonstraçãoFinanceira) error {
+func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinanceira) error {
+	progress.Trace("%-60s %4d\n", dfp.Nome, len(dfp.Contas))
+
 	d := sqliteEmpresa{
-		CNPJ:         e.CNPJ,
-		Nome:         e.Nome,
-		Ano:          e.Ano,
-		DataIniExerc: e.DataIniExerc,
+		CNPJ: dfp.CNPJ,
+		Nome: dfp.Nome,
+		Ano:  dfp.Ano,
 	}
 
 	idRegistro := func() (int, error) {
@@ -240,17 +234,19 @@ func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *dominio.Demon
 	if _, ok := s.limpo[k]; !ok {
 		// Verificar o id do registro e apagá-lo caso exista
 		id, err := idRegistro()
+
 		if err != nil && err != sql.ErrNoRows {
 			return err
 		}
 		if err != sql.ErrNoRows {
+			progress.Debug("Apagando empresa %s, %d (%d): ", d.Nome, d.Ano, id)
 			if err := removerEmpresa(ctx, s.db, id); err != nil {
 				return err
 			}
 		}
 		s.limpo[k] = true
 		// Criar novo registro
-		query := `INSERT INTO empresas (cnpj, nome, ano, data_ini_exerc) VALUES (:cnpj, :nome, :ano, :data_ini_exerc)`
+		query := `INSERT INTO empresas (cnpj, nome, ano) VALUES (:cnpj, :nome, :ano)`
 		_, err = s.db.NamedExecContext(ctx, query, &d)
 		if err != nil {
 			progress.Debug("Falha ao inserir %v", d)
@@ -263,21 +259,15 @@ func (s *Sqlite) inserirOuAtualizarEmpresa(ctx context.Context, e *dominio.Demon
 		return err
 	}
 
-	return inserirContas(ctx, s.db, id, e.Contas)
+	return inserirContas(ctx, s.db, id, dfp.Contas, dfp.Nome)
 }
 
 // inserirContas insere os registro das contas, sendo que deve ter sido garantido
 // previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Conta) error {
+func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Conta, nome string) error {
 	if len(contas) == 0 {
 		return nil
-	}
-
-	var dataIniExerc string
-	err := db.GetContext(ctx, &dataIniExerc, `SELECT data_ini_exerc FROM empresas WHERE id=?`, id)
-	if err != nil {
-		return err
 	}
 
 	tx, err := db.Beginx()
@@ -285,9 +275,10 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Co
 		return err
 	}
 
-	stmt, err := tx.Prepare(`INSERT or IGNORE INTO contas 
-		(id_empresa, codigo, descr, grupo, consolidado, data_ini_exerc, data_fim_exerc, meses, valor, escala, moeda) 
-		VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+	stmt, err := tx.PrepareNamedContext(ctx, `INSERT or IGNORE INTO contas
+		(id_empresa, codigo, descr, grupo, consolidado, data_ini_exerc, data_fim_exerc, meses, valor, escala, moeda)
+		VALUES
+		(:id_empresa, :codigo, :descr, :grupo, :consolidado, :data_ini_exerc, :data_fim_exerc, :meses, :valor, :escala, :moeda)`)
 	if err != nil {
 		return err
 	}
@@ -300,45 +291,30 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Co
 	}
 
 	for i := range contas {
-
-		// pular registros com início do exercício diferente do início do
-		// exercício anual, ou seja, ignora registros trimestrais e armazena
-		// apenas os dados acumulados desde o início do exercício anual:
-		// 3, 6, 9 e 12 meses.
-		if dataIniExerc != "" && dataIniExerc != contas[i].DataIniExerc {
-			progress.Debug("Ignorando registro trimestral não acumulado %d:%v", id, contas[i])
-			continue
+		c := sqliteConta{
+			ID:           id,
+			Código:       contas[i].Código,
+			Descr:        contas[i].Descr,
+			Grupo:        contas[i].Grupo,
+			Consolidado:  boolToInt(contas[i].Consolidado),
+			DataIniExerc: contas[i].DataIniExerc,
+			DataFimExerc: contas[i].DataFimExerc,
+			Meses:        contas[i].Meses,
+			Valor:        contas[i].Total.Valor,
+			Escala:       contas[i].Total.Escala,
+			Moeda:        contas[i].Total.Moeda,
 		}
-		balancPatrim := dataIniExerc == "" && dataIniExerc == contas[i].DataIniExerc
-		if !balancPatrim && (contas[i].Meses%3 != 0 || contas[i].Meses > 12) {
-			progress.Debug("Ignorando registro com meses != 3,6,9,12 %d:%v", id, contas[i])
-			continue
-		}
 
-		var args []interface{}
-		args = append(args, id)
-		args = append(args, contas[i].Código)
-		args = append(args, contas[i].Descr)
-		args = append(args, contas[i].Grupo)
-		args = append(args, boolToInt(contas[i].Consolidado))
-		args = append(args, contas[i].DataIniExerc)
-		args = append(args, contas[i].DataFimExerc)
-		args = append(args, contas[i].Meses)
-		args = append(args, contas[i].Total.Valor)
-		args = append(args, contas[i].Total.Escala)
-		args = append(args, contas[i].Total.Moeda)
-
-		_, err = stmt.ExecContext(ctx, args...)
-		// Erros no banco de dados estão sendo ignorados ("INSERT or IGNORE INTO")
+		_, err = stmt.ExecContext(ctx, c)
+		// Erros no banco de dados estão sendo ignorados ("INSERT or IGNORE INTO").
+		// Verificar PRIMARY KEY da tabela 'contas'.
 		if err != nil {
-			// Ignora erro em caso de registro duplicado (id_empresa + codigo),
-			// pois se trata de erro no arquivo da CVM (raramente acontece)
 			sqliteErr := err.(sqlite3.Error)
 			if sqliteErr.Code != sqlite3.ErrConstraint {
 				_ = tx.Rollback()
 				return err
 			} else {
-				progress.Error(sqliteErr)
+				progress.ErrorMsg("%s: %d, %s, %#v", err, id, nome, contas[i])
 			}
 		}
 	}
@@ -397,7 +373,6 @@ var tabelas = []struct {
 			cnpj           VARCHAR NOT NULL,
 			nome           VARCHAR NOT NULL,
 			ano            INT NOT NULL,
-			data_ini_exerc VARCHAR,
 			UNIQUE (cnpj, ano)
 		)`,
 		down: `DROP TABLE IF EXISTS empresas`,
@@ -416,7 +391,7 @@ var tabelas = []struct {
 			valor          REAL NOT NULL,
 			escala         INTEGER NOT NULL,
 			moeda          VARCHAR,
-			PRIMARY KEY (id_empresa, codigo, meses)
+			PRIMARY KEY (id_empresa, codigo, data_ini_exerc, data_fim_exerc)
 		)`,
 		down: `DROP TABLE IF EXISTS contas`,
 	},
@@ -433,7 +408,7 @@ var tabelas = []struct {
 }
 
 const (
-	_ver_                 = 14
+	_ver_                 = 16
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL

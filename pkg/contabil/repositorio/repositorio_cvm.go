@@ -65,7 +65,7 @@ func (c *cvmDFP) converteConta() dominio.Conta {
 	conta := dominio.Conta{
 		Código:       c.Código,
 		Descr:        c.Descr,
-		Consolidado:  strings.Contains(c.GrupoDFP, "onsolidado"),
+		Consolidado:  c.Consolidado,
 		Grupo:        grp,
 		DataIniExerc: c.DataIniExerc,
 		DataFimExerc: c.DataFimExerc,
@@ -186,7 +186,8 @@ func processarArquivoDFP(ctx context.Context, arquivo Arquivo, results chan<- do
 		linha := scanner.Text()
 
 		dfp, err := csv.carregaDFP(linha)
-		if err != nil {
+
+		if err != nil || ignorarRegistro(dfp) {
 			continue
 		}
 
@@ -197,6 +198,14 @@ func processarArquivoDFP(ctx context.Context, arquivo Arquivo, results chan<- do
 	enviarDFP(empresas, arquivo.hash, results)
 
 	return nil
+}
+
+func ignorarRegistro(dfp *cvmDFP) bool {
+	if dfp.Meses != 3 && dfp.Meses != 12 {
+		progress.Trace("Ignorando registro não trimestral ou anual: %v", dfp)
+		return true
+	}
+	return false
 }
 
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
@@ -457,6 +466,7 @@ func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
 		CNPJ:         itens[c.posCnpj],
 		Nome:         itens[c.posDenomCia],
 		Ano:          itens[c.posDtFimExerc][:4],
+		Consolidado:  strings.Contains(itens[c.posGrupoDFP], "onsolidado"),
 		Versão:       itens[c.posVersao],
 		Código:       itens[c.posCdConta],
 		Descr:        itens[c.posDsConta],

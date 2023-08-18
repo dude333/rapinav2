@@ -24,8 +24,8 @@ var flags = struct {
 
 const (
 	configFileName = "rapina.yaml"
-	dataSrcDefault = "file:.dados/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-	tempDirDefault = ".dados/"
+	dataSrcDefault = ".dados" + string(os.PathSeparator) + "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+	tempDirDefault = ".dados" + string(os.PathSeparator)
 )
 
 var cfgFile string
@@ -145,5 +145,6 @@ func db() *sqlx.DB {
 
 func createDir(filePath string) error {
 	dirPath := filepath.Dir(filePath)
-	return os.MkdirAll(dirPath, 0755)
+	progress.Debug("dirPath: %s", dirPath)
+	return os.MkdirAll(dirPath, os.ModePerm)
 }

@@ -7,6 +7,7 @@ package repositorio
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/dude333/rapinav2/pkg/contabil/dominio"
@@ -166,6 +167,47 @@ func Test_meses(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("meses() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_csv_carregaDFP(t *testing.T) {
+	type args struct {
+		cabeçalho string
+		linha     string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *cvmDFP
+		wantErr bool
+	}{
+		{
+			name: "carrega linha",
+			args: args{
+				cabeçalho: "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA",
+				linha:     "60.840.055/0001-31;2022-06-30;1;FLEURY S.A.;021881;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2022-04-01;2022-06-30;3.11;Lucro/Prejuízo Consolidado do Período;70924.0000000000;S",
+			},
+			want:    &cvmDFP{CNPJ: "60.840.055/0001-31", Nome: "FLEURY S.A.", Ano: "2022", Consolidado: true, Versão: "1", Código: "3.11", Descr: "Lucro/Prejuízo Consolidado do Período", GrupoDFP: "DF Consolidado - Demonstração do Resultado", DataIniExerc: "2022-04-01", DataFimExerc: "2022-06-30", Meses: 3, OrdemExerc: "ÚLTIMO", Valor: 70924, Escala: 1000, Moeda: "R$"},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &csv{
+				sep:           ";",
+				cabeçalhoLido: false,
+			}
+			_, _ = c.carregaDFP(tt.args.cabeçalho)
+			got, err := c.carregaDFP(tt.args.linha)
+			fmt.Printf("%v", got)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("csv.carregaDFP() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("csv.carregaDFP() = %v, want %v", got, tt.want)
 			}
 		})
 	}
