@@ -117,6 +117,27 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*dominio.Demons
 	return &dfp, err
 }
 
+func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeTrimestral, error) {
+	var ids []int
+	err := s.db.SelectContext(ctx, &ids, `SELECT id FROM empresas WHERE cnpj=? ORDER BY ano`, &cnpj)
+	if err == sql.ErrNoRows {
+		err = s.db.SelectContext(ctx, &ids, `SELECT id FROM empresas WHERE nome=? ORDER BY ano`, &cnpj)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	progress.Debug("[]sqliteEmpresa => %+v", ids)
+
+	var resultados []resultadoTrimestral
+	err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids))
+	if err != nil {
+		return nil, err
+	}
+
+	return converterResultadosTrimestrais(resultados)
+}
+
 func (s *Sqlite) Empresas(ctx context.Context, nome string) []rapina.Empresa {
 	if len(s.cacheEmpresas) == 0 {
 		err := s.db.SelectContext(ctx, &s.cacheEmpresas,

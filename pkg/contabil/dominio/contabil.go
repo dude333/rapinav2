@@ -5,6 +5,7 @@
 package dominio
 
 import (
+	"fmt"
 	"strings"
 
 	rapina "github.com/dude333/rapinav2"
@@ -49,6 +50,21 @@ func (c Conta) Válida() bool {
 		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
 		(c.OrdemExerc == "ÚLTIMO" ||
 			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
+}
+
+func (df DemonstraçãoFinanceira) String() string {
+	var contasStr []string
+	for _, conta := range df.Contas {
+		contaStr := fmt.Sprintf(
+			"Código: %s\nDescr: %s\nConsolidado: %t\nGrupo: %s\nDataIniExerc: %s\nDataFimExerc: %s\nMeses: %d\nOrdemExerc: %s\nTotal: %v\n",
+			conta.Código, conta.Descr, conta.Consolidado, conta.Grupo, conta.DataIniExerc, conta.DataFimExerc,
+			conta.Meses, conta.OrdemExerc, conta.Total)
+		contasStr = append(contasStr, contaStr)
+	}
+
+	return fmt.Sprintf(
+		"Empresa:\nCNPJ: %s\nNome: %s\nAno: %d\nDataIniExerc: %s\nContas:\n%s",
+		df.CNPJ, df.Nome, df.Ano, df.DataIniExerc, strings.Join(contasStr, "\n"))
 }
 
 type ConfigConta struct {

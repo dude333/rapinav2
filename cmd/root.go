@@ -18,6 +18,7 @@ import (
 var flags = struct {
 	verbose   bool
 	atualizar flagsAtualizar
+	relatorio flagsRelatorio
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
 	tempDir   string // arquivos temporários
 }{}

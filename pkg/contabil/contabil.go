@@ -106,6 +106,13 @@ func (df *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*dominio.D
 	return dfp, err
 }
 
+func (df *DemonstraçãoFinanceira) RelatórioTrimestal(cnpj string) ([]rapina.InformeTrimestral, error) {
+	if df.bd == nil {
+		return nil, ErrRepositórioInválido
+	}
+	return df.bd.Trimestral(context.Background(), cnpj)
+}
+
 func (df *DemonstraçãoFinanceira) Empresas(nome string) []rapina.Empresa {
 	if df.bd == nil {
 		return []rapina.Empresa{}
