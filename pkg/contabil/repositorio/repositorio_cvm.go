@@ -158,12 +158,10 @@ func (c CVM) existe(hash string) bool {
 }
 
 func urlArquivo(ano int, trimestral bool) string {
-	tipo := func() string {
-		if trimestral {
-			return "ITR"
-		}
-		return "DFP"
-	}()
+	tipo := "DFP"
+	if trimestral {
+		tipo = "ITR"
+	}
 	zip := fmt.Sprintf(`%s_cia_aberta_%d.zip`, tipo, ano)
 	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/` + tipo + `/DADOS/` + zip
 }
