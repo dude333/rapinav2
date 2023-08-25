@@ -121,8 +121,16 @@ func excel(itr []rapina.InformeTrimestral) {
 		col += 4
 	}
 
+	codAtual := byte('1')
 	row := 2
 	for _, informe := range itr {
+		if zerado(informe.Valores) {
+			continue
+		}
+		if informe.Codigo[0] != codAtual {
+			codAtual = informe.Codigo[0]
+			row++
+		}
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), informe.Codigo)
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), informe.Descr)
 		col, _ = excelize.ColumnNameToNumber("C")
@@ -154,9 +162,31 @@ func excel(itr []rapina.InformeTrimestral) {
 
 	_ = f.SetCellStyle(sheetName, num2name(1)+"1", num2name(col)+"1", titleStyle)
 
+	// Freeze panes
+	_ = f.SetPanes(sheetName, &excelize.Panes{
+		Freeze:      true,
+		Split:       false,
+		XSplit:      2,
+		YSplit:      1,
+		TopLeftCell: "C2",
+		ActivePane:  "bottomRight",
+		Panes: []excelize.PaneOptions{
+			{SQRef: "C2", ActiveCell: "C2", Pane: "bottomRight"},
+		},
+	})
+
 	if err := f.SaveAs("InformeTrimestral.xlsx"); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func zerado(valores []rapina.ValoresTrimestrais) bool {
+	for _, v := range valores {
+		if v.T1 != 0 || v.T2 != 0 || v.T3 != 0 || v.T4 != 0 || v.Anual != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func num2name(col int) string {
