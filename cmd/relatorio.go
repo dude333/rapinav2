@@ -238,6 +238,13 @@ func stringWidth(str string) float64 {
 	return width
 }
 
+// charWidth foi criado com este script em Python:
+// from PIL import ImageFont
+// font = ImageFont.truetype("calibri.ttf", 11)
+// for char in "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÀÁÂÃÇÉÊÍÓÔÕÚàáâãçéêíóôõú.-_ /(),":
+//     width = font.getlength(char)
+//     print(f"\'{char}\': {width},")
+//
 func charWidth(ch rune) float64 {
 	keys := map[rune]float64{
 		'0': 6.0,
