@@ -31,7 +31,7 @@ func Test_sqlTrimestral(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := sqlTrimestral(tt.args.ids); !strings.Contains(got, tt.want) {
+			if got := sqlTrimestral(tt.args.ids, true); !strings.Contains(got, tt.want) {
 				t.Errorf("sqlTrimestral() = %v, want %v", got, tt.want)
 			}
 		})

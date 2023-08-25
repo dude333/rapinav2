@@ -130,9 +130,17 @@ func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeT
 	progress.Debug("[]sqliteEmpresa => %+v", ids)
 
 	var resultados []resultadoTrimestral
-	err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids))
+	err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids, true))
 	if err != nil {
 		return nil, err
+	}
+	if len(resultados) == 0 {
+		// Buscar por dados individuais caso a empresa não tenha dados consolidados
+		progress.Trace("Dados consolidados não encontrados; procurando por dados individuais...")
+		err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids, false))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return converterResultadosTrimestrais(resultados)

@@ -53,8 +53,12 @@ func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.
 	return itr, nil
 }
 
-func sqlTrimestral(ids []int) string {
+func sqlTrimestral(ids []int, consolidado bool) string {
 	strIds := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(ids)), ","), "[]")
+	intConsolidado := 0
+	if consolidado {
+		intConsolidado = 1
+	}
 	return fmt.Sprintf(`WITH CalculatedValues AS (
 	SELECT
 	    year,
@@ -96,6 +100,7 @@ func sqlTrimestral(ids []int) string {
 	        empresas e
 	    JOIN contas c ON e.id = c.id_empresa
 	    WHERE c.id_empresa IN (%s)
+		AND c.consolidado = %d
 	    GROUP BY
 			CASE WHEN c.data_ini_exerc <> '' THEN SUBSTR(c.data_ini_exerc, 1, 4)
 		         ELSE SUBSTR(c.data_fim_exerc, 1, 4)
@@ -118,5 +123,5 @@ SELECT
         ',"yearly":' || COALESCE(yearly_value, 0) || '}'
     ) || ']' AS valores
 FROM CalculatedValues
-GROUP BY codigo, descr`, strIds)
+GROUP BY codigo, descr`, strIds, intConsolidado)
 }
