@@ -82,12 +82,10 @@ func excel(itr []rapina.InformeTrimestral) {
 
 	// Create a new sheet.
 	sheetName := "Informe Trimestral"
-	index, err := f.NewSheet(sheetName)
+	err := f.SetSheetName(f.GetSheetList()[0], sheetName)
 	if err != nil {
-		fmt.Println(err)
-		return
+		log.Fatal(err)
 	}
-	f.SetActiveSheet(index)
 
 	titleStyle, err := f.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
@@ -175,6 +173,7 @@ func excel(itr []rapina.InformeTrimestral) {
 		},
 	})
 
+	// Save spreadsheet
 	if err := f.SaveAs("InformeTrimestral.xlsx"); err != nil {
 		log.Fatal(err)
 	}
