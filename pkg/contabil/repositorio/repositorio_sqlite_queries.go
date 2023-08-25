@@ -67,7 +67,10 @@ func sqlTrimestral(ids []int) string {
 	         THEN yearly_value - (q1_value + q2_value + q3_value)
 	         ELSE 0
 	    END AS q4_calculated,
-	    COALESCE(yearly_value, 0) yearly_value
+		CASE WHEN q1_value IS NOT NULL AND q2_value IS NOT NULL AND q3_value IS NOT NULL
+			THEN COALESCE(yearly_value, 0)
+			ELSE 0
+		END AS yearly_value
 	FROM (
 	    SELECT
 	        CASE WHEN c.data_ini_exerc <> '' THEN SUBSTR(c.data_ini_exerc, 1, 4)

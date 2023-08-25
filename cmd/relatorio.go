@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strings"
 
@@ -71,7 +72,7 @@ func imprimirRelatório(cmd *cobra.Command, args []string) {
 	// w.Flush()
 }
 
-func excel(data []rapina.InformeTrimestral) {
+func excel(itr []rapina.InformeTrimestral) {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -97,46 +98,50 @@ func excel(data []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
+	minAno, maxAno := minmax(itr)
+
 	_ = f.SetCellValue(sheetName, "A1", "Código")
 	_ = f.SetCellValue(sheetName, "B1", "Descrição")
-	_ = f.SetCellValue(sheetName, "C1", "Ano")
-	_ = f.SetCellValue(sheetName, "D1", "T1")
-	_ = f.SetCellValue(sheetName, "E1", "T2")
-	_ = f.SetCellValue(sheetName, "F1", "T3")
-	_ = f.SetCellValue(sheetName, "G1", "T4")
 
-	for i, informe := range data {
-		row := i + 2
+	col, _ := excelize.ColumnNameToNumber("C")
+	row := 2
+	for _, informe := range itr {
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), informe.Codigo)
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), informe.Descr)
-		col, _ := excelize.ColumnNameToNumber("C")
-		for _, valor := range informe.Valores {
-			_ = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", num2name(col), row), valor.Ano)
-			col++
-			_ = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", num2name(col), row), valor.T1)
-			col++
-			_ = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", num2name(col), row), valor.T2)
-			col++
-			_ = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", num2name(col), row), valor.T3)
-			col++
-			if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-				_ = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", num2name(col), row), valor.Anual)
-			} else {
-				_ = f.SetCellValue(sheetName, fmt.Sprintf("%s%d", num2name(col), row), valor.T4)
-			}
-			col++
+		for ano := minAno; ano <= maxAno; ano++ {
+			_ = f.SetCellValue(sheetName, cell(col, 1), fmt.Sprintf("1T%d", ano))
+			_ = f.SetCellValue(sheetName, cell(col+1, 1), fmt.Sprintf("2T%d", ano))
+			_ = f.SetCellValue(sheetName, cell(col+2, 1), fmt.Sprintf("3T%d", ano))
+			_ = f.SetCellValue(sheetName, cell(col+3, 1), fmt.Sprintf("4T%d", ano))
+			col += 4
 		}
+		col, _ = excelize.ColumnNameToNumber("C")
+		for ano := minAno; ano <= maxAno; ano++ {
+			for _, valor := range informe.Valores {
+				if valor.Ano != ano {
+					continue
+				}
+				_ = f.SetCellValue(sheetName, cell(col, row), valor.T1)
+				_ = f.SetCellValue(sheetName, cell(col+1, row), valor.T2)
+				_ = f.SetCellValue(sheetName, cell(col+2, row), valor.T3)
+				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
+					_ = f.SetCellValue(sheetName, cell(col+3, row), valor.Anual)
+				} else {
+					_ = f.SetCellValue(sheetName, cell(col+3, row), valor.T4)
+				}
+			}
+			col += 4
+		}
+		row++
 	}
 
 	// Auto-resize columns
-	// for i := 'A'; i <= 'H'; i++ {
-	// 	colName := string(i)
-	// 	f.SetColWidth(sheetName, colName, colName, 15) // Adjust width as needed
-	// }
+	codWidth, descrWidth := colWidths(itr)
+	_ = f.SetColWidth(sheetName, "A", "A", codWidth)
+	_ = f.SetColWidth(sheetName, "B", "B", descrWidth)
+	_ = f.SetColWidth(sheetName, num2name(3), num2name(col+3), 12)
 
-	if err := f.SetCellStyle(sheetName, "A1", "H1", titleStyle); err != nil {
-		log.Fatal(err)
-	}
+	_ = f.SetCellStyle(sheetName, num2name(1)+"1", num2name(col)+"1", titleStyle)
 
 	if err := f.SaveAs("InformeTrimestral.xlsx"); err != nil {
 		log.Fatal(err)
@@ -146,4 +151,154 @@ func excel(data []rapina.InformeTrimestral) {
 func num2name(col int) string {
 	n, _ := excelize.ColumnNumberToName(col)
 	return n
+}
+
+func minmax(itr []rapina.InformeTrimestral) (int, int) {
+	minAno := 99999
+	maxAno := 0
+	for i := range itr {
+		for _, valores := range itr[i].Valores {
+			if valores.Ano < minAno {
+				minAno = valores.Ano
+			}
+			if valores.Ano > maxAno {
+				maxAno = valores.Ano
+			}
+		}
+	}
+
+	return minAno, maxAno
+}
+
+func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {
+	var codWidth, descrWidth float64
+	for i := range itr {
+		if codWidth < stringWidth(itr[i].Codigo) {
+			fmt.Printf("--- [%.2f] %s\n", stringWidth(itr[i].Codigo), itr[i].Codigo)
+		}
+		if descrWidth < stringWidth(itr[i].Descr) {
+			fmt.Printf("--- [%.2f] %s\n", stringWidth(itr[i].Descr), itr[i].Descr)
+		}
+		codWidth = math.Max(codWidth, stringWidth(itr[i].Codigo))
+		descrWidth = math.Max(descrWidth, stringWidth(itr[i].Descr))
+	}
+
+	return codWidth, descrWidth
+}
+
+func cell(col, row int) string {
+	return fmt.Sprintf("%s%d", num2name(col), row)
+}
+
+func stringWidth(str string) float64 {
+	var width float64 = 0.0
+	for _, ch := range str {
+		width += charWidth(ch)
+	}
+	return width
+}
+
+func charWidth(ch rune) float64 {
+	keys := map[rune]float64{
+		'0': 6.0,
+		'1': 6.0,
+		'2': 6.0,
+		'3': 6.0,
+		'4': 6.0,
+		'5': 6.0,
+		'6': 6.0,
+		'7': 6.0,
+		'8': 6.0,
+		'9': 6.0,
+		'A': 6.0,
+		'B': 6.0,
+		'C': 6.0,
+		'D': 7.0,
+		'E': 5.0,
+		'F': 5.0,
+		'G': 7.0,
+		'H': 7.0,
+		'I': 3.0,
+		'J': 4.0,
+		'K': 6.0,
+		'L': 5.0,
+		'M': 9.0,
+		'N': 7.0,
+		'O': 7.0,
+		'P': 6.0,
+		'Q': 7.0,
+		'R': 6.0,
+		'S': 5.0,
+		'T': 5.0,
+		'U': 7.0,
+		'V': 6.0,
+		'W': 10.0,
+		'X': 6.0,
+		'Y': 5.0,
+		'Z': 5.0,
+		'a': 5.0,
+		'b': 6.0,
+		'c': 5.0,
+		'd': 6.0,
+		'e': 5.0,
+		'f': 3.0,
+		'g': 5.0,
+		'h': 6.0,
+		'i': 3.0,
+		'j': 3.0,
+		'k': 5.0,
+		'l': 3.0,
+		'm': 9.0,
+		'n': 6.0,
+		'o': 6.0,
+		'p': 6.0,
+		'q': 6.0,
+		'r': 4.0,
+		's': 4.0,
+		't': 4.0,
+		'u': 6.0,
+		'v': 5.0,
+		'w': 8.0,
+		'x': 5.0,
+		'y': 5.0,
+		'z': 4.0,
+		'À': 6.0,
+		'Á': 6.0,
+		'Â': 6.0,
+		'Ã': 6.0,
+		'Ç': 6.0,
+		'É': 5.0,
+		'Ê': 5.0,
+		'Í': 3.0,
+		'Ó': 7.0,
+		'Ô': 7.0,
+		'Õ': 7.0,
+		'Ú': 7.0,
+		'à': 5.0,
+		'á': 5.0,
+		'â': 5.0,
+		'ã': 5.0,
+		'ç': 5.0,
+		'é': 5.0,
+		'ê': 5.0,
+		'í': 3.0,
+		'ó': 6.0,
+		'ô': 6.0,
+		'õ': 6.0,
+		'ú': 6.0,
+		'.': 3.0,
+		'-': 3.0,
+		'_': 5.0,
+		' ': 2.0,
+		'/': 4.0,
+		'(': 3.0,
+		')': 3.0,
+		',': 3.0,
+	}
+	width, ok := keys[ch]
+	if !ok {
+		fmt.Printf("---> %c\n", ch)
+		return 1.4
+	}
+	return width / 5.2
 }
