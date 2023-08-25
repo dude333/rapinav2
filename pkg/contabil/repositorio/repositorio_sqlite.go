@@ -429,7 +429,7 @@ var tabelas = []struct {
 }
 
 const (
-	_ver_                 = 16
+	_ver_                 = 17
 	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
 		nome   VARCHAR PRIMARY KEY,
 		versao INTEGER NOT NULL
