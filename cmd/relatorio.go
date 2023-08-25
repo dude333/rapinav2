@@ -98,23 +98,33 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
+	// customerNumFmt := `_-* #.##0_-;[RED]* (#.##0)_-;_-* "-"_-;_-@_-`
+	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
+	numberStyle, err := f.NewStyle(&excelize.Style{
+		CustomNumFmt: &customerNumFmt,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	minAno, maxAno := minmax(itr)
 
 	_ = f.SetCellValue(sheetName, "A1", "Código")
 	_ = f.SetCellValue(sheetName, "B1", "Descrição")
 
 	col, _ := excelize.ColumnNameToNumber("C")
+	for ano := minAno; ano <= maxAno; ano++ {
+		_ = f.SetCellValue(sheetName, cell(col, 1), fmt.Sprintf("1T%d", ano))
+		_ = f.SetCellValue(sheetName, cell(col+1, 1), fmt.Sprintf("2T%d", ano))
+		_ = f.SetCellValue(sheetName, cell(col+2, 1), fmt.Sprintf("3T%d", ano))
+		_ = f.SetCellValue(sheetName, cell(col+3, 1), fmt.Sprintf("4T%d", ano))
+		col += 4
+	}
+
 	row := 2
 	for _, informe := range itr {
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), informe.Codigo)
 		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), informe.Descr)
-		for ano := minAno; ano <= maxAno; ano++ {
-			_ = f.SetCellValue(sheetName, cell(col, 1), fmt.Sprintf("1T%d", ano))
-			_ = f.SetCellValue(sheetName, cell(col+1, 1), fmt.Sprintf("2T%d", ano))
-			_ = f.SetCellValue(sheetName, cell(col+2, 1), fmt.Sprintf("3T%d", ano))
-			_ = f.SetCellValue(sheetName, cell(col+3, 1), fmt.Sprintf("4T%d", ano))
-			col += 4
-		}
 		col, _ = excelize.ColumnNameToNumber("C")
 		for ano := minAno; ano <= maxAno; ano++ {
 			for _, valor := range informe.Valores {
@@ -129,6 +139,7 @@ func excel(itr []rapina.InformeTrimestral) {
 				} else {
 					_ = f.SetCellValue(sheetName, cell(col+3, row), valor.T4)
 				}
+				_ = f.SetCellStyle(sheetName, cell(col, row), cell(col+3, row), numberStyle)
 			}
 			col += 4
 		}
