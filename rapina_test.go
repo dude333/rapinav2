@@ -1,14 +1,12 @@
-package main
+package rapina
 
 import (
 	"testing"
-
-	rapina "github.com/dude333/rapinav2"
 )
 
-func Test_zerado(t *testing.T) {
+func Test_Zerado(t *testing.T) {
 	type args struct {
-		valores []rapina.ValoresTrimestrais
+		valores []ValoresTrimestrais
 	}
 	tests := []struct {
 		name string
@@ -18,7 +16,7 @@ func Test_zerado(t *testing.T) {
 		{
 			name: "testar zerado",
 			args: args{
-				valores: []rapina.ValoresTrimestrais{
+				valores: []ValoresTrimestrais{
 					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
 					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
 					{Ano: 2022, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
@@ -29,7 +27,7 @@ func Test_zerado(t *testing.T) {
 		{
 			name: "testar não zerado 1",
 			args: args{
-				valores: []rapina.ValoresTrimestrais{
+				valores: []ValoresTrimestrais{
 					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
 					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
 					{Ano: 2022, T1: 0, T2: 1, T3: 0, T4: 0, Anual: 0},
@@ -40,7 +38,7 @@ func Test_zerado(t *testing.T) {
 		{
 			name: "testar não zerado 2",
 			args: args{
-				valores: []rapina.ValoresTrimestrais{
+				valores: []ValoresTrimestrais{
 					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
 					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
 					{Ano: 2022, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
@@ -52,7 +50,7 @@ func Test_zerado(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := zerado(tt.args.valores); got != tt.want {
+			if got := Zerado(tt.args.valores); got != tt.want {
 				t.Errorf("zerado() = %v, want %v", got, tt.want)
 			}
 		})

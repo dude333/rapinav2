@@ -12,7 +12,6 @@ import (
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
-	"github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -57,60 +56,7 @@ func imprimirRelatório(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	excel(unificarContasSimilares(itr))
-}
-
-func unificarContasSimilares(itr []rapina.InformeTrimestral) []rapina.InformeTrimestral {
-	deletar := make([]bool, len(itr))
-	anos := rangeAnos(itr)
-	for i := 1; i < len(itr); i++ {
-		deletar[i-1] = false
-		if infra.AreSimilar(itr[i-1].Descr, itr[i].Descr) {
-			unificar := true
-			for _, ano := range anos {
-				if existeAno(ano, itr[i-1].Valores) && existeAno(ano, itr[i].Valores) {
-					unificar = false
-					break
-				}
-			}
-			if !unificar {
-				continue
-			}
-			deletar[i-1] = true
-			for _, ano := range anos {
-				if existeAno(ano, itr[i-1].Valores) && !existeAno(ano, itr[i].Valores) {
-					if valor, ok := valorAno(ano, itr[i-1].Valores); ok {
-						itr[i].Valores = append(itr[i].Valores, valor)
-					}
-				}
-			}
-		}
-	}
-	itr2 := make([]rapina.InformeTrimestral, 1, len(itr))
-	for i, vazio := range deletar {
-		if !vazio {
-			itr2 = append(itr2, itr[i])
-		}
-	}
-	return itr2
-}
-
-func existeAno(ano int, valores []rapina.ValoresTrimestrais) bool {
-	for _, v := range valores {
-		if v.Ano == ano {
-			return true
-		}
-	}
-	return false
-}
-
-func valorAno(ano int, valores []rapina.ValoresTrimestrais) (rapina.ValoresTrimestrais, bool) {
-	for _, v := range valores {
-		if v.Ano == ano {
-			return v, true
-		}
-	}
-	return rapina.ValoresTrimestrais{}, false
+	excel(rapina.UnificarContasSimilares(itr))
 }
 
 func excel(itr []rapina.InformeTrimestral) {
@@ -146,7 +92,7 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
-	minAno, maxAno := minmax(itr)
+	minAno, maxAno := rapina.MinMax(itr)
 
 	_ = f.SetCellValue(sheetName, "A1", "Código")
 	_ = f.SetCellValue(sheetName, "B1", "Descrição")
@@ -164,7 +110,7 @@ func excel(itr []rapina.InformeTrimestral) {
 	codAtual := byte('1')
 	row := 2
 	for _, informe := range itr {
-		if zerado(informe.Valores) {
+		if rapina.Zerado(informe.Valores) {
 			continue
 		}
 		if informe.Codigo[0] != codAtual {
@@ -216,7 +162,7 @@ func excel(itr []rapina.InformeTrimestral) {
 	})
 
 	// Delete empty columns
-	hasData := colsWithData(itr)
+	hasData := rapina.TrimestresComDados(itr)
 	for i := len(hasData) - 1; i >= 0; i-- {
 		if !hasData[i] {
 			err := f.RemoveCol(sheetName, num2name(initCol+i))
@@ -230,80 +176,9 @@ func excel(itr []rapina.InformeTrimestral) {
 	}
 }
 
-func zerado(valores []rapina.ValoresTrimestrais) bool {
-	for _, v := range valores {
-		if v.T1 != 0 || v.T2 != 0 || v.T3 != 0 || v.T4 != 0 || v.Anual != 0 {
-			return false
-		}
-	}
-	return true
-}
-
-func colsWithData(itr []rapina.InformeTrimestral) []bool {
-	minAno, maxAno := minmax(itr)
-	colunas := make([]bool, 4*(1+maxAno-minAno))
-
-	for _, informe := range itr {
-		for ano := minAno; ano <= maxAno; ano++ {
-			for _, v := range informe.Valores {
-				if v.Ano != ano {
-					continue
-				}
-				i := (v.Ano - minAno) * 4
-				if !colunas[i+0] && v.T1 != 0.0 {
-					colunas[i+0] = true
-					fmt.Printf("- Ano=%d, col=%d, %.2f\n", ano, i, v.T1)
-				}
-				if v.T2 != 0.0 {
-					colunas[i+1] = true
-				}
-				if v.T3 != 0.0 {
-					colunas[i+2] = true
-				}
-				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-					if v.Anual != 0.0 {
-						colunas[i+3] = true
-					}
-				} else {
-					if v.T4 != 0.0 {
-						colunas[i+3] = true
-					}
-				}
-			}
-		}
-	}
-	return colunas
-}
-
 func num2name(col int) string {
 	n, _ := excelize.ColumnNumberToName(col)
 	return n
-}
-
-func minmax(itr []rapina.InformeTrimestral) (int, int) {
-	minAno := 99999
-	maxAno := 0
-	for i := range itr {
-		for _, valores := range itr[i].Valores {
-			if valores.Ano < minAno {
-				minAno = valores.Ano
-			}
-			if valores.Ano > maxAno {
-				maxAno = valores.Ano
-			}
-		}
-	}
-
-	return minAno, maxAno
-}
-
-func rangeAnos(itr []rapina.InformeTrimestral) []int {
-	min, max := minmax(itr)
-	seq := make([]int, max-min+1)
-	for i := min; i <= max; i++ {
-		seq[i-min] = i
-	}
-	return seq
 }
 
 func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {

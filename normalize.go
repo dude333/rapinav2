@@ -1,4 +1,4 @@
-package infra
+package rapina
 
 import (
 	"strings"
@@ -31,7 +31,7 @@ func normalizeString(s string) string {
 	return removeAccent(string(normalized))
 }
 
-func AreSimilar(s1, s2 string) bool {
+func Similar(s1, s2 string) bool {
 	normalizedS1 := normalizeString(s1)
 	normalizedS2 := normalizeString(s2)
 
