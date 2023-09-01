@@ -68,8 +68,8 @@ func excel(itr []rapina.InformeTrimestral) {
 	}()
 
 	// Create a new sheet.
-	sheetName := "Informe Trimestral"
-	err := f.SetSheetName(f.GetSheetList()[0], sheetName)
+	sheet := "Informe Trimestral"
+	err := f.SetSheetName(f.GetSheetList()[0], sheet)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,6 +78,13 @@ func excel(itr []rapina.InformeTrimestral) {
 		Font: &excelize.Font{
 			Bold: true,
 		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bgStyle, err := f.NewStyle(&excelize.Style{
+		Fill: excelize.Fill{Type: "gradient", Color: []string{"E0EBF5", "FFFFFF"}, Shading: 1},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -94,16 +101,16 @@ func excel(itr []rapina.InformeTrimestral) {
 
 	minAno, maxAno := rapina.MinMax(itr)
 
-	_ = f.SetCellValue(sheetName, "A1", "Código")
-	_ = f.SetCellValue(sheetName, "B1", "Descrição")
+	_ = f.SetCellValue(sheet, "A1", "Código")
+	_ = f.SetCellValue(sheet, "B1", "Descrição")
 	const initCol = 3
 
 	col := initCol
 	for ano := minAno; ano <= maxAno; ano++ {
-		_ = f.SetCellValue(sheetName, cell(col, 1), fmt.Sprintf("1T%d", ano))
-		_ = f.SetCellValue(sheetName, cell(col+1, 1), fmt.Sprintf("2T%d", ano))
-		_ = f.SetCellValue(sheetName, cell(col+2, 1), fmt.Sprintf("3T%d", ano))
-		_ = f.SetCellValue(sheetName, cell(col+3, 1), fmt.Sprintf("4T%d", ano))
+		_ = f.SetCellValue(sheet, cell(col, 1), fmt.Sprintf("1T%d", ano))
+		_ = f.SetCellValue(sheet, cell(col+1, 1), fmt.Sprintf("2T%d", ano))
+		_ = f.SetCellValue(sheet, cell(col+2, 1), fmt.Sprintf("3T%d", ano))
+		_ = f.SetCellValue(sheet, cell(col+3, 1), fmt.Sprintf("4T%d", ano))
 		col += 4
 	}
 
@@ -115,25 +122,27 @@ func excel(itr []rapina.InformeTrimestral) {
 		}
 		if informe.Codigo[0] != codAtual {
 			codAtual = informe.Codigo[0]
+			_ = f.SetCellValue(sheet, cell(1, row), "|")
+			_ = f.SetCellStyle(sheet, cell(1, row), cell(2, row), bgStyle)
 			row++
 		}
-		_ = f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), informe.Codigo)
-		_ = f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), informe.Descr)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), informe.Codigo)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), informe.Descr)
 		col = initCol
 		for ano := minAno; ano <= maxAno; ano++ {
 			for _, valor := range informe.Valores {
 				if valor.Ano != ano {
 					continue
 				}
-				_ = f.SetCellValue(sheetName, cell(col+0, row), valor.T1)
-				_ = f.SetCellValue(sheetName, cell(col+1, row), valor.T2)
-				_ = f.SetCellValue(sheetName, cell(col+2, row), valor.T3)
+				_ = f.SetCellValue(sheet, cell(col+0, row), valor.T1)
+				_ = f.SetCellValue(sheet, cell(col+1, row), valor.T2)
+				_ = f.SetCellValue(sheet, cell(col+2, row), valor.T3)
 				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-					_ = f.SetCellValue(sheetName, cell(col+3, row), valor.Anual)
+					_ = f.SetCellValue(sheet, cell(col+3, row), valor.Anual)
 				} else {
-					_ = f.SetCellValue(sheetName, cell(col+3, row), valor.T4)
+					_ = f.SetCellValue(sheet, cell(col+3, row), valor.T4)
 				}
-				_ = f.SetCellStyle(sheetName, cell(col, row), cell(col+3, row), numberStyle)
+				_ = f.SetCellStyle(sheet, cell(col, row), cell(col+3, row), numberStyle)
 			}
 			col += 4
 		}
@@ -142,14 +151,14 @@ func excel(itr []rapina.InformeTrimestral) {
 
 	// Auto-resize columns
 	codWidth, descrWidth := colWidths(itr)
-	_ = f.SetColWidth(sheetName, "A", "A", codWidth)
-	_ = f.SetColWidth(sheetName, "B", "B", descrWidth)
-	_ = f.SetColWidth(sheetName, num2name(3), num2name(col+3), 12)
+	_ = f.SetColWidth(sheet, "A", "A", codWidth)
+	_ = f.SetColWidth(sheet, "B", "B", descrWidth)
+	_ = f.SetColWidth(sheet, num2name(3), num2name(col+3), 12)
 
-	_ = f.SetCellStyle(sheetName, num2name(1)+"1", num2name(col)+"1", titleStyle)
+	_ = f.SetCellStyle(sheet, num2name(1)+"1", num2name(col)+"1", titleStyle)
 
 	// Freeze panes
-	_ = f.SetPanes(sheetName, &excelize.Panes{
+	_ = f.SetPanes(sheet, &excelize.Panes{
 		Freeze:      true,
 		Split:       false,
 		XSplit:      2,
@@ -165,7 +174,7 @@ func excel(itr []rapina.InformeTrimestral) {
 	hasData := rapina.TrimestresComDados(itr)
 	for i := len(hasData) - 1; i >= 0; i-- {
 		if !hasData[i] {
-			err := f.RemoveCol(sheetName, num2name(initCol+i))
+			err := f.RemoveCol(sheet, num2name(initCol+i))
 			fmt.Printf("RemoveCol(%s) [%v]\n", num2name(initCol+i), err)
 		}
 	}
