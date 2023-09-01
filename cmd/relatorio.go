@@ -74,6 +74,11 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
+	x := Excel{
+		f:         f,
+		sheetName: sheet,
+	}
+
 	ZoomScale := 90.0
 	if err := f.SetSheetView(sheet, 0, &excelize.ViewOptions{ZoomScale: &ZoomScale}); err != nil {
 		log.Fatal(err)
@@ -109,18 +114,29 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
+	boldNumberStyle, err := f.NewStyle(&excelize.Style{
+		CustomNumFmt: &customerNumFmt,
+		Font: &excelize.Font{
+			Bold: true,
+			Size: 10.0,
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	minAno, maxAno := rapina.MinMax(itr)
 
-	_ = f.SetCellValue(sheet, "A1", "Código")
-	_ = f.SetCellValue(sheet, "B1", "Descrição")
+	x.printCell(1, 1, titleStyle, "Código")
+	x.printCell(1, 2, titleStyle, "Descrição")
 	const initCol = 3
 
 	col := initCol
 	for ano := minAno; ano <= maxAno; ano++ {
-		_ = f.SetCellValue(sheet, cell(col, 1), fmt.Sprintf("1T%d", ano))
-		_ = f.SetCellValue(sheet, cell(col+1, 1), fmt.Sprintf("2T%d", ano))
-		_ = f.SetCellValue(sheet, cell(col+2, 1), fmt.Sprintf("3T%d", ano))
-		_ = f.SetCellValue(sheet, cell(col+3, 1), fmt.Sprintf("4T%d", ano))
+		x.printCell(1, col+0, titleStyle, fmt.Sprintf("1T%d", ano))
+		x.printCell(1, col+1, titleStyle, fmt.Sprintf("2T%d", ano))
+		x.printCell(1, col+2, titleStyle, fmt.Sprintf("3T%d", ano))
+		x.printCell(1, col+3, titleStyle, fmt.Sprintf("4T%d", ano))
 		col += 4
 	}
 
@@ -130,23 +146,29 @@ func excel(itr []rapina.InformeTrimestral) {
 			continue
 		}
 		spc := space(informe.Codigo)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), spc+informe.Codigo)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), spc+informe.Descr)
+		x.printCell(row, 1, fontStyle, spc+informe.Codigo)
+		x.printCell(row, 2, fontStyle, spc+informe.Descr)
+		if strings.Count(informe.Codigo, ".") <= 1 {
+			_ = f.SetCellStyle(sheet, cell(row, 1), cell(row, 2), titleStyle)
+		}
 		col = initCol
 		for ano := minAno; ano <= maxAno; ano++ {
 			for _, valor := range informe.Valores {
 				if valor.Ano != ano {
 					continue
 				}
-				_ = f.SetCellValue(sheet, cell(col+0, row), valor.T1)
-				_ = f.SetCellValue(sheet, cell(col+1, row), valor.T2)
-				_ = f.SetCellValue(sheet, cell(col+2, row), valor.T3)
+				x.printCell(row, col+0, numberStyle, valor.T1)
+				x.printCell(row, col+1, numberStyle, valor.T2)
+				x.printCell(row, col+2, numberStyle, valor.T3)
 				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-					_ = f.SetCellValue(sheet, cell(col+3, row), valor.Anual)
+					x.printCell(row, col+3, numberStyle, valor.Anual)
 				} else {
-					_ = f.SetCellValue(sheet, cell(col+3, row), valor.T4)
+					x.printCell(row, col+3, numberStyle, valor.T4)
 				}
-				_ = f.SetCellStyle(sheet, cell(col, row), cell(col+3, row), numberStyle)
+
+				if strings.Count(informe.Codigo, ".") <= 1 {
+					_ = f.SetCellStyle(sheet, cell(row, col), cell(row, col+3), boldNumberStyle)
+				}
 			}
 			col += 4
 		}
@@ -158,9 +180,6 @@ func excel(itr []rapina.InformeTrimestral) {
 	_ = f.SetColWidth(sheet, "A", "A", codWidth)
 	_ = f.SetColWidth(sheet, "B", "B", descrWidth)
 	_ = f.SetColWidth(sheet, num2name(3), num2name(col+3), 12)
-
-	_ = f.SetCellStyle(sheet, cell(1, 1), cell(col, 1), titleStyle)
-	_ = f.SetCellStyle(sheet, cell(1, 2), cell(2, row), fontStyle) // Cod, Descr
 
 	// Freeze panes
 	_ = f.SetPanes(sheet, &excelize.Panes{
@@ -190,6 +209,20 @@ func excel(itr []rapina.InformeTrimestral) {
 	}
 }
 
+type Excel struct {
+	f         *excelize.File
+	sheetName string
+}
+
+func (x *Excel) printCell(row, col int, style int, value interface{}) {
+	_ = x.f.SetCellValue(x.sheetName, cell(row, col), value)
+	_ = x.f.SetCellStyle(x.sheetName, cell(row, col), cell(row, col), style)
+}
+
+func cell(row, col int) string {
+	return fmt.Sprintf("%s%d", num2name(col), row)
+}
+
 func num2name(col int) string {
 	n, _ := excelize.ColumnNumberToName(col)
 	return n
@@ -208,10 +241,6 @@ func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {
 
 func space(str string) string {
 	return strings.Repeat("  ", strings.Count(str, "."))
-}
-
-func cell(col, row int) string {
-	return fmt.Sprintf("%s%d", num2name(col), row)
 }
 
 func stringWidth(str string) float64 {
