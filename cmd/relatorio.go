@@ -83,13 +83,6 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
-	bgStyle, err := f.NewStyle(&excelize.Style{
-		Fill: excelize.Fill{Type: "gradient", Color: []string{"E0EBF5", "FFFFFF"}, Shading: 1},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// customerNumFmt := `_-* #.##0_-;[RED]* (#.##0)_-;_-* "-"_-;_-@_-`
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
 	numberStyle, err := f.NewStyle(&excelize.Style{
@@ -114,20 +107,14 @@ func excel(itr []rapina.InformeTrimestral) {
 		col += 4
 	}
 
-	codAtual := byte('1')
 	row := 2
 	for _, informe := range itr {
 		if rapina.Zerado(informe.Valores) {
 			continue
 		}
-		if informe.Codigo[0] != codAtual {
-			codAtual = informe.Codigo[0]
-			_ = f.SetCellValue(sheet, cell(1, row), "|")
-			_ = f.SetCellStyle(sheet, cell(1, row), cell(2, row), bgStyle)
-			row++
-		}
-		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), informe.Codigo)
-		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), informe.Descr)
+		spc := space(informe.Codigo)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("A%d", row), spc+informe.Codigo)
+		_ = f.SetCellValue(sheet, fmt.Sprintf("B%d", row), spc+informe.Descr)
 		col = initCol
 		for ano := minAno; ano <= maxAno; ano++ {
 			for _, valor := range informe.Valores {
@@ -193,17 +180,16 @@ func num2name(col int) string {
 func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {
 	var codWidth, descrWidth float64
 	for i := range itr {
-		if codWidth < stringWidth(itr[i].Codigo) {
-			fmt.Printf("--- [%.2f] %s\n", stringWidth(itr[i].Codigo), itr[i].Codigo)
-		}
-		if descrWidth < stringWidth(itr[i].Descr) {
-			fmt.Printf("--- [%.2f] %s\n", stringWidth(itr[i].Descr), itr[i].Descr)
-		}
-		codWidth = math.Max(codWidth, stringWidth(itr[i].Codigo))
-		descrWidth = math.Max(descrWidth, stringWidth(itr[i].Descr))
+		spc := space(itr[i].Codigo)
+		codWidth = math.Max(codWidth, stringWidth(spc+itr[i].Codigo))
+		descrWidth = math.Max(descrWidth, stringWidth(spc+itr[i].Descr))
 	}
 
 	return codWidth, descrWidth
+}
+
+func space(str string) string {
+	return strings.Repeat("  ", strings.Count(str, "."))
 }
 
 func cell(col, row int) string {
@@ -316,7 +302,7 @@ func charWidth(ch rune) float64 {
 		'.': 3.0,
 		'-': 3.0,
 		'_': 5.0,
-		' ': 2.0,
+		' ': 2.2,
 		'/': 4.0,
 		'(': 3.0,
 		')': 3.0,
