@@ -74,6 +74,11 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
+	ZoomScale := 90.0
+	if err := f.SetSheetView(sheet, 0, &excelize.ViewOptions{ZoomScale: &ZoomScale}); err != nil {
+		log.Fatal(err)
+	}
+
 	fontStyle, err := f.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Size: 10.0,
