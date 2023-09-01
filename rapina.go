@@ -42,8 +42,6 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 					novosValores = append(novosValores, v2)
 				}
 				if existe1 && existe2 {
-					var v ValoresTrimestrais
-					v.Ano = ano
 					if (v1.T1 != 0.0 && v2.T1 != 0.0) ||
 						(v1.T2 != 0.0 && v2.T2 != 0.0) ||
 						(v1.T3 != 0.0 && v2.T3 != 0.0) ||
@@ -53,33 +51,7 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 						unir = false
 						break
 					}
-
-					if v1.T1 != 0.0 && v2.T1 == 0.0 {
-						v.T1 = v1.T1
-					} else {
-						v.T1 = v2.T1
-					}
-					if v1.T2 != 0.0 && v2.T2 == 0.0 {
-						v.T2 = v1.T2
-					} else {
-						v.T2 = v2.T2
-					}
-					if v1.T3 != 0.0 && v2.T3 == 0.0 {
-						v.T3 = v1.T3
-					} else {
-						v.T3 = v2.T3
-					}
-					if v1.T4 != 0.0 && v2.T4 == 0.0 {
-						v.T4 = v1.T4
-					} else {
-						v.T4 = v2.T4
-					}
-					if v1.Anual != 0.0 && v2.Anual == 0.0 {
-						v.Anual = v1.Anual
-					} else {
-						v.Anual = v2.Anual
-					}
-					novosValores = append(novosValores, v)
+					novosValores = append(novosValores, equalizarValores(ano, v1, v2))
 				}
 			} // next ano
 
@@ -105,6 +77,37 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 		}
 	}
 	return itr2
+}
+
+func equalizarValores(ano int, v1, v2 ValoresTrimestrais) ValoresTrimestrais {
+	var v ValoresTrimestrais
+	v.Ano = ano
+	if v1.T1 != 0.0 && v2.T1 == 0.0 {
+		v.T1 = v1.T1
+	} else {
+		v.T1 = v2.T1
+	}
+	if v1.T2 != 0.0 && v2.T2 == 0.0 {
+		v.T2 = v1.T2
+	} else {
+		v.T2 = v2.T2
+	}
+	if v1.T3 != 0.0 && v2.T3 == 0.0 {
+		v.T3 = v1.T3
+	} else {
+		v.T3 = v2.T3
+	}
+	if v1.T4 != 0.0 && v2.T4 == 0.0 {
+		v.T4 = v1.T4
+	} else {
+		v.T4 = v2.T4
+	}
+	if v1.Anual != 0.0 && v2.Anual == 0.0 {
+		v.Anual = v1.Anual
+	} else {
+		v.Anual = v2.Anual
+	}
+	return v
 }
 
 // func existeAno(ano int, valores []ValoresTrimestrais) bool {
