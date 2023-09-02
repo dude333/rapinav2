@@ -56,10 +56,10 @@ func imprimirRelatório(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	excel(rapina.UnificarContasSimilares(itr))
+	excel(rapina.UnificarContasSimilares(itr), true)
 }
 
-func excel(itr []rapina.InformeTrimestral) {
+func excel(itr []rapina.InformeTrimestral, decrescente bool) {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -125,18 +125,26 @@ func excel(itr []rapina.InformeTrimestral) {
 		log.Fatal(err)
 	}
 
-	minAno, maxAno := rapina.MinMax(itr)
+	// ===== Relatório - início =====
 
 	x.printCell(1, 1, titleStyle, "Código")
 	x.printCell(1, 2, titleStyle, "Descrição")
-	const initCol = 3
 
+	seq := []int{0, 1, 2, 3}
+	anos := rapina.RangeAnos(itr)
+
+	if decrescente {
+		reverse(seq)
+		reverse(anos)
+	}
+
+	const initCol = 3
 	col := initCol
-	for ano := minAno; ano <= maxAno; ano++ {
-		x.printCell(1, col+0, titleStyle, fmt.Sprintf("1T%d", ano))
-		x.printCell(1, col+1, titleStyle, fmt.Sprintf("2T%d", ano))
-		x.printCell(1, col+2, titleStyle, fmt.Sprintf("3T%d", ano))
-		x.printCell(1, col+3, titleStyle, fmt.Sprintf("4T%d", ano))
+	for _, ano := range anos {
+		x.printCell(1, col+seq[0], titleStyle, fmt.Sprintf("1T%d", ano))
+		x.printCell(1, col+seq[1], titleStyle, fmt.Sprintf("2T%d", ano))
+		x.printCell(1, col+seq[2], titleStyle, fmt.Sprintf("3T%d", ano))
+		x.printCell(1, col+seq[3], titleStyle, fmt.Sprintf("4T%d", ano))
 		col += 4
 	}
 
@@ -152,18 +160,18 @@ func excel(itr []rapina.InformeTrimestral) {
 			_ = f.SetCellStyle(sheet, cell(row, 1), cell(row, 2), titleStyle)
 		}
 		col = initCol
-		for ano := minAno; ano <= maxAno; ano++ {
+		for _, ano := range anos {
 			for _, valor := range informe.Valores {
 				if valor.Ano != ano {
 					continue
 				}
-				x.printCell(row, col+0, numberStyle, valor.T1)
-				x.printCell(row, col+1, numberStyle, valor.T2)
-				x.printCell(row, col+2, numberStyle, valor.T3)
+				x.printCell(row, col+seq[0], numberStyle, valor.T1)
+				x.printCell(row, col+seq[1], numberStyle, valor.T2)
+				x.printCell(row, col+seq[2], numberStyle, valor.T3)
 				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-					x.printCell(row, col+3, numberStyle, valor.Anual)
+					x.printCell(row, col+seq[3], numberStyle, valor.Anual)
 				} else {
-					x.printCell(row, col+3, numberStyle, valor.T4)
+					x.printCell(row, col+seq[3], numberStyle, valor.T4)
 				}
 
 				if strings.Count(informe.Codigo, ".") <= 1 {
@@ -196,6 +204,9 @@ func excel(itr []rapina.InformeTrimestral) {
 
 	// Delete empty columns
 	hasData := rapina.TrimestresComDados(itr)
+	if decrescente {
+		reverseb(hasData)
+	}
 	for i := len(hasData) - 1; i >= 0; i-- {
 		if !hasData[i] {
 			err := f.RemoveCol(sheet, num2name(initCol+i))
@@ -241,6 +252,18 @@ func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {
 
 func space(str string) string {
 	return strings.Repeat("  ", strings.Count(str, "."))
+}
+
+func reverse(s []int) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
+func reverseb(s []bool) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
 }
 
 func stringWidth(str string) float64 {

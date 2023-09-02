@@ -24,7 +24,7 @@ type ValoresTrimestrais struct {
 
 func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 	itr2 := make([]InformeTrimestral, 1, len(itr))
-	anos := rangeAnos(itr)
+	anos := RangeAnos(itr)
 	ultimaLinha := len(itr) - 1
 	for linha := 1; linha <= ultimaLinha; linha++ {
 		unir := false
@@ -190,7 +190,7 @@ func MinMax(itr []InformeTrimestral) (int, int) {
 	return minAno, maxAno
 }
 
-func rangeAnos(itr []InformeTrimestral) []int {
+func RangeAnos(itr []InformeTrimestral) []int {
 	min, max := MinMax(itr)
 	seq := make([]int, max-min+1)
 	for i := min; i <= max; i++ {
