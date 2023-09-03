@@ -10,10 +10,11 @@ import (
 	"reflect"
 	"testing"
 
-	rapina "github.com/dude333/rapinav2"
-	"github.com/dude333/rapinav2/pkg/contabil/dominio"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+
+	rapina "github.com/dude333/rapinav2"
+	"github.com/dude333/rapinav2/pkg/contabil/dominio"
 )
 
 func Test_inserirDFP(t *testing.T) {
@@ -32,7 +33,6 @@ func Test_inserirDFP(t *testing.T) {
 	}
 
 	t.Run("criar e inserir dados", func(t *testing.T) {
-
 		var contas []dominio.Conta
 		for n := 1; n <= 10; n++ {
 			c := dominio.Conta{
@@ -172,7 +172,7 @@ func TestSqlite_Empresas(t *testing.T) {
 				cacheEmpresas: tt.fields.cache,
 				cfg:           tt.fields.cfg,
 			}
-			if got := s.Empresas(tt.args.ctx, tt.args.nome); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := s.Empresas(tt.args.ctx, tt.args.nome); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Sqlite.Empresas() = %#v, want %v", got, tt.want)
 			}
 		})

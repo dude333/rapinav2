@@ -8,22 +8,21 @@ import (
 	"context"
 	"database/sql"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
-	rapina "github.com/dude333/rapinav2"
-	"github.com/dude333/rapinav2/pkg/contabil/dominio"
-	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
+	"github.com/mattn/go-sqlite3"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
 
-	// "github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/mattn/go-sqlite3"
-
-	// _ "github.com/mattn/go-sqlite3"
-	"strconv"
+	rapina "github.com/dude333/rapinav2"
+	"github.com/dude333/rapinav2/pkg/contabil/dominio"
+	"github.com/dude333/rapinav2/pkg/progress"
 )
 
 // Sqlite implementa RepositórioLeituraEscrita
@@ -146,13 +145,13 @@ func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeT
 	return converterResultadosTrimestrais(resultados)
 }
 
-func (s *Sqlite) Empresas(ctx context.Context, nome string) []rapina.Empresa {
+func (s *Sqlite) Empresas(ctx context.Context, nome string) ([]rapina.Empresa, error) {
 	if len(s.cacheEmpresas) == 0 {
 		err := s.db.SelectContext(ctx, &s.cacheEmpresas,
 			`SELECT DISTINCT(cnpj), nome FROM empresas ORDER BY nome`)
 		if err != nil {
 			progress.Error(err)
-			return nil
+			return nil, err
 		}
 	}
 
@@ -160,23 +159,28 @@ func (s *Sqlite) Empresas(ctx context.Context, nome string) []rapina.Empresa {
 	nome, _, err := transform.String(t, nome)
 	nome = strings.ToLower(nome)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	var ret []rapina.Empresa
-	var toSort []string
 	for _, empr := range s.cacheEmpresas {
 		x, _, err := transform.String(t, empr.Nome)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		x = strings.ToLower(x)
 		if strings.HasPrefix(x, nome) {
 			ret = append(ret, empr)
-			toSort = append(toSort, x)
 		}
 	}
-	return ordenar(ret, toSort)
+
+	cl := collate.New(language.BrazilianPortuguese, collate.Loose)
+	customSort := func(i, j int) bool {
+		return cl.CompareString(ret[i].Nome, ret[j].Nome) < 0
+	}
+	sort.Slice(ret, customSort)
+
+	return ret, nil
 }
 
 func (s *Sqlite) Hashes() []string {
@@ -368,26 +372,25 @@ func removerEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
 
 // tabelas
 //
-//   +------------+      +------------+
-//   | empresas   |      | contas     |
-//   +------------+      +------------+
-//   | id*        |-----<| id_empresa*|
-//   | cnpj       |      | codigo*    |
-//   | nome       |      | descr      |
-//   | ano        |      | ...        |
-//   +------------+      +------------+
+//	+------------+      +------------+
+//	| empresas   |      | contas     |
+//	+------------+      +------------+
+//	| id*        |-----<| id_empresa*|
+//	| cnpj       |      | codigo*    |
+//	| nome       |      | descr      |
+//	| ano        |      | ...        |
+//	+------------+      +------------+
 //
 // Passos oo inserir um registro empresa:
 //
-// 1. Verificar e remover se o registro já existe:
-//    a. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
-//    b. DELETE FROM contas WHERE id_empresa = ?;
-//    c. DELETE FROM empresas WHERE id = ?;
-// 2. Inserir os novos registro:
-//    a. INSERT INTO empresas (cnpj, nome, ano) VALUES (?,?,?);
-//    b. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
-//    b. for range contas => INSERT INTO contas (id_empresa, ...) VALUES (?, ...)
-//
+//  1. Verificar e remover se o registro já existe:
+//     a. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
+//     b. DELETE FROM contas WHERE id_empresa = ?;
+//     c. DELETE FROM empresas WHERE id = ?;
+//  2. Inserir os novos registro:
+//     a. INSERT INTO empresas (cnpj, nome, ano) VALUES (?,?,?);
+//     b. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
+//     b. for range contas => INSERT INTO contas (id_empresa, ...) VALUES (?, ...)
 var tabelas = []struct {
 	nome   string
 	versão int
@@ -406,7 +409,8 @@ var tabelas = []struct {
 		)`,
 		down: `DROP TABLE IF EXISTS empresas`,
 	},
-	{nome: "contas",
+	{
+		nome:   "contas",
 		versão: _ver_,
 		up: `CREATE TABLE IF NOT EXISTS contas (
 			id_empresa     INTEGER,

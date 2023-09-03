@@ -9,16 +9,15 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil/dominio"
 	"github.com/dude333/rapinav2/pkg/contabil/repositorio"
 	"github.com/dude333/rapinav2/pkg/progress"
-	"github.com/jmoiron/sqlx"
 )
 
-var (
-	ErrRepositórioInválido = errors.New("repositório inválido")
-)
+var ErrRepositórioInválido = errors.New("repositório inválido")
 
 type Importação interface {
 	Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado
@@ -113,11 +112,10 @@ func (df *DemonstraçãoFinanceira) RelatórioTrimestal(cnpj string) ([]rapina.I
 	return df.bd.Trimestral(context.Background(), cnpj)
 }
 
-func (df *DemonstraçãoFinanceira) Empresas(nome string) []rapina.Empresa {
+func (df *DemonstraçãoFinanceira) Empresas(nome string) ([]rapina.Empresa, error) {
 	if df.bd == nil {
-		return []rapina.Empresa{}
+		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Empresas(%s)", nome)
-	lista := df.bd.Empresas(context.Background(), nome)
-	return lista
+	return df.bd.Empresas(context.Background(), nome)
 }

@@ -23,9 +23,9 @@ func (e Empresa) String() string {
 
 // Dinheiro -----------------------------------------------
 type Dinheiro struct {
+	Moeda  string
 	Valor  float64
 	Escala int
-	Moeda  string
 }
 
 func (d Dinheiro) String() string {
