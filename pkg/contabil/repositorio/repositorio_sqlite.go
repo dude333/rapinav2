@@ -194,39 +194,6 @@ func (s *Sqlite) SalvarHash(ctx context.Context, hash string) error {
 	return err
 }
 
-// ordenar ordenada a []string "orig" com base na []string
-// transformada "transf". Serve para ordenar []string com acentos
-// ou outros sinais diacríticos.
-func ordenar(orig []rapina.Empresa, transf []string) []rapina.Empresa {
-	s := NewSlice(transf)
-	sort.Sort(s)
-
-	ord := make([]rapina.Empresa, len(transf))
-	for i, j := range s.idx {
-		ord[i] = orig[j]
-	}
-
-	return ord
-}
-
-func NewSlice(str []string) *Slice {
-	s := &Slice{StringSlice: str, idx: make([]int, len(str))}
-	for i := range s.idx {
-		s.idx[i] = i
-	}
-	return s
-}
-
-type Slice struct {
-	sort.StringSlice
-	idx []int
-}
-
-func (s Slice) Swap(i, j int) {
-	s.StringSlice.Swap(i, j)
-	s.idx[i], s.idx[j] = s.idx[j], s.idx[i]
-}
-
 type sqliteEmpresa struct {
 	ID   int    `db:"id"`
 	CNPJ string `db:"cnpj"`

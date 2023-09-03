@@ -66,52 +66,6 @@ func Test_inserirDFP(t *testing.T) {
 	})
 }
 
-func Test_ordenar(t *testing.T) {
-	type args struct {
-		orig   []rapina.Empresa
-		transf []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want []rapina.Empresa
-	}{
-		{
-			name: "deveria funcionar",
-			args: args{
-				orig: []rapina.Empresa{
-					{CNPJ: "1", Nome: "AAAaA"},
-					{CNPJ: "2", Nome: "BbB"},
-					{CNPJ: "3", Nome: "AaaaA"},
-					{CNPJ: "4", Nome: "AA"},
-					{CNPJ: "5", Nome: "bônus"},
-					{CNPJ: "6", Nome: "açaí"},
-					{CNPJ: "7", Nome: "aliás"},
-					{CNPJ: "8", Nome: "caçapa"},
-				},
-				transf: []string{"aaaaa", "bbb", "aaaaa", "aa", "bonus", "acai", "alias", "cacapa"},
-			},
-			want: []rapina.Empresa{
-				{CNPJ: "4", Nome: "AA"},
-				{CNPJ: "1", Nome: "AAAaA"},
-				{CNPJ: "3", Nome: "AaaaA"},
-				{CNPJ: "6", Nome: "açaí"},
-				{CNPJ: "7", Nome: "aliás"},
-				{CNPJ: "2", Nome: "BbB"},
-				{CNPJ: "5", Nome: "bônus"},
-				{CNPJ: "8", Nome: "caçapa"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := ordenar(tt.args.orig, tt.args.transf); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ordenar() = %#v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestSqlite_Empresas(t *testing.T) {
 	type fields struct {
 		db    *sqlx.DB
