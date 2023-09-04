@@ -17,6 +17,7 @@ import (
 
 type flagsRelatorio struct {
 	outputDir string
+	crescente bool
 }
 
 // relatorioCmd represents the relatorio command
@@ -30,6 +31,7 @@ var relatorioCmd = &cobra.Command{
 
 func init() {
 	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", "", "Diretório do relatório")
+	relatorioCmd.Flags().BoolVarP(&flags.relatorio.crescente, "crescente", "c", false, "Mostrar trimestres em ordem crescente")
 
 	rootCmd.AddCommand(relatorioCmd)
 }
@@ -62,7 +64,7 @@ func criarRelatório(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	excel(fn, rapina.UnificarContasSimilares(itr), true)
+	excel(fn, rapina.UnificarContasSimilares(itr), !flags.relatorio.crescente)
 }
 
 func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
