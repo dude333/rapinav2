@@ -112,10 +112,17 @@ func (df *DemonstraçãoFinanceira) RelatórioTrimestal(cnpj string) ([]rapina.I
 	return df.bd.Trimestral(context.Background(), cnpj)
 }
 
-func (df *DemonstraçãoFinanceira) Empresas(nome string) ([]rapina.Empresa, error) {
+func (df *DemonstraçãoFinanceira) Empresas() ([]rapina.Empresa, error) {
+	if df.bd == nil {
+		return []rapina.Empresa{}, ErrRepositórioInválido
+	}
+	return df.bd.Empresas(context.Background())
+}
+
+func (df *DemonstraçãoFinanceira) BuscaEmpresas(nome string) ([]rapina.Empresa, error) {
 	if df.bd == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Empresas(%s)", nome)
-	return df.bd.Empresas(context.Background(), nome)
+	return df.bd.BuscaEmpresas(context.Background(), nome)
 }

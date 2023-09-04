@@ -126,7 +126,7 @@ func TestSqlite_Empresas(t *testing.T) {
 				cacheEmpresas: tt.fields.cache,
 				cfg:           tt.fields.cfg,
 			}
-			if got, _ := s.Empresas(tt.args.ctx, tt.args.nome); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := s.BuscaEmpresas(tt.args.ctx, tt.args.nome); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Sqlite.Empresas() = %#v, want %v", got, tt.want)
 			}
 		})

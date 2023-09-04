@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/chzyer/readline"
+	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/xuri/excelize/v2"
 
@@ -37,10 +39,10 @@ func init() {
 func imprimirRelatório(cmd *cobra.Command, args []string) {
 	progress.Status("{%d}", flags.relatorio.ano)
 
-	if len(args) < 1 && len(args[0]) != len("60.872.504/0001-23") {
-		progress.ErrorMsg("CNPJ inválido")
-		os.Exit(1)
-	}
+	// if len(args) < 1 && len(args[0]) != len("60.872.504/0001-23") {
+	// 	progress.ErrorMsg("CNPJ inválido")
+	// 	os.Exit(1)
+	// }
 
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
@@ -48,7 +50,16 @@ func imprimirRelatório(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	cnpj := args[0]
+	empresas, err := dfp.Empresas()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cnpj := escolherEmpresa(empresas)
+	if len(cnpj) != len("60.872.504/0001-23") {
+		log.Fatal("Nenhuma empresa foi escolhida")
+	}
+
+	// cnpj := args[0]
 	// df, err := dfp.Relatório(cnpj, flags.relatorio.ano)
 	itr, err := dfp.RelatórioTrimestal(cnpj)
 	if err != nil {
@@ -57,6 +68,67 @@ func imprimirRelatório(cmd *cobra.Command, args []string) {
 	}
 
 	excel(rapina.UnificarContasSimilares(itr), true)
+}
+
+type noBellStdout struct{}
+
+func (n *noBellStdout) Write(p []byte) (int, error) {
+	if len(p) == 1 && p[0] == readline.CharBell {
+		return 0, nil
+	}
+	return readline.Stdout.Write(p)
+}
+
+func (n *noBellStdout) Close() error {
+	return readline.Stdout.Close()
+}
+
+var NoBellStdout = &noBellStdout{}
+
+func escolherEmpresa(empresas []rapina.Empresa) string {
+	// The Active and Selected templates set a small pepper icon next to the name colored and the heat unit for the
+	// active template. The details template is show at the bottom of the select's list and displays the full info
+	// for that pepper in a multi-line template.
+	templates := &promptui.SelectTemplates{
+		Help: `{{ "Para navegar:" | faint }} [{{ .NextKey | faint }} ` +
+			`{{ .PrevKey | faint }} {{ .PageUpKey | faint }} {{ .PageDownKey | faint }}]` +
+			`{{ if .Search }} {{ "Para procurar:" | faint }} [{{ .SearchKey | faint }}]{{ end }}`,
+		Label:    "{{ . }}:",
+		Active:   " > {{ .Nome | red }}",
+		Inactive: "  {{ .Nome | blue }}",
+		Selected: " > {{ .Nome | red | cyan }}",
+		Details: `
+--------------------------------------
+| {{ "Name:" | bold }}	{{ .Nome }}
+| {{ "CNPJ:" | faint }}	{{ .CNPJ }}
+------------------------------------------`,
+	}
+
+	// A searcher function is implemented which enabled the search mode for the select. The function follows
+	// the required searcher signature and finds any pepper whose name contains the searched string.
+	searcher := func(input string, index int) bool {
+		empresa := empresas[index]
+		nome := rapina.NormalizeString(empresa.Nome)
+		ninput := rapina.NormalizeString(input)
+
+		return strings.Contains(nome, ninput)
+	}
+
+	prompt := promptui.Select{
+		Label:     "Empresas",
+		Items:     empresas,
+		Templates: templates,
+		Size:      15,
+		Searcher:  searcher,
+		Stdout:    NoBellStdout,
+	}
+
+	i, _, err := prompt.Run()
+	if err != nil {
+		return ""
+	}
+
+	return empresas[i].CNPJ
 }
 
 func excel(itr []rapina.InformeTrimestral, decrescente bool) {

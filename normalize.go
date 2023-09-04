@@ -15,7 +15,7 @@ func removeAccent(str string) string {
 	return result
 }
 
-func normalizeString(s string) string {
+func NormalizeString(s string) string {
 	// Converte para minúsculas e remove espaços em branco
 	s = strings.ToLower(s)
 	s = strings.ReplaceAll(s, " ", "")
@@ -32,8 +32,8 @@ func normalizeString(s string) string {
 }
 
 func Similar(s1, s2 string) bool {
-	normalizedS1 := normalizeString(s1)
-	normalizedS2 := normalizeString(s2)
+	normalizedS1 := NormalizeString(s1)
+	normalizedS2 := NormalizeString(s2)
 
 	return normalizedS1 == normalizedS2
 }

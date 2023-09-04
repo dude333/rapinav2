@@ -145,7 +145,18 @@ func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeT
 	return converterResultadosTrimestrais(resultados)
 }
 
-func (s *Sqlite) Empresas(ctx context.Context, nome string) ([]rapina.Empresa, error) {
+func (s *Sqlite) Empresas(ctx context.Context) ([]rapina.Empresa, error) {
+	var empresas []rapina.Empresa
+	err := s.db.SelectContext(ctx, &empresas,
+		`SELECT DISTINCT(cnpj), nome FROM empresas ORDER BY nome`)
+	if err != nil {
+		progress.Error(err)
+		return nil, err
+	}
+	return empresas, nil
+}
+
+func (s *Sqlite) BuscaEmpresas(ctx context.Context, nome string) ([]rapina.Empresa, error) {
 	if len(s.cacheEmpresas) == 0 {
 		err := s.db.SelectContext(ctx, &s.cacheEmpresas,
 			`SELECT DISTINCT(cnpj), nome FROM empresas ORDER BY nome`)
