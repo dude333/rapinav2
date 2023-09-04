@@ -126,7 +126,7 @@ func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeT
 		return nil, err
 	}
 
-	progress.Debug("[]sqliteEmpresa => %+v", ids)
+	progress.Trace("[]sqliteEmpresa => %+v", ids)
 
 	var resultados []resultadoTrimestral
 	err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids, true))

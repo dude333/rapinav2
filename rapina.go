@@ -1,7 +1,6 @@
 package rapina
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dude333/rapinav2/pkg/progress"
@@ -150,7 +149,6 @@ func TrimestresComDados(itr []InformeTrimestral) []bool {
 				i := (v.Ano - minAno) * 4
 				if !colunas[i+0] && v.T1 != 0.0 {
 					colunas[i+0] = true
-					fmt.Printf("- Ano=%d, col=%d, %.2f\n", ano, i, v.T1)
 				}
 				if v.T2 != 0.0 {
 					colunas[i+1] = true

@@ -49,7 +49,8 @@ func criarRelatório(cmd *cobra.Command, args []string) {
 	}
 	empresa, ok := escolherEmpresa(empresas)
 	if !ok {
-		log.Fatal("Nenhuma empresa foi escolhida")
+		progress.Warning("Nenhuma empresa foi escolhida")
+		os.Exit(1)
 	}
 
 	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ)
@@ -71,7 +72,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Println(err)
+			progress.Error(err)
 		}
 	}()
 
@@ -216,8 +217,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 	}
 	for i := len(hasData) - 1; i >= 0; i-- {
 		if !hasData[i] {
-			err := f.RemoveCol(sheet, num2name(initCol+i))
-			fmt.Printf("RemoveCol(%s) [%v]\n", num2name(initCol+i), err)
+			_ = f.RemoveCol(sheet, num2name(initCol+i))
 		}
 	}
 
@@ -391,7 +391,7 @@ func charWidth(ch rune) float64 {
 	}
 	width, ok := keys[ch]
 	if !ok {
-		fmt.Printf("---> %c\n", ch)
+		progress.Trace("charWidth: Caractere '%c' não encontrado na tabela", ch)
 		return 1.4
 	}
 	return width / 5.2

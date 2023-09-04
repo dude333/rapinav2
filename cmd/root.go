@@ -9,10 +9,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/dude333/rapinav2/pkg/progress"
 )
 
 var flags = struct {
@@ -125,6 +126,7 @@ func initConfig() {
 		progress.Error(err)
 		os.Exit(1)
 	}
+	progress.Debug("\n\n")
 }
 
 var _db *sqlx.DB
