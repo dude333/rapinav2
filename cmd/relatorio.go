@@ -258,7 +258,11 @@ func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {
 }
 
 func space(str string) string {
-	return strings.Repeat("  ", strings.Count(str, "."))
+	n := strings.Count(str, ".")
+	if n > 0 && len(str) > 0 && str[0] != byte('1') && str[0] != byte('2') {
+		n--
+	}
+	return strings.Repeat("  ", n)
 }
 
 func reverse(s []int) {
