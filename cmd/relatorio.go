@@ -7,8 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/chzyer/readline"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"github.com/xuri/excelize/v2"
 
@@ -18,7 +16,7 @@ import (
 )
 
 type flagsRelatorio struct {
-	ano int
+	outputDir string
 }
 
 // relatorioCmd represents the relatorio command
@@ -27,23 +25,16 @@ var relatorioCmd = &cobra.Command{
 	Aliases: []string{"report"},
 	Short:   "imprimir relatório",
 	Long:    `relatorio das informações financeiras de uma empresa`,
-	Run:     imprimirRelatório,
+	Run:     criarRelatório,
 }
 
 func init() {
-	relatorioCmd.Flags().IntVarP(&flags.relatorio.ano, "ano", "a", 0, "Ano do relatório")
+	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", "", "Diretório do relatório")
 
 	rootCmd.AddCommand(relatorioCmd)
 }
 
-func imprimirRelatório(cmd *cobra.Command, args []string) {
-	progress.Status("{%d}", flags.relatorio.ano)
-
-	// if len(args) < 1 && len(args[0]) != len("60.872.504/0001-23") {
-	// 	progress.ErrorMsg("CNPJ inválido")
-	// 	os.Exit(1)
-	// }
-
+func criarRelatório(cmd *cobra.Command, args []string) {
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
 		progress.Error(err)
@@ -54,84 +45,27 @@ func imprimirRelatório(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	cnpj := escolherEmpresa(empresas)
-	if len(cnpj) != len("60.872.504/0001-23") {
+	empresa, ok := escolherEmpresa(empresas)
+	if !ok {
 		log.Fatal("Nenhuma empresa foi escolhida")
 	}
 
-	// cnpj := args[0]
-	// df, err := dfp.Relatório(cnpj, flags.relatorio.ano)
-	itr, err := dfp.RelatórioTrimestal(cnpj)
+	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ)
 	if err != nil {
 		progress.Error(err)
 		os.Exit(1)
 	}
 
-	excel(rapina.UnificarContasSimilares(itr), true)
-}
-
-type noBellStdout struct{}
-
-func (n *noBellStdout) Write(p []byte) (int, error) {
-	if len(p) == 1 && p[0] == readline.CharBell {
-		return 0, nil
-	}
-	return readline.Stdout.Write(p)
-}
-
-func (n *noBellStdout) Close() error {
-	return readline.Stdout.Close()
-}
-
-var NoBellStdout = &noBellStdout{}
-
-func escolherEmpresa(empresas []rapina.Empresa) string {
-	// The Active and Selected templates set a small pepper icon next to the name colored and the heat unit for the
-	// active template. The details template is show at the bottom of the select's list and displays the full info
-	// for that pepper in a multi-line template.
-	templates := &promptui.SelectTemplates{
-		Help: `{{ "Para navegar:" | faint }} [{{ .NextKey | faint }} ` +
-			`{{ .PrevKey | faint }} {{ .PageUpKey | faint }} {{ .PageDownKey | faint }}]` +
-			`{{ if .Search }} {{ "Para procurar:" | faint }} [{{ .SearchKey | faint }}]{{ end }}`,
-		Label:    "{{ . }}:",
-		Active:   " > {{ .Nome | red }}",
-		Inactive: "  {{ .Nome | blue }}",
-		Selected: " > {{ .Nome | red | cyan }}",
-		Details: `
---------------------------------------
-| {{ "Name:" | bold }}	{{ .Nome }}
-| {{ "CNPJ:" | faint }}	{{ .CNPJ }}
-------------------------------------------`,
-	}
-
-	// A searcher function is implemented which enabled the search mode for the select. The function follows
-	// the required searcher signature and finds any pepper whose name contains the searched string.
-	searcher := func(input string, index int) bool {
-		empresa := empresas[index]
-		nome := rapina.NormalizeString(empresa.Nome)
-		ninput := rapina.NormalizeString(input)
-
-		return strings.Contains(nome, ninput)
-	}
-
-	prompt := promptui.Select{
-		Label:     "Empresas",
-		Items:     empresas,
-		Templates: templates,
-		Size:      15,
-		Searcher:  searcher,
-		Stdout:    NoBellStdout,
-	}
-
-	i, _, err := prompt.Run()
+	fn, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
 	if err != nil {
-		return ""
+		progress.Error(err)
+		os.Exit(1)
 	}
 
-	return empresas[i].CNPJ
+	excel(fn, rapina.UnificarContasSimilares(itr), true)
 }
 
-func excel(itr []rapina.InformeTrimestral, decrescente bool) {
+func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -174,7 +108,6 @@ func excel(itr []rapina.InformeTrimestral, decrescente bool) {
 		log.Fatal(err)
 	}
 
-	// customerNumFmt := `_-* #.##0_-;[RED]* (#.##0)_-;_-* "-"_-;_-@_-`
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
 	numberStyle, err := f.NewStyle(&excelize.Style{
 		CustomNumFmt: &customerNumFmt,
@@ -287,7 +220,7 @@ func excel(itr []rapina.InformeTrimestral, decrescente bool) {
 	}
 
 	// Save spreadsheet
-	if err := f.SaveAs("InformeTrimestral.xlsx"); err != nil {
+	if err := f.SaveAs(filename); err != nil {
 		log.Fatal(err)
 	}
 }

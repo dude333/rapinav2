@@ -14,7 +14,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
+require github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
