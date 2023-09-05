@@ -10,7 +10,6 @@ VERSION=`git describe --tags --always`
 BUILD_TIME=`date +%F`
 
 export GO111MODULE=on
-export GOFLAGS=-mod=vendor
 
 # Setup the -ldflags option for go build here, interpolate the variable values
 LDFLAGS=-ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD_TIME}"
