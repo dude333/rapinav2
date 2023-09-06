@@ -3,8 +3,8 @@ SOURCEDIR    = .
 SOURCES     := $(shell find $(SOURCEDIR) -name '*.go' | grep -v "_test.go")
 
 BINARYDIR=.
-BINARY=rapina
-WINBINARY=rapina.exe
+BINARY=rapinav2
+WINBINARY=rapinav2.exe
 
 VERSION=`git describe --tags --always`
 BUILD_TIME=`date +%F`
