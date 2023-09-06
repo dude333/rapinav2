@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -126,7 +127,7 @@ func initConfig() {
 		progress.Error(err)
 		os.Exit(1)
 	}
-	progress.Debug("\n\n")
+	fmt.Printf("\n\n")
 }
 
 var _db *sqlx.DB

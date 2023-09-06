@@ -27,14 +27,14 @@ type flagsRelatorio struct {
 // relatorioCmd represents the relatorio command
 var relatorioCmd = &cobra.Command{
 	Use:     "relatorio",
-	Aliases: []string{"report"},
+	Aliases: []string{"relat", "report"},
 	Short:   "imprimir relatório",
 	Long:    `relatorio das informações financeiras de uma empresa`,
 	Run:     criarRelatório,
 }
 
 func init() {
-	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", "", "Diretório do relatório")
+	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", ".", "Diretório do relatório")
 	relatorioCmd.Flags().BoolVarP(&flags.relatorio.crescente, "crescente", "c", false, "Mostrar trimestres em ordem crescente")
 
 	rootCmd.AddCommand(relatorioCmd)
@@ -229,6 +229,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 	if err := f.SaveAs(filename); err != nil {
 		log.Fatal(err)
 	}
+	progress.Status("Relatório salvo como: %s", filename)
 }
 
 type Excel struct {
