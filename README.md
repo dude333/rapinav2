@@ -39,24 +39,24 @@ Antes de se criar um relatório pela primeira vez, é **necessário** baixar os 
 
 Para isso, execute o seguinte comando no terminal:
 
-`.\rapinav2 atualizar [ano]`
+`./rapinav2 atualizar [ano]`
 
 Exemplos:
-* `.\rapinav2 atualizar`: baixar todos os dados.
-* `.\rapinav2 atualizar 2023`: baixar apenar um ano específico.
+* `./rapinav2 atualizar`: baixar todos os dados.
+* `./rapinav2 atualizar 2023`: baixar apenar um ano específico.
 
 ### Criação do Relatório
 
 Para criar uma planilha com os dados financeiros trimestrais de um empresa, execute o seguinte comando:
 
-`.\rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c]`
+`./rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c]`
 
 As empresas serão listadas em ordem alfabética. Basta navegar com as setas, ou use a tecla <kbd>/</kbd> para procurar uma empresa.
 
 Exemplos:
-* `\.rapinav2 relatorio`: cria o relatório no diretório corrente.
-* `\.rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
-* `\.rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
+* `./rapinav2 relatorio`: cria o relatório no diretório corrente.
+* `./rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
+* `./rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
 
 Os relatório será gravado com o nome da empresa. Exemplos:
 
