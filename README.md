@@ -9,7 +9,7 @@
     <img alt="GitHub release" src="https://img.shields.io/github/tag/dude333/rapinav2.svg?label=latest"/>
   </a>
   <a href="https://github.com/dude333/rapinav2/blob/v2/LICENSE">
-    <img alt="License" src="https://img.shields.io/github/license/dude333/rapinav2"/>
+    <img alt="License" src="https://img.shields.io/github/license/dude333/rapinav2?label=license"/>
   </a>
 <p>
 
