@@ -2,11 +2,14 @@
   <img src="https://i.postimg.cc/htdDDfdD/Rapina-logo.png" width="70%"><br/>
 </p>
 <p align="center">
-Crie Relatórios Financeiros de Empresas Listadas na B3
- <br/>
+  Crie Relatórios Financeiros de Empresas Listadas na B3
   <br/>
-  <a href="https://github.com/dude333/rapina/blob/master/LICENSE">
-    <img alt="GitHub" src="https://img.shields.io/github/license/dude333/rapina"/>
+  <br/>
+  <a href="https://github.com/dude333/rapinav2/releases">
+    <img alt="GitHub release" src="https://img.shields.io/github/tag/dude333/rapinav2.svg?label=latest"/>
+  </a>
+  <a href="https://github.com/dude333/rapinav2/blob/v2/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/dude333/rapinav2"/>
   </a>
 <p>
 
@@ -26,18 +29,7 @@ Com base nestes dados, são gerados relatórios das demonstrações financeiras 
 
 ## Instalação
 
-Para a versão 2 é necessário instalar o compilador Go no seu computador. Basta seguir as instruções deste link: https://go.dev/doc/install
-
-Também é necessário instalar o Git, que você pode encontrar aqui: https://git-scm.com/book/pt-br/v2/Come%C3%A7ando-Instalando-o-Git
-
-Depois de instalados, abra o terminal ([CMD](https://superuser.com/a/340051/61616) no Windows) e execute os seguintes comandos:
-
-1. `git clone github.com/dude333/rapina`
-2. `cd rapina`
-3. `git checkout v2`
-4. `go build -o rapina cmd/*`
-
-O arquivo `rapina`, ou `rapina.exe` no Windows, será criado.
+Baixe o executável da [página de release](https://github.com/dude333/rapinav2/releases) e renomeie o executável para rapinav2.exe (no caso do Windows) ou rapinav2 (para o Linux ou macOS).
 
 ## Uso
 
@@ -47,24 +39,24 @@ Antes de se criar um relatório pela primeira vez, é **necessário** baixar os 
 
 Para isso, execute o seguinte comando no terminal:
 
-`.\rapina atualizar [ano]`
+`.\rapinav2 atualizar [ano]`
 
 Exemplos:
-* `.\rapina atualizar`: baixar todos os dados.
-* `.\rapina atualizar 2023`: baixar apenar um ano específico.
+* `.\rapinav2 atualizar`: baixar todos os dados.
+* `.\rapinav2 atualizar 2023`: baixar apenar um ano específico.
 
 ### Criação do Relatório
 
 Para criar uma planilha com os dados financeiros trimestrais de um empresa, execute o seguinte comando:
 
-`.\rapina relatorio [-d <DIRETORIO>]  [--crescente|-c]`
+`.\rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c]`
 
 As empresas serão listadas em ordem alfabética. Basta navegar com as setas, ou use a tecla <kbd>/</kbd> para procurar uma empresa.
 
 Exemplos:
-* `\.rapina relatorio`: cria o relatório no diretório corrente.
-* `\.rapina relatorio -d ./relats`: cria o relatório no diretório `relats`.
-* `\.rapina relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
+* `\.rapinav2 relatorio`: cria o relatório no diretório corrente.
+* `\.rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
+* `\.rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
 
 Os relatório será gravado com o nome da empresa. Exemplos:
 
@@ -82,15 +74,29 @@ RAIA_DROGASIL_S.A.xlsx
 
 ### `rapina.yaml`
 
-Caso deseje mudar o local de gravação do banco de dados e dos arquivos temporários, criar o arquivo `rapina.yaml` no mesmo diretório do executável (`rapina` ou `rapina.exe`) com os seguintes dados:
+Caso deseje mudar o local de gravação do banco de dados e dos arquivos temporários, criar o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com os seguintes dados:
 
 ```yaml
-dataSrc: "/home/user1/dados/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+dataSrc: "/home/user1/dados/rapinav2.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
 tempDir: "/home/user1/dados"
 ```
 
 * `dataSrc`: arquivo do banco de dados.
 * `tempDir`: diretório para arquivos temporários.
+
+## Build
+
+Para compilar o código fonte, basta seguir as instruções deste link: https://go.dev/doc/install
+
+Também é necessário instalar o Git, que você pode encontrar aqui: https://git-scm.com/book/pt-br/v2/Come%C3%A7ando-Instalando-o-Git
+
+Depois de instalados, abra o terminal ([CMD](https://superuser.com/a/340051/61616) no Windows) e execute os seguintes comandos:
+
+1. `git clone github.com/dude333/rapinav2`
+2. `cd rapinav2`
+4. `go build -o rapinav2 cmd/*`
+
+O arquivo `rapinav2`, ou `rapinav2.exe` no Windows, será criado.
 
 ## Nota Final
 
