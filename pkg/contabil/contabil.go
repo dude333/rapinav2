@@ -105,11 +105,11 @@ func (df *DemonstraçãoFinanceira) Relatório(cnpj string, ano int) (*dominio.D
 	return dfp, err
 }
 
-func (df *DemonstraçãoFinanceira) RelatórioTrimestal(cnpj string) ([]rapina.InformeTrimestral, error) {
+func (df *DemonstraçãoFinanceira) RelatórioTrimestal(cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
 	if df.bd == nil {
 		return nil, ErrRepositórioInválido
 	}
-	return df.bd.Trimestral(context.Background(), cnpj)
+	return df.bd.Trimestral(context.Background(), cnpj, consolidado)
 }
 
 func (df *DemonstraçãoFinanceira) Empresas() ([]rapina.Empresa, error) {

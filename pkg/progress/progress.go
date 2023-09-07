@@ -84,6 +84,16 @@ func Status(format string, a ...interface{}) {
 	}
 }
 
+func Fatal(err error) {
+	Error(err)
+	os.Exit(1)
+}
+
+func FatalMsg(format string, a ...interface{}) {
+	ErrorMsg(format, a...)
+	os.Exit(1)
+}
+
 func Error(err error) {
 	if len(p.running) > 0 {
 		clearLine()
@@ -135,7 +145,6 @@ func ErrorMsg(format string, a ...interface{}) {
 	if len(p.running) > 0 {
 		output(p.running)
 	}
-
 }
 
 func Warning(format string, a ...interface{}) {
@@ -150,7 +159,6 @@ func Warning(format string, a ...interface{}) {
 	if len(p.running) > 0 {
 		output(p.running)
 	}
-
 }
 
 func Debug(format string, a ...interface{}) {

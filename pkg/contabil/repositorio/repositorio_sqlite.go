@@ -116,7 +116,7 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*dominio.Demons
 	return &dfp, err
 }
 
-func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeTrimestral, error) {
+func (s *Sqlite) Trimestral(ctx context.Context, cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
 	var ids []int
 	err := s.db.SelectContext(ctx, &ids, `SELECT id FROM empresas WHERE cnpj=? ORDER BY ano`, &cnpj)
 	if err == sql.ErrNoRows {
@@ -129,17 +129,9 @@ func (s *Sqlite) Trimestral(ctx context.Context, cnpj string) ([]rapina.InformeT
 	progress.Trace("[]sqliteEmpresa => %+v", ids)
 
 	var resultados []resultadoTrimestral
-	err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids, true))
+	err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids, consolidado))
 	if err != nil {
 		return nil, err
-	}
-	if len(resultados) == 0 {
-		// Buscar por dados individuais caso a empresa não tenha dados consolidados
-		progress.Trace("Dados consolidados não encontrados; procurando por dados individuais...")
-		err = s.db.SelectContext(ctx, &resultados, sqlTrimestral(ids, false))
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return converterResultadosTrimestrais(resultados)

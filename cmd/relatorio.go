@@ -43,61 +43,108 @@ func init() {
 func criarRelatório(cmd *cobra.Command, args []string) {
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
-		progress.Error(err)
-		os.Exit(1)
+		progress.Fatal(err)
 	}
 
 	empresas, err := dfp.Empresas()
 	if err != nil {
-		log.Fatal(err)
+		progress.Fatal(err)
 	}
 	empresa, ok := escolherEmpresa(empresas)
 	if !ok {
-		progress.Warning("Nenhuma empresa foi escolhida")
-		os.Exit(1)
+		progress.FatalMsg("Nenhuma empresa foi escolhida")
 	}
 
-	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ)
+	filename, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
 	if err != nil {
-		progress.Error(err)
-		os.Exit(1)
+		progress.Fatal(err)
 	}
 
-	fn, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
-	if err != nil {
-		progress.Error(err)
-		os.Exit(1)
+	x := &Excel{
+		file:       excelize.NewFile(),
+		sheetName:  "Informe Trimestral",
+		sheetIndex: 0,
 	}
-
-	excel(fn, rapina.UnificarContasSimilares(itr), !flags.relatorio.crescente)
-}
-
-func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
-	f := excelize.NewFile()
 	defer func() {
-		if err := f.Close(); err != nil {
+		if err := x.file.Close(); err != nil {
 			progress.Error(err)
 		}
 	}()
 
-	// Create a new sheet.
-	sheet := "Informe Trimestral"
-	err := f.SetSheetName(f.GetSheetList()[0], sheet)
+	// DADOS CONSOLIDADOS
+	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ, true)
 	if err != nil {
-		log.Fatal(err)
+		progress.Fatal(err)
+	}
+	if len(itr) > 0 {
+		progress.Debug("Dados consolidados: %d registros", len(itr))
+		if err = x.NewSheet("consolidado"); err != nil {
+			progress.Fatal(err)
+		}
+		excelReport(x, rapina.UnificarContasSimilares(itr), !flags.relatorio.crescente)
 	}
 
-	x := Excel{
-		f:         f,
-		sheetName: sheet,
+	// DADOS INDIVIDUAIS
+	itr, err = dfp.RelatórioTrimestal(empresa.CNPJ, false)
+	if err != nil {
+		progress.Fatal(err)
+	}
+	if len(itr) > 0 {
+		progress.Debug("Dados individuais: %d registros", len(itr))
+		if err = x.NewSheet("individual"); err != nil {
+			progress.Fatal(err)
+		}
+		excelReport(x, rapina.UnificarContasSimilares(itr), !flags.relatorio.crescente)
 	}
 
+	// Salva planilha
+	if err := x.file.SaveAs(filename); err != nil {
+		progress.Fatal(err)
+		os.Exit(1)
+	}
+	progress.Status("Relatório salvo como: %s", filename)
+}
+
+type Excel struct {
+	file       *excelize.File
+	sheetName  string
+	sheetIndex int
+}
+
+func (x *Excel) NewSheet(sheetName string) error {
+	n := len(x.file.GetSheetList())
+	if n == 1 && x.sheetIndex == 0 {
+		err := x.file.SetSheetName(x.file.GetSheetList()[x.sheetIndex], sheetName)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := x.file.NewSheet(sheetName)
+		if err != nil {
+			return err
+		}
+	}
+	x.sheetIndex++
+	x.sheetName = sheetName
+	return nil
+}
+
+func (x *Excel) printCell(row, col int, style int, value interface{}) {
+	_ = x.file.SetCellValue(x.sheetName, cell(row, col), value)
+	_ = x.file.SetCellStyle(x.sheetName, cell(row, col), cell(row, col), style)
+}
+
+func cell(row, col int) string {
+	return fmt.Sprintf("%s%d", num2name(col), row)
+}
+
+func excelReport(x *Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	ZoomScale := 90.0
-	if err := f.SetSheetView(sheet, 0, &excelize.ViewOptions{ZoomScale: &ZoomScale}); err != nil {
+	if err := x.file.SetSheetView(x.sheetName, 0, &excelize.ViewOptions{ZoomScale: &ZoomScale}); err != nil {
 		log.Fatal(err)
 	}
 
-	fontStyle, err := f.NewStyle(&excelize.Style{
+	fontStyle, err := x.file.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Size: 10.0,
 		},
@@ -106,7 +153,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 		log.Fatal(err)
 	}
 
-	titleStyle, err := f.NewStyle(&excelize.Style{
+	titleStyle, err := x.file.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Bold: true,
 		},
@@ -116,7 +163,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 	}
 
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
-	numberStyle, err := f.NewStyle(&excelize.Style{
+	numberStyle, err := x.file.NewStyle(&excelize.Style{
 		CustomNumFmt: &customerNumFmt,
 		Font: &excelize.Font{
 			Size: 10.0,
@@ -126,7 +173,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 		log.Fatal(err)
 	}
 
-	boldNumberStyle, err := f.NewStyle(&excelize.Style{
+	boldNumberStyle, err := x.file.NewStyle(&excelize.Style{
 		CustomNumFmt: &customerNumFmt,
 		Font: &excelize.Font{
 			Bold: true,
@@ -169,7 +216,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 		x.printCell(row, 1, fontStyle, spc+informe.Codigo)
 		x.printCell(row, 2, fontStyle, spc+informe.Descr)
 		if strings.Count(informe.Codigo, ".") <= 1 {
-			_ = f.SetCellStyle(sheet, cell(row, 1), cell(row, 2), titleStyle)
+			_ = x.file.SetCellStyle(x.sheetName, cell(row, 1), cell(row, 2), titleStyle)
 		}
 		col = initCol
 		for _, ano := range anos {
@@ -187,7 +234,7 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 				}
 
 				if strings.Count(informe.Codigo, ".") <= 1 {
-					_ = f.SetCellStyle(sheet, cell(row, col), cell(row, col+3), boldNumberStyle)
+					_ = x.file.SetCellStyle(x.sheetName, cell(row, col), cell(row, col+3), boldNumberStyle)
 				}
 			}
 			col += 4
@@ -197,12 +244,12 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 
 	// Auto-resize columns
 	codWidth, descrWidth := colWidths(itr)
-	_ = f.SetColWidth(sheet, "A", "A", codWidth)
-	_ = f.SetColWidth(sheet, "B", "B", descrWidth)
-	_ = f.SetColWidth(sheet, num2name(3), num2name(col+3), 12)
+	_ = x.file.SetColWidth(x.sheetName, "A", "A", codWidth)
+	_ = x.file.SetColWidth(x.sheetName, "B", "B", descrWidth)
+	_ = x.file.SetColWidth(x.sheetName, num2name(3), num2name(col+3), 12)
 
 	// Freeze panes
-	_ = f.SetPanes(sheet, &excelize.Panes{
+	_ = x.file.SetPanes(x.sheetName, &excelize.Panes{
 		Freeze:      true,
 		Split:       false,
 		XSplit:      2,
@@ -221,30 +268,10 @@ func excel(filename string, itr []rapina.InformeTrimestral, decrescente bool) {
 	}
 	for i := len(hasData) - 1; i >= 0; i-- {
 		if !hasData[i] {
-			_ = f.RemoveCol(sheet, num2name(initCol+i))
+			_ = x.file.RemoveCol(x.sheetName, num2name(initCol+i))
 		}
 	}
-
-	// Save spreadsheet
-	if err := f.SaveAs(filename); err != nil {
-		log.Fatal(err)
-	}
-	progress.Status("Relatório salvo como: %s", filename)
-}
-
-type Excel struct {
-	f         *excelize.File
-	sheetName string
-}
-
-func (x *Excel) printCell(row, col int, style int, value interface{}) {
-	_ = x.f.SetCellValue(x.sheetName, cell(row, col), value)
-	_ = x.f.SetCellStyle(x.sheetName, cell(row, col), cell(row, col), style)
-}
-
-func cell(row, col int) string {
-	return fmt.Sprintf("%s%d", num2name(col), row)
-}
+} // excelReport =====
 
 func num2name(col int) string {
 	n, _ := excelize.ColumnNumberToName(col)
