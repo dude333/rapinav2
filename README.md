@@ -74,15 +74,22 @@ RAIA_DROGASIL_S.A.xlsx
 
 ### `rapina.yaml`
 
-Caso deseje mudar o local de gravação do banco de dados e dos arquivos temporários, criar o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com os seguintes dados:
+Para customizar os parâmetros, crie o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com um ou mais dos seguintes parâmetros:
 
+
+| Parâmetro | Descrição |
+|-----------|-----------|
+| `dataSrc` | Arquivo onde serão gravados os dados coletados <br> Default: ./.dados |
+| `tempDir` | Diretório onde os arquivos temporários serão armazernados <br> Default: ./.dados |
+| `reportDir` | Diretório onde os relatórios serão salvos <br> Default: ./ |
+
+
+Exemplo:
 ```yaml
-dataSrc: "/home/user1/dados/rapinav2.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+dataSrc: "/home/user1/dados/rapinav2.db
 tempDir: "/home/user1/dados"
+reportDir: "/home/user1/relatorios"
 ```
-
-* `dataSrc`: arquivo do banco de dados.
-* `tempDir`: diretório para arquivos temporários.
 
 ## Build
 

@@ -39,7 +39,8 @@ func escolherEmpresa(empresas []rapina.Empresa) (rapina.Empresa, bool) {
 	templates := &promptui.SelectTemplates{
 		Help: `{{ "Para navegar:" | faint }} [{{ .NextKey | faint }} ` +
 			`{{ .PrevKey | faint }} {{ .PageUpKey | faint }} {{ .PageDownKey | faint }}]` +
-			`{{ if .Search }} {{ "Para procurar:" | faint }} [{{ .SearchKey | faint }}]{{ end }}`,
+			`{{ if .Search }} {{ "Para procurar:" | faint }} [{{ .SearchKey | faint }}]{{ end }}` +
+			` Para sair: [Ctrl-c]`,
 		Label:    "{{ . }}:",
 		Active:   " > {{ .Nome | red }}",
 		Inactive: "  {{ .Nome | blue }}",

@@ -30,7 +30,7 @@ var relatorioCmd = &cobra.Command{
 	Aliases: []string{"relat", "report"},
 	Short:   "imprimir relatório",
 	Long:    `relatorio das informações financeiras de uma empresa`,
-	Run:     criarRelatório,
+	Run:     menuRelatório,
 }
 
 func init() {
@@ -40,7 +40,7 @@ func init() {
 	rootCmd.AddCommand(relatorioCmd)
 }
 
-func criarRelatório(cmd *cobra.Command, args []string) {
+func menuRelatório(cmd *cobra.Command, args []string) {
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
 		progress.Fatal(err)
@@ -50,11 +50,19 @@ func criarRelatório(cmd *cobra.Command, args []string) {
 	if err != nil {
 		progress.Fatal(err)
 	}
-	empresa, ok := escolherEmpresa(empresas)
-	if !ok {
-		progress.FatalMsg("Nenhuma empresa foi escolhida")
-	}
 
+	for {
+		empresa, ok := escolherEmpresa(empresas)
+		if !ok {
+			progress.Warning("Até logo!")
+			os.Exit(0)
+		}
+
+		criarRelatório(empresa, dfp)
+	}
+}
+
+func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira) {
 	filename, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
 	if err != nil {
 		progress.Fatal(err)
@@ -102,7 +110,12 @@ func criarRelatório(cmd *cobra.Command, args []string) {
 		progress.Fatal(err)
 		os.Exit(1)
 	}
-	progress.Status("Relatório salvo como: %s", filename)
+
+	status := fmt.Sprintf("Relatório salvo como: %s", filename)
+	line := strings.Repeat("-", min(len(status), 80))
+	progress.Status(line)
+	progress.Status(status)
+	progress.Status(line + "\n\n")
 }
 
 type Excel struct {
@@ -315,6 +328,13 @@ func stringWidth(str string) float64 {
 		width += charWidth(ch)
 	}
 	return width
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // charWidth foi criado com este script em Python:

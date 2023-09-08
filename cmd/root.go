@@ -114,8 +114,7 @@ func initConfig() {
 	}
 	progress.Debug("dataSrc = %s", flags.dataSrc)
 	if err := createDir(flags.dataSrc); err != nil {
-		progress.Error(err)
-		os.Exit(1)
+		progress.Fatal(err)
 	}
 
 	flags.tempDir = tempDirDefault
@@ -124,9 +123,17 @@ func initConfig() {
 	}
 	progress.Debug("tempDir = %s", flags.tempDir)
 	if err := createDir(flags.tempDir); err != nil {
-		progress.Error(err)
-		os.Exit(1)
+		progress.Fatal(err)
 	}
+
+	if viper.IsSet("reportDir") {
+		flags.relatorio.outputDir = viper.GetString("reportDir")
+	}
+	progress.Debug("reportDir = %s", flags.relatorio.outputDir)
+	if err := createDir(flags.relatorio.outputDir); err != nil {
+		progress.Fatal(err)
+	}
+
 	fmt.Printf("\n\n")
 }
 
@@ -139,8 +146,7 @@ func db() *sqlx.DB {
 	var err error
 	_db, err := sqlx.Open("sqlite3", flags.dataSrc)
 	if err != nil {
-		progress.ErrorMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
-		os.Exit(1)
+		progress.FatalMsg("Erro ao abrir/criar o banco de dados, verificar se o diretório existe: %s", flags.dataSrc)
 	}
 	_db.SetMaxOpenConns(1)
 

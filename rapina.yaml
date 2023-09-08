@@ -1,5 +1,6 @@
 dataSrc: "/home/adr/var/rapina/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
 tempDir: "/home/adr/var/rapina"
+reportDir: "/mnt/share"
 
 modelos:
   global:
