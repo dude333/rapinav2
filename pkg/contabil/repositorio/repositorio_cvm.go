@@ -14,11 +14,12 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
+
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil/dominio"
 	"github.com/dude333/rapinav2/pkg/progress"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/transform"
 )
 
 // cvmDFP é usada para armazenar os dados (linhas) dos arquivos de DFP para
@@ -43,7 +44,6 @@ type cvmDFP struct {
 }
 
 func (c *cvmDFP) converteConta() dominio.Conta {
-
 	contém := func(str string) bool {
 		return strings.Contains(c.GrupoDFP, str)
 	}
@@ -221,8 +221,8 @@ func processarArquivoDFP(ctx context.Context, arquivo Arquivo, results chan<- do
 }
 
 func ignorarRegistro(dfp *cvmDFP) bool {
-	if dfp.Meses != 3 && dfp.Meses != 12 {
-		progress.Trace("Ignorando registro não trimestral ou anual: %v", dfp)
+	if dfp.Meses%3 != 0 {
+		progress.Trace("Ignorando registro não multiplo de 3: %v", dfp)
 		return true
 	}
 	return false
@@ -359,104 +359,103 @@ func (c *csv) lerCabeçalho(linha string) {
 
 // carregaDFP transforma uma linha do arquivo DFP em uma estrutura DFP.
 //
-//		-----------------------
-//		Campo: CD_CONTA
-//		-----------------------
-//			Descrição : Código da conta
-//			Domínio   : Numérico
-//			Tipo Dados: varchar
-//			Tamanho   : 18
+//	-----------------------
+//	Campo: CD_CONTA
+//	-----------------------
+//	Descrição : Código da conta
+//	Domínio   : Numérico
+//	Tipo Dados: varchar
+//	Tamanho   : 18
 //
-//		-----------------------
-//		Campo: CNPJ_CIA
-//		-----------------------
-//			Descrição : CNPJ da companhia
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 20
+//	-----------------------
+//	Campo: CNPJ_CIA
+//	-----------------------
+//	Descrição : CNPJ da companhia
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 20
 //
-//		-----------------------
-//		Campo: DENOM_CIA
-//		-----------------------
-//			Descrição : Nome empresarial da companhia
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 100
+//	-----------------------
+//	Campo: DENOM_CIA
+//	-----------------------
+//	Descrição : Nome empresarial da companhia
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 100
 //
-//		-----------------------
-//		Campo: DS_CONTA
-//		-----------------------
-//			Descrição : Descrição da conta
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 100
+//	-----------------------
+//	Campo: DS_CONTA
+//	-----------------------
+//	Descrição : Descrição da conta
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 100
 //
-//		-----------------------
-//		Campo: DT_INI_EXERC
-//		-----------------------
-//			Descrição : Data início do exercício social
-//			Domínio   : AAAA-MM-DD
-//			Tipo Dados: date
-//			Tamanho   : 10
+//	-----------------------
+//	Campo: DT_INI_EXERC
+//	-----------------------
+//	Descrição : Data início do exercício social
+//	Domínio   : AAAA-MM-DD
+//	Tipo Dados: date
+//	Tamanho   : 10
 //
-//		-----------------------
-//		Campo: DT_FIM_EXERC
-//		-----------------------
-//			Descrição : Data fim do exercício social
-//			Domínio   : AAAA-MM-DD
-//			Tipo Dados: date
-//			Tamanho   : 10
+//	-----------------------
+//	Campo: DT_FIM_EXERC
+//	-----------------------
+//	Descrição : Data fim do exercício social
+//	Domínio   : AAAA-MM-DD
+//	Tipo Dados: date
+//	Tamanho   : 10
 //
-//		-----------------------
-//		Campo: ESCALA_MOEDA
-//		-----------------------
-//			Descrição : Escala monetária
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 100
+//	-----------------------
+//	Campo: ESCALA_MOEDA
+//	-----------------------
+//	Descrição : Escala monetária
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 100
 //
-//		-----------------------
-//		Campo: GRUPO_DFP
-//		-----------------------
-//			Descrição : Nome e nível de agregação da demonstração
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 206
+//	-----------------------
+//	Campo: GRUPO_DFP
+//	-----------------------
+//	Descrição : Nome e nível de agregação da demonstração
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 206
 //
-//		-----------------------
-//		Campo: MOEDA
-//		-----------------------
-//			Descrição : Moeda
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 100
+//	-----------------------
+//	Campo: MOEDA
+//	-----------------------
+//	Descrição : Moeda
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 100
 //
-//		-----------------------
-//		Campo: ORDEM_EXERC
-//		-----------------------
-//			Descrição : Ordem do exercício social
-//			Domínio   : Alfanumérico
-//			Tipo Dados: varchar
-//			Tamanho   : 9
+//	-----------------------
+//	Campo: ORDEM_EXERC
+//	-----------------------
+//	Descrição : Ordem do exercício social
+//	Domínio   : Alfanumérico
+//	Tipo Dados: varchar
+//	Tamanho   : 9
 //
-//		-----------------------
-//		Campo: VERSAO
-//		-----------------------
-//			Descrição : Versão do documento
-//			Domínio   : Numérico
-//			Tipo Dados: smallint
-//			Precisão  : 5
-//			Scale     : 0
+//	-----------------------
+//	Campo: VERSAO
+//	-----------------------
+//	Descrição : Versão do documento
+//	Domínio   : Numérico
+//	Tipo Dados: smallint
+//	Precisão  : 5
+//	Scale     : 0
 //
-//		-----------------------
-//		Campo: VL_CONTA
-//		-----------------------
-//			Descrição : Valor da conta
-//			Domínio   : Numérico
-//			Tipo Dados: decimal
-//			Precisão  : 29
-//			Scale     : 10
-//
+//	-----------------------
+//	Campo: VL_CONTA
+//	-----------------------
+//	Descrição : Valor da conta
+//	Domínio   : Numérico
+//	Tipo Dados: decimal
+//	Precisão  : 29
+//	Scale     : 10
 func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
 	if !c.cabeçalhoLido {
 		c.lerCabeçalho(linha)
