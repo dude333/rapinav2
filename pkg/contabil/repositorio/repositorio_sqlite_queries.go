@@ -16,12 +16,11 @@ type resultadoTrimestral struct {
 }
 
 type jsonTrimestral []struct {
-	Ano   int     `json:"year"`
-	T1    float64 `json:"q1"`
-	T2    float64 `json:"q2"`
-	T3    float64 `json:"q3"`
-	T4    float64 `json:"q4"`
-	Anual float64 `json:"yearly"`
+	Ano   int     `json:"ano"`
+	T1    float64 `json:"t1"`
+	T2    float64 `json:"t2"`
+	T3    float64 `json:"t3"`
+	T4    float64 `json:"t4"`
 }
 
 func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.InformeTrimestral, error) {
@@ -41,7 +40,6 @@ func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.
 			valoresTrimestrais[j].T2 = valorJSON.T2
 			valoresTrimestrais[j].T3 = valorJSON.T3
 			valoresTrimestrais[j].T4 = valorJSON.T4
-			valoresTrimestrais[j].Anual = valorJSON.Anual
 		}
 
 		itr[i] = rapina.InformeTrimestral{

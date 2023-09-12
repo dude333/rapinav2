@@ -5,8 +5,6 @@
 package rapina
 
 import (
-	"strings"
-
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -17,12 +15,11 @@ type InformeTrimestral struct {
 }
 
 type ValoresTrimestrais struct {
-	Ano   int
-	T1    float64
-	T2    float64
-	T3    float64
-	T4    float64
-	Anual float64
+	Ano int
+	T1  float64
+	T2  float64
+	T3  float64
+	T4  float64
 }
 
 func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
@@ -31,7 +28,7 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 	ultimaLinha := len(itr) - 1
 	for linha := 1; linha <= ultimaLinha; linha++ {
 		unir := false
-		if Similar(itr[linha-1].Descr, itr[linha].Descr) {
+		if Similar(itr[linha-1].Codigo+itr[linha-1].Descr, itr[linha].Codigo+itr[linha].Descr) {
 			unir = true
 			var novosValores []ValoresTrimestrais
 			for _, ano := range anos {
@@ -48,8 +45,7 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 					if (v1.T1 != 0.0 && v2.T1 != 0.0) ||
 						(v1.T2 != 0.0 && v2.T2 != 0.0) ||
 						(v1.T3 != 0.0 && v2.T3 != 0.0) ||
-						(v1.T4 != 0.0 && v2.T4 != 0.0) ||
-						(v1.Anual != 0.0 && v2.Anual != 0.0) {
+						(v1.T4 != 0.0 && v2.T4 != 0.0) {
 						itr2 = append(itr2, itr[linha-1])
 						unir = false
 						break
@@ -105,11 +101,6 @@ func equalizarValores(ano int, v1, v2 ValoresTrimestrais) ValoresTrimestrais {
 	} else {
 		v.T4 = v2.T4
 	}
-	if v1.Anual != 0.0 && v2.Anual == 0.0 {
-		v.Anual = v1.Anual
-	} else {
-		v.Anual = v2.Anual
-	}
 	return v
 }
 
@@ -133,7 +124,7 @@ func valorAno(ano int, valores []ValoresTrimestrais) (ValoresTrimestrais, bool) 
 
 func Zerado(valores []ValoresTrimestrais) bool {
 	for _, v := range valores {
-		if v.T1 != 0 || v.T2 != 0 || v.T3 != 0 || v.T4 != 0 || v.Anual != 0 {
+		if v.T1 != 0 || v.T2 != 0 || v.T3 != 0 || v.T4 != 0 {
 			return false
 		}
 	}
@@ -160,14 +151,8 @@ func TrimestresComDados(itr []InformeTrimestral) []bool {
 				if v.T3 != 0.0 {
 					colunas[i+2] = true
 				}
-				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-					if v.Anual != 0.0 {
-						colunas[i+3] = true
-					}
-				} else {
-					if v.T4 != 0.0 {
-						colunas[i+3] = true
-					}
+				if v.T4 != 0.0 {
+					colunas[i+3] = true
 				}
 			}
 		}

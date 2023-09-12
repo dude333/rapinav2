@@ -240,11 +240,7 @@ func excelReport(x *Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 				x.printCell(row, col+seq[0], numberStyle, valor.T1)
 				x.printCell(row, col+seq[1], numberStyle, valor.T2)
 				x.printCell(row, col+seq[2], numberStyle, valor.T3)
-				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-					x.printCell(row, col+seq[3], numberStyle, valor.Anual)
-				} else {
-					x.printCell(row, col+seq[3], numberStyle, valor.T4)
-				}
+				x.printCell(row, col+seq[3], numberStyle, valor.T4)
 
 				if strings.Count(informe.Codigo, ".") <= 1 {
 					_ = x.file.SetCellStyle(x.sheetName, cell(row, col), cell(row, col+3), boldNumberStyle)

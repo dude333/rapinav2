@@ -21,9 +21,9 @@ func Test_Zerado(t *testing.T) {
 			name: "testar zerado",
 			args: args{
 				valores: []ValoresTrimestrais{
-					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2022, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
+					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2022, T1: 0, T2: 0, T3: 0, T4: 0},
 				},
 			},
 			want: true,
@@ -32,9 +32,9 @@ func Test_Zerado(t *testing.T) {
 			name: "testar não zerado 1",
 			args: args{
 				valores: []ValoresTrimestrais{
-					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2022, T1: 0, T2: 1, T3: 0, T4: 0, Anual: 0},
+					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2022, T1: 0, T2: 1, T3: 0, T4: 0},
 				},
 			},
 			want: false,
@@ -43,10 +43,10 @@ func Test_Zerado(t *testing.T) {
 			name: "testar não zerado 2",
 			args: args{
 				valores: []ValoresTrimestrais{
-					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2022, T1: 0, T2: 0, T3: 0, T4: 0, Anual: 0},
-					{Ano: 2023, T1: 10.1, T2: 0, T3: 0, T4: 0, Anual: 0},
+					{Ano: 2020, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2021, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2022, T1: 0, T2: 0, T3: 0, T4: 0},
+					{Ano: 2023, T1: 10.1, T2: 0, T3: 0, T4: 0},
 				},
 			},
 			want: false,
