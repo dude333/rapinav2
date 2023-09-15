@@ -60,3 +60,14 @@ func Test_Zerado(t *testing.T) {
 		})
 	}
 }
+
+func Test_codPai(t *testing.T) {
+	tests := []string{"1", "2", "1.02", "2.03.04", "3.01.02.04", "6.01", "7.02.01"}
+	expected := []string{"1", "2", "1.02", "2.03.04", "3.01.02", "6.01", "7.02.01"}
+
+	for i := range tests {
+		if got := codPai(tests[i]); got != expected[i] {
+			t.Errorf("codPai(%s) = %s, want %s", tests[i], got, expected[i])
+		}
+	}
+}

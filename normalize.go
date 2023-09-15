@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/dude333/rslp-go"
 	"golang.org/x/text/runes"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
@@ -36,8 +37,8 @@ func NormalizeString(s string) string {
 }
 
 func Similar(s1, s2 string) bool {
-	normalizedS1 := NormalizeString(s1)
-	normalizedS2 := NormalizeString(s2)
+	normalizedS1 := NormalizeString(rslp.Frase(s1))
+	normalizedS2 := NormalizeString(rslp.Frase(s2))
 
 	return normalizedS1 == normalizedS2
 }

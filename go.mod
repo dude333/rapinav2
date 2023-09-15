@@ -1,6 +1,6 @@
 module github.com/dude333/rapinav2
 
-go 1.17
+go 1.18
 
 require (
 	github.com/dustin/go-humanize v1.0.0
@@ -14,7 +14,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+require (
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
+	github.com/dude333/rslp-go v0.0.3
+)
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
@@ -36,6 +39,6 @@ require (
 	github.com/xuri/nfp v0.0.0-20220409054826-5e722a1d9e22 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 )

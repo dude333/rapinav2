@@ -199,9 +199,6 @@ func excelReport(x *Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 
 	// ===== Relatório - início =====
 
-	x.printCell(1, 1, titleStyle, "Código")
-	x.printCell(1, 2, titleStyle, "Descrição")
-
 	seq := []int{0, 1, 2, 3}
 	anos := rapina.RangeAnos(itr)
 
@@ -211,19 +208,31 @@ func excelReport(x *Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	}
 
 	const initCol = 3
-	col := initCol
-	for _, ano := range anos {
-		x.printCell(1, col+seq[0], titleStyle, fmt.Sprintf("1T%d", ano))
-		x.printCell(1, col+seq[1], titleStyle, fmt.Sprintf("2T%d", ano))
-		x.printCell(1, col+seq[2], titleStyle, fmt.Sprintf("3T%d", ano))
-		x.printCell(1, col+seq[3], titleStyle, fmt.Sprintf("4T%d", ano))
-		col += 4
+
+	cabeçalho := func(row, col int) {
+		x.printCell(row, 1, titleStyle, "Código")
+		x.printCell(row, 2, titleStyle, "Descrição")
+		for _, ano := range anos {
+			x.printCell(row, col+seq[0], titleStyle, fmt.Sprintf("1T%d", ano))
+			x.printCell(row, col+seq[1], titleStyle, fmt.Sprintf("2T%d", ano))
+			x.printCell(row, col+seq[2], titleStyle, fmt.Sprintf("3T%d", ano))
+			x.printCell(row, col+seq[3], titleStyle, fmt.Sprintf("4T%d", ano))
+			col += 4
+		}
 	}
 
-	row := 2
-	for _, informe := range itr {
+	row := 1
+	col := initCol
+	cabeçalho(row, col)
+
+	row++
+	for i, informe := range itr {
 		if rapina.Zerado(informe.Valores) {
 			continue
+		}
+		if i > 1 && (itr[i-1].Codigo[0] != itr[i].Codigo[0]) {
+			x.printCell(row, 1, fontStyle, "______________")
+			row++
 		}
 		spc := space(informe.Codigo)
 		x.printCell(row, 1, fontStyle, spc+informe.Codigo)

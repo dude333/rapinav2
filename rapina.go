@@ -5,6 +5,8 @@
 package rapina
 
 import (
+	"strings"
+
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -22,96 +24,104 @@ type ValoresTrimestrais struct {
 	T4  float64
 }
 
+func codPai(codigo string) string {
+	if len(codigo) < 1 {
+		return codigo
+	}
+	lvl := strings.Count(codigo, ".") + 1
+	if lvl <= 3 {
+		return codigo
+	}
+	idx := strings.LastIndex(codigo, ".")
+	if idx <= 0 {
+		return codigo
+	}
+	return codigo[:idx]
+}
+
+// UnificarContasSimilares unifica as linhas similares do InformeTrimestral
+// comparando o código, sem o último grupo (ex.: 1.02.05.01 => 1.02.05),
+// com as próximas linhas.
+// Cada linha (InformeTrimestral) possui o seguinte formato:
+// Linha n => [Ano:ano Valor trimestre 1 | Valor T2 | Valor T3 | Valor T4]
+// Exemplo:
+// "Tributo a recuperar"  => [2019 1|0|5|3; 2021 5|2|0|0]
+// "Tributos a recuperar" => [2019 0|2|0|0; 2020 1|4|2|2; 2021 0|0|1|2]
+// Resultado:
+// "Tributo a recuperar"  => [2019 1|2|5|3; 2020 1|4|2|2; 2021 5|2|1|2]
 func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
-	itr2 := make([]InformeTrimestral, 1, len(itr))
+	itrUnificado := make([]InformeTrimestral, 1, len(itr))
+	unida := make([]bool, len(itr))
 	anos := RangeAnos(itr)
 	ultimaLinha := len(itr) - 1
-	for linha := 1; linha <= ultimaLinha; linha++ {
-		unir := false
-		if Similar(itr[linha-1].Codigo+itr[linha-1].Descr, itr[linha].Codigo+itr[linha].Descr) {
-			unir = true
-			var novosValores []ValoresTrimestrais
-			for _, ano := range anos {
-				v1, existe1 := valorAno(ano, itr[linha-1].Valores)
-				v2, existe2 := valorAno(ano, itr[linha].Valores)
-
-				if existe1 && !existe2 {
-					novosValores = append(novosValores, v1)
-				}
-				if !existe1 && existe2 {
-					novosValores = append(novosValores, v2)
-				}
-				if existe1 && existe2 {
-					if (v1.T1 != 0.0 && v2.T1 != 0.0) ||
-						(v1.T2 != 0.0 && v2.T2 != 0.0) ||
-						(v1.T3 != 0.0 && v2.T3 != 0.0) ||
-						(v1.T4 != 0.0 && v2.T4 != 0.0) {
-						itr2 = append(itr2, itr[linha-1])
-						unir = false
-						break
-					}
-					novosValores = append(novosValores, equalizarValores(ano, v1, v2))
-				}
-			} // next ano
-
-			if linha == ultimaLinha {
-				itr2 = append(itr2, itr[linha])
-			}
-			if unir {
-				informe := InformeTrimestral{
-					Codigo:  itr[linha-1].Codigo,
-					Descr:   itr[linha-1].Descr,
-					Valores: novosValores,
-				}
-				itr[linha].Valores = novosValores
-				itr2 = append(itr2, informe)
-				progress.Trace("Joining:\n\t+ %v\n\t+ %v\n\t= %v\n\n", itr[linha-1], itr[linha], informe)
-				linha++
-			}
-		} else {
-			itr2 = append(itr2, itr[linha-1])
-			if linha == ultimaLinha {
-				itr2 = append(itr2, itr[linha])
-			}
+	for linha1 := 0; linha1 <= ultimaLinha; linha1++ {
+		if unida[linha1] {
+			continue
 		}
-	}
-	return itr2
+		valoresUnificados := itr[linha1].Valores
+		for linha2 := linha1 + 1; linha2 <= ultimaLinha; linha2++ {
+			if unida[linha2] {
+				continue
+			}
+			cod1 := codPai(itr[linha1].Codigo)
+			cod2 := codPai(itr[linha2].Codigo)
+			if Similar(cod1+itr[linha1].Descr, cod2+itr[linha2].Descr) {
+				unida[linha2] = true
+				for _, ano := range anos {
+					v1, existe1 := valorAno(ano, valoresUnificados)
+					v2, existe2 := valorAno(ano, itr[linha2].Valores)
+
+					if !existe1 && existe2 {
+						valoresUnificados = append(valoresUnificados, v2)
+					}
+					if existe1 && existe2 {
+						v, ok := equalizarValores(ano, v1, v2)
+						unida[linha2] = ok
+						if ok {
+							valoresUnificados = append(valoresUnificados, v)
+						} else {
+							break
+						}
+					}
+				} // next ano
+				if unida[linha2] {
+					progress.Trace("Joining:\n\t+ %v\n\t+ %v\n\t", itr[linha1], itr[linha2])
+				}
+			}
+		} // next linha2
+		informe := InformeTrimestral{
+			Codigo:  itr[linha1].Codigo,
+			Descr:   itr[linha1].Descr,
+			Valores: valoresUnificados,
+		}
+		itrUnificado = append(itrUnificado, informe)
+	} // next linha1
+	return itrUnificado
 }
 
-func equalizarValores(ano int, v1, v2 ValoresTrimestrais) ValoresTrimestrais {
+func equalizarValores(ano int, v1, v2 ValoresTrimestrais) (ValoresTrimestrais, bool) {
 	var v ValoresTrimestrais
 	v.Ano = ano
-	if v1.T1 != 0.0 && v2.T1 == 0.0 {
-		v.T1 = v1.T1
-	} else {
-		v.T1 = v2.T1
-	}
-	if v1.T2 != 0.0 && v2.T2 == 0.0 {
-		v.T2 = v1.T2
-	} else {
-		v.T2 = v2.T2
-	}
-	if v1.T3 != 0.0 && v2.T3 == 0.0 {
-		v.T3 = v1.T3
-	} else {
-		v.T3 = v2.T3
-	}
-	if v1.T4 != 0.0 && v2.T4 == 0.0 {
-		v.T4 = v1.T4
-	} else {
-		v.T4 = v2.T4
-	}
-	return v
-}
+	ok := true
 
-// func existeAno(ano int, valores []ValoresTrimestrais) bool {
-// 	for _, v := range valores {
-// 		if v.Ano == ano {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
+	check := func(v1Tn, v2Tn float64) (float64, bool) {
+		if !ok || (v1Tn != 0.0 && v2Tn != 0.0) {
+			return 0.0, false
+		}
+		if v1Tn != 0.0 && v2Tn == 0.0 {
+			return v1Tn, true
+		} else {
+			return v2Tn, true
+		}
+	}
+
+	v.T1, ok = check(v1.T1, v2.T1)
+	v.T2, ok = check(v1.T2, v2.T2)
+	v.T3, ok = check(v1.T3, v2.T3)
+	v.T4, ok = check(v1.T4, v2.T4)
+
+	return v, ok
+}
 
 func valorAno(ano int, valores []ValoresTrimestrais) (ValoresTrimestrais, bool) {
 	for _, v := range valores {
