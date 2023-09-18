@@ -65,7 +65,7 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 			}
 			cod1 := codPai(itr[linha1].Codigo)
 			cod2 := codPai(itr[linha2].Codigo)
-			if Similar(cod1+itr[linha1].Descr, cod2+itr[linha2].Descr) {
+			if cod1 == cod2 && Similar(itr[linha1].Descr, itr[linha2].Descr) {
 				unida[linha2] = true
 				for _, ano := range anos {
 					v1, existe1 := valorAno(ano, valoresUnificados)
