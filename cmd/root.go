@@ -18,7 +18,9 @@ import (
 )
 
 var flags = struct {
-	verbose   bool
+	debug     bool
+	trace     bool
+	cfgFile   string
 	atualizar flagsAtualizar
 	relatorio flagsRelatorio
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
@@ -31,8 +33,6 @@ const (
 	tempDirDefault = ".dados" + string(os.PathSeparator)
 )
 
-var cfgFile string
-
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "rapinav2",
@@ -42,6 +42,10 @@ var rootCmd = &cobra.Command{
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
+	// Run: func(cmd *cobra.Command, args []string) {
+	// 	progress.SetDebug(flags.debug)
+	// 	progress.SetTrace(flags.trace)
+	// },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -56,11 +60,9 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", `arquivo de configuração (default = ./`+configFileName+`)`)
+	rootCmd.PersistentFlags().StringVar(&flags.cfgFile, "config", "", `arquivo de configuração (default = ./`+configFileName+`)`)
+	rootCmd.PersistentFlags().BoolVarP(&flags.debug, "debug", "g", false, "Mostrar logs de depuração")
+	rootCmd.PersistentFlags().BoolVarP(&flags.trace, "trace", "t", false, "Mostrar logs de rastreamento")
 
 	str := `Uso:{{if .Runnable}}
   {{.UseLine}}{{end}}{{if .HasAvailableSubCommands}}
@@ -91,9 +93,12 @@ Use "{{.CommandPath}} [comando] --help" para mais informações sobre um comando
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	if cfgFile != "" {
+	progress.SetDebug(flags.debug)
+	progress.SetTrace(flags.trace)
+
+	if flags.cfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
+		viper.SetConfigFile(flags.cfgFile)
 	} else {
 		viper.AddConfigPath(".")
 		viper.SetConfigName(configFileName)

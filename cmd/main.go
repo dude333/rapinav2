@@ -4,14 +4,10 @@
 
 package main
 
-import (
-	"github.com/dude333/rapinav2/pkg/progress"
-)
+// import "github.com/pkg/profile"
 
 func main() {
 	// defer profile.Start().Stop()
-	progress.SetDebug(true)
-	progress.SetTrace(true)
 
 	Execute()
 }

@@ -80,6 +80,7 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 	}()
 
 	// DADOS CONSOLIDADOS
+	progress.Running("Relatório de dados consolidados")
 	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ, true)
 	if err != nil {
 		progress.Fatal(err)
@@ -91,8 +92,10 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 		}
 		excelReport(x, rapina.UnificarContasSimilares(itr), !flags.relatorio.crescente)
 	}
+	progress.RunOK()
 
 	// DADOS INDIVIDUAIS
+	progress.Running("Relatório de dados individual")
 	itr, err = dfp.RelatórioTrimestal(empresa.CNPJ, false)
 	if err != nil {
 		progress.Fatal(err)
@@ -104,6 +107,7 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 		}
 		excelReport(x, rapina.UnificarContasSimilares(itr), !flags.relatorio.crescente)
 	}
+	progress.RunOK()
 
 	// Salva planilha
 	if err := x.file.SaveAs(filename); err != nil {
