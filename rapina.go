@@ -162,7 +162,6 @@ func DivVTs(v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
 	return OpVTs('/', v1, v2)
 }
 
->>>>>>> 7ae4fa4 (Arrumar ano inválido)
 func codPai(codigo string) string {
 	if len(codigo) < 1 {
 		return codigo
@@ -204,7 +203,7 @@ func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 			}
 			cod1 := codPai(itr[linha1].Codigo)
 			cod2 := codPai(itr[linha2].Codigo)
-			if cod1 == cod2 && Similar(itr[linha1].Descr, itr[linha2].Descr) {
+			if cod1 == cod2 && Similar(cod1+itr[linha1].Descr, cod2+itr[linha2].Descr) {
 				unida[linha2] = true
 				for _, ano := range anos {
 					v1, existe1 := valorAno(ano, valoresUnificados)
@@ -335,4 +334,12 @@ func RangeAnos(itr []InformeTrimestral) []int {
 		seq[i-min] = i
 	}
 	return seq
+}
+
+func RangeAnosVTs(v1, v2 []ValoresTrimestrais) []int {
+	itr := []InformeTrimestral{
+		{"", "", v1},
+		{"", "", v2},
+	}
+	return RangeAnos(itr)
 }
