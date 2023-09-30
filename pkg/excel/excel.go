@@ -52,11 +52,15 @@ func (x *Excel) SetColWidth(widths []float64) {
 }
 
 func (x *Excel) FreezePane(cell string) error {
+	row, col, err := excelize.CellNameToCoordinates(cell)
+	if err != nil {
+		return err
+	}
 	return x.file.SetPanes(x.sheetName, &excelize.Panes{
 		Freeze:      true,
 		Split:       false,
-		XSplit:      2,
-		YSplit:      1,
+		XSplit:      row - 1,
+		YSplit:      col - 1,
 		TopLeftCell: cell,
 		ActivePane:  "bottomRight",
 		Panes: []excelize.PaneOptions{
