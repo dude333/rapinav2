@@ -24,6 +24,145 @@ type ValoresTrimestrais struct {
 	T4  float64
 }
 
+func (v ValoresTrimestrais) Add(other ValoresTrimestrais) ValoresTrimestrais {
+	if v.Ano != other.Ano {
+		return v
+	}
+	return ValoresTrimestrais{
+		Ano: v.Ano,
+		T1:  v.T1 + other.T1,
+		T2:  v.T2 + other.T2,
+		T3:  v.T3 + other.T3,
+		T4:  v.T4 + other.T4,
+	}
+}
+
+func (v ValoresTrimestrais) Sub(other ValoresTrimestrais) ValoresTrimestrais {
+	if v.Ano != other.Ano {
+		return v
+	}
+	return ValoresTrimestrais{
+		Ano: v.Ano,
+		T1:  v.T1 - other.T1,
+		T2:  v.T2 - other.T2,
+		T3:  v.T3 - other.T3,
+		T4:  v.T4 - other.T4,
+	}
+}
+
+func (v ValoresTrimestrais) Mult(other ValoresTrimestrais) ValoresTrimestrais {
+	if v.Ano != other.Ano {
+		return v
+	}
+	return ValoresTrimestrais{
+		Ano: v.Ano,
+		T1:  v.T1 * other.T1,
+		T2:  v.T2 * other.T2,
+		T3:  v.T3 * other.T3,
+		T4:  v.T4 * other.T4,
+	}
+}
+
+func (v ValoresTrimestrais) Div(other ValoresTrimestrais) ValoresTrimestrais {
+	safeDiv := func(num, divisor float64) float64 {
+		if divisor == 0 {
+			return 0.0
+		}
+		return num / divisor
+	}
+	return ValoresTrimestrais{
+		Ano: v.Ano,
+		T1:  safeDiv(v.T1, other.T1),
+		T2:  safeDiv(v.T2, other.T2),
+		T3:  safeDiv(v.T3, other.T3),
+		T4:  safeDiv(v.T4, other.T4),
+	}
+}
+
+func (v ValoresTrimestrais) MultNum(factor float64) ValoresTrimestrais {
+	return ValoresTrimestrais{
+		Ano: v.Ano,
+		T1:  v.T1 * factor,
+		T2:  v.T2 * factor,
+		T3:  v.T3 * factor,
+		T4:  v.T4 * factor,
+	}
+}
+
+func (v ValoresTrimestrais) DivNum(divisor float64) ValoresTrimestrais {
+	if divisor == 0 {
+		return ValoresTrimestrais{v.Ano, 0.0, 0.0, 0.0, 0.0}
+	}
+	return ValoresTrimestrais{
+		Ano: v.Ano,
+		T1:  v.T1 / divisor,
+		T2:  v.T2 / divisor,
+		T3:  v.T3 / divisor,
+		T4:  v.T4 / divisor,
+	}
+}
+
+func OpVTs(op rune, v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
+	type par struct {
+		// ano   int
+		p1Idx int
+		p2Idx int
+		p1    bool
+		p2    bool
+	}
+	anos := RangeAnosVTs(v1, v2)
+	pares := make([]par, len(anos))
+	for i := range v1 {
+		pares[v1[i].Ano-anos[0]].p1 = true
+		pares[v1[i].Ano-anos[0]].p1Idx = i
+	}
+	for j := range v2 {
+		pares[v2[j].Ano-anos[0]].p2 = true
+		pares[v2[j].Ano-anos[0]].p2Idx = j
+	}
+	v := make([]ValoresTrimestrais, 0, len(anos))
+	for k := range anos {
+		if pares[k].p1 && pares[k].p2 {
+			i := pares[k].p1Idx
+			j := pares[k].p2Idx
+			r := ValoresTrimestrais{}
+			switch op {
+			case '+':
+				r = v1[i].Add(v2[j])
+			case '-':
+				r = v1[i].Sub(v2[j])
+			case '*':
+				r = v1[i].Mult(v2[j])
+			case '/':
+				r = v1[i].Div(v2[j])
+			}
+			v = append(v, r)
+		} else if pares[k].p1 {
+			v = append(v, v1[pares[k].p1Idx])
+		} else if pares[k].p2 {
+			v = append(v, v2[pares[k].p2Idx])
+		}
+	}
+	return v
+}
+
+func AddVTs(v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
+	return OpVTs('+', v1, v2)
+}
+
+func SubVTs(v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
+	return OpVTs('-', v1, v2)
+}
+
+func MultVTs(v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
+	return OpVTs('*', v1, v2)
+}
+
+func DivVTs(v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
+	return OpVTs('/', v1, v2)
+}
+
+>>>>>>> 7ae4fa4 (Arrumar ano inválido)
 func codPai(codigo string) string {
 	if len(codigo) < 1 {
 		return codigo
@@ -183,7 +322,9 @@ func MinMax(itr []InformeTrimestral) (int, int) {
 			}
 		}
 	}
-
+	if minAno > maxAno {
+		return 0, 0
+	}
 	return minAno, maxAno
 }
 
