@@ -217,15 +217,23 @@ func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente boo
 	// Freeze panes
 	_ = x.FreezePane("C2")
 
-	// Delete empty columns
+	// Trim empty columns
 	hasData := rapina.TrimestresComDados(itr)
 	if decrescente {
 		reverseb(hasData)
 	}
 	for i := len(hasData) - 1; i >= 0; i-- {
-		if !hasData[i] {
-			_ = x.RemoveCol(initCol + i)
+		if hasData[i] {
+			break
 		}
+		_ = x.RemoveCol(initCol + i)
+	}
+	for i := 0; i < len(hasData); i++ {
+		if hasData[i] {
+			break
+		}
+		_ = x.RemoveCol(initCol)
+
 	}
 } // excelReport =====
 
