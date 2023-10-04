@@ -69,11 +69,14 @@ func (x *Excel) FreezePane(cell string) error {
 	})
 }
 
-func (x *Excel) SetFont(size float64, bold bool) (int, error) {
+func (x *Excel) SetFont(size float64, bold bool, wrap bool) (int, error) {
 	return x.file.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Size: size,
 			Bold: bold,
+		},
+		Alignment: &excelize.Alignment{
+			WrapText: wrap,
 		},
 	})
 }
@@ -91,6 +94,11 @@ func (x *Excel) SetNumber(size float64, bold bool, format string) (int, error) {
 func (x *Excel) PrintCell(row, col int, style int, value interface{}) {
 	_ = x.file.SetCellValue(x.sheetName, cell(row, col), value)
 	_ = x.file.SetCellStyle(x.sheetName, cell(row, col), cell(row, col), style)
+}
+
+// RemoveRow removes rows starting with 1
+func (x *Excel) RemoveRow(row int) error {
+	return x.file.RemoveRow(x.sheetName, row)
 }
 
 // RemoveCol removes columns starting with 1 (=column"A")

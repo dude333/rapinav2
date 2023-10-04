@@ -93,6 +93,11 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 			progress.Fatal(err)
 		}
 		excelSummaryReport(x, itrUnificado, !flags.relatorio.crescente)
+
+		if err = x.NewSheet("resumo - consolidado vert"); err != nil {
+			progress.Fatal(err)
+		}
+		excelSummaryReportVertical(x, itrUnificado, !flags.relatorio.crescente)
 	}
 	progress.RunOK()
 
@@ -138,8 +143,8 @@ func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente boo
 		progress.Fatal(err)
 	}
 
-	normalFont, _ := x.SetFont(10.0, false)
-	titleFont, _ := x.SetFont(10.0, true)
+	normalFont, _ := x.SetFont(10.0, false, false)
+	titleFont, _ := x.SetFont(10.0, true, false)
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
 	numberNormal, _ := x.SetNumber(10.0, false, customerNumFmt)
 	numberBold, _ := x.SetNumber(10.0, true, customerNumFmt)
@@ -398,14 +403,13 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 		progress.Fatal(err)
 	}
 
-	normalFont, _ := x.SetFont(10.0, false)
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
 	number, _ := x.SetNumber(10.0, false, customerNumFmt)
 	customerPercFmt := `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
 	percent, _ := x.SetNumber(10.0, false, customerPercFmt)
 	customerFracFmt := `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
 	frac, _ := x.SetNumber(10.0, false, customerFracFmt)
-	titleFont, _ := x.SetFont(10.0, true)
+	titleFont, _ := x.SetFont(10.0, true, false)
 
 	seq := []int{0, 1, 2, 3}
 	anos := rapina.RangeAnos(itr)
@@ -457,7 +461,7 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	cabeçalho(1)
 	row := 2
 	p := func(descr string, estilo int, valores []rapina.ValoresTrimestrais) {
-		x.PrintCell(row, 1, normalFont, descr)
+		x.PrintCell(row, 1, titleFont, descr)
 		imprimirTrimestres(2, row, estilo, valores)
 		row++
 	}
@@ -468,7 +472,7 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	p("EBITDA", number, ebitda)
 	p("EBIT", number, c[EBIT])
 	p("Resultado Financeiro", number, c[ResulFinanc])
-	p("Operações Descontinuadas", number, c[ResulOpDescont])
+	p("Operações Descont.", number, c[ResulOpDescont])
 	p("Lucro Líquido", number, c[LucLiq])
 	row++
 	p("Marg. EBITDA", percent, rapina.DivVTs(ebitda, c[Vendas]))
@@ -500,7 +504,7 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	// Auto-resize columns
 	cols := colB + len(anos)*4
 	widths := make([]float64, cols)
-	widths[0] = 22
+	widths[0] = 17
 	for i := 1; i < cols; i++ {
 		widths[i] = 12
 	}
@@ -521,5 +525,134 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 			break
 		}
 		_ = x.RemoveCol(colB)
+	}
+}
+
+func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente bool) {
+	if err := x.SetZoom(90.0); err != nil {
+		progress.Fatal(err)
+	}
+
+	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
+	number, _ := x.SetNumber(10.0, false, customerNumFmt)
+	customerPercFmt := `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
+	percent, _ := x.SetNumber(10.0, false, customerPercFmt)
+	customerFracFmt := `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
+	frac, _ := x.SetNumber(10.0, false, customerFracFmt)
+	titleFont, _ := x.SetFont(10.0, true, true)
+
+	seq := []int{0, 1, 2, 3}
+	anos := rapina.RangeAnos(itr)
+	if decrescente {
+		reverse(seq)
+		reverse(anos)
+	}
+
+	cabeçalho := func(col int) {
+		x.PrintCell(1, col, titleFont, "Trimestre")
+		row := 2
+		for _, ano := range anos {
+			x.PrintCell(row+seq[0], col, titleFont, fmt.Sprintf("1T%d", ano))
+			x.PrintCell(row+seq[1], col, titleFont, fmt.Sprintf("2T%d", ano))
+			x.PrintCell(row+seq[2], col, titleFont, fmt.Sprintf("3T%d", ano))
+			x.PrintCell(row+seq[3], col, titleFont, fmt.Sprintf("4T%d", ano))
+			row += 4
+		}
+	}
+
+	c := map[accountType][]rapina.ValoresTrimestrais{}
+	for _, informe := range itr {
+		c[acctCode(informe.Codigo, informe.Descr)] = informe.Valores
+	}
+
+	const row2 = 2
+	sumRows := make([]float64, len(anos)*4)
+	imprimirTrimestres := func(row, col int, estilo int, valores []rapina.ValoresTrimestrais) {
+		for _, ano := range anos {
+			for _, valor := range valores {
+				if valor.Ano != ano {
+					continue
+				}
+				x.PrintCell(row+seq[0], col, estilo, valor.T1)
+				x.PrintCell(row+seq[1], col, estilo, valor.T2)
+				x.PrintCell(row+seq[2], col, estilo, valor.T3)
+				x.PrintCell(row+seq[3], col, estilo, valor.T4)
+
+				sumRows[row+seq[0]-row2] += valor.T1
+				sumRows[row+seq[1]-row2] += valor.T2
+				sumRows[row+seq[2]-row2] += valor.T3
+				sumRows[row+seq[3]-row2] += valor.T4
+			}
+			row += 4
+		}
+	}
+
+	// ------------------[ Relatório ]------------------
+	cabeçalho(1)
+	col := 2
+	p := func(descr string, estilo int, valores []rapina.ValoresTrimestrais) {
+		x.PrintCell(1, col, titleFont, descr)
+		imprimirTrimestres(2, col, estilo, valores)
+		col++
+	}
+	p("Patrimônio Líquido", number, c[Equity])
+	// col++
+	p("Receita Líquida", number, c[Vendas])
+	ebitda := rapina.SubVTs(c[EBIT], c[Deprec])
+	p("EBITDA", number, ebitda)
+	p("EBIT", number, c[EBIT])
+	p("Resultado Financeiro", number, c[ResulFinanc])
+	p("Operações Descont.", number, c[ResulOpDescont])
+	p("Lucro Líquido", number, c[LucLiq])
+	// col++
+	p("Marg. EBITDA", percent, rapina.DivVTs(ebitda, c[Vendas]))
+	p("Marg. EBIT", percent, rapina.DivVTs(c[EBIT], c[Vendas]))
+	p("Marg. Líq.", percent, rapina.DivVTs(c[LucLiq], c[Vendas]))
+	p("ROA", percent, rapina.DivVTs(c[LucLiq], c[AtivoTotal]))
+	p("ROE", percent, rapina.DivVTs(c[LucLiq], c[Equity]))
+	// col++
+	caixa := rapina.AddVTs(c[Caixa], c[AplicFinanceiras])
+	dividaBruta := rapina.AddVTs(c[DividaCirc], c[DividaNCirc])
+	dividaLiquida := rapina.SubVTs(dividaBruta, caixa)
+	p("Caixa", number, caixa)
+	p("Dívida Bruta", number, dividaBruta)
+	p("Dívida Líq.", number, dividaLiquida)
+	p("Dív. Bru./PL", percent, rapina.DivVTs(dividaBruta, c[Equity]))
+	p("Dív.Líq./ EBITDA", percent, rapina.DivVTs(dividaLiquida, ebitda))
+	// col++
+	p("FCO", number, c[FCO])
+	p("FCI", number, c[FCI])
+	p("FCF", number, c[FCF])
+	p("FCT", number, rapina.AddVTs(rapina.AddVTs(c[FCO], c[FCI]), c[FCF]))
+	p("FCL (FCO+FCI)", number, rapina.AddVTs(c[FCO], c[FCI]))
+	// col++
+	proventos := rapina.AddVTs(c[Dividendos], c[JurosCapProp])
+	p("Proventos", number, proventos)
+	p("Payout", frac, rapina.DivVTs(proventos, c[LucLiq]))
+	// -------------------------------------------------
+
+	// Auto-resize columns
+	widths := make([]float64, col)
+	widths[0] = 8.5
+	for i := 1; i < col; i++ {
+		widths[i] = 12
+	}
+	x.SetColWidth(widths)
+
+	// Freeze panes
+	_ = x.FreezePane("B2")
+
+	// Trim empty columns
+	for i := len(sumRows) - 1; i >= 0; i-- {
+		if sumRows[i] != 0.0 {
+			break
+		}
+		_ = x.RemoveRow(row2 + i)
+	}
+	for i := 0; i < len(sumRows); i++ {
+		if sumRows[i] != 0.0 {
+			break
+		}
+		_ = x.RemoveRow(row2)
 	}
 }
