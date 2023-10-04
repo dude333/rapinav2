@@ -1,6 +1,6 @@
 module github.com/dude333/rapinav2
 
-go 1.18
+go 1.21.1
 
 require (
 	github.com/dustin/go-humanize v1.0.0

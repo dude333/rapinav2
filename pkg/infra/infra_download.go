@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -83,7 +82,7 @@ func downloadFile(url, filepath string, verbose bool) error {
 	}
 
 	// Write the body to file
-	counter := ioutil.Discard
+	counter := io.Discard
 	if verbose {
 		fmt.Printf("[          ] Baixando %s", filepath)
 		counter = &WriteCounter{}

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ['1.18']
+        go: ['1.21.1']
         platform: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -65,7 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go_version: [ 1.18.x ]
+        go_version: [ 1.21.x ]
 
     runs-on: ubuntu-latest
 
