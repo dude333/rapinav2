@@ -138,26 +138,11 @@ func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente boo
 		progress.Fatal(err)
 	}
 
-	normalFont, err := x.SetFont(10.0, false)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
-	titleFont, err := x.SetFont(10.0, true)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
+	normalFont, _ := x.SetFont(10.0, false)
+	titleFont, _ := x.SetFont(10.0, true)
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
-	numberNormal, err := x.SetNumber(10.0, false, customerNumFmt)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
-	numberBold, err := x.SetNumber(10.0, true, customerNumFmt)
-	if err != nil {
-		progress.Fatal(err)
-	}
+	numberNormal, _ := x.SetNumber(10.0, false, customerNumFmt)
+	numberBold, _ := x.SetNumber(10.0, true, customerNumFmt)
 
 	// ===== Relatório - início =====
 
@@ -405,33 +390,14 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 		progress.Fatal(err)
 	}
 
-	normalFont, err := x.SetFont(10.0, false)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
+	normalFont, _ := x.SetFont(10.0, false)
 	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
-	number, err := x.SetNumber(10.0, false, customerNumFmt)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
+	number, _ := x.SetNumber(10.0, false, customerNumFmt)
 	customerPercFmt := `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
-	percent, err := x.SetNumber(10.0, false, customerPercFmt)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
+	percent, _ := x.SetNumber(10.0, false, customerPercFmt)
 	customerFracFmt := `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
-	frac, err := x.SetNumber(10.0, false, customerFracFmt)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
-	titleFont, err := x.SetFont(10.0, true)
-	if err != nil {
-		progress.Fatal(err)
-	}
+	frac, _ := x.SetNumber(10.0, false, customerFracFmt)
+	titleFont, _ := x.SetFont(10.0, true)
 
 	seq := []int{0, 1, 2, 3}
 	anos := rapina.RangeAnos(itr)
@@ -533,8 +499,7 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	x.SetColWidth(widths)
 
 	// Freeze panes
-	err = x.FreezePane("B2")
-	progress.Error(err)
+	_ = x.FreezePane("B2")
 
 	// Trim empty columns
 	for i := len(sumCols) - 1; i >= 0; i-- {
