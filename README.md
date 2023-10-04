@@ -17,13 +17,13 @@
 
 ### Nota da Versão 2
 
-No momento, esta versão só apresenta dados trimestrais, e os dados de fluxo de caixa e DVA estão incompletos, pois a CVM só disponibiliza dados acumulados ao invés de dados trimestrais nestes casos.
+No momento, esta versão só apresenta relatórios dados trimestrais. A ideia é integrar este modificação na versão original do rapina.
 
 ## Introdução
 
 Este programa processa os arquivos de demonstrações financeiras trimestrais (ITR) e anuais (DFP) do site da CVM e os armazena em um banco de dados local (sqlite). A partir desses dados, são extraídas informações do balanço patrimonial, fluxo de caixa, DRE (demonstração de resultado) e DVA (demonstração de valor adicionado).
 
-O programa coleta vários arquivos desde 2010, incluindo informações do ano corrente e do ano anterior, permitindo a extração de dados de 2009.
+O programa coleta arquivos desde 2010. Como estes arquivos contém os dados do ano corrente e do ano anterior, foi possível também a extração de dados de 2009.
 
 Com base nestes dados, são gerados relatórios das demonstrações financeiras por empresa.
 
@@ -35,28 +35,26 @@ Baixe o executável da [página de release](https://github.com/dude333/rapinav2/
 
 ### Criação/Atualização dos Dados
 
-Antes de se criar um relatório pela primeira vez, é **necessário** baixar os dados do site da CVM. 
+Antes de se criar um relatório pela primeira vez, é **necessário** baixar os dados do site da CVM. Para isso, execute o seguinte comando no terminal:
 
-Para isso, execute o seguinte comando no terminal:
-
-`./rapinav2 atualizar [ano]`
+`rapinav2 atualizar [ano]`
 
 Exemplos:
-* `./rapinav2 atualizar`: baixar todos os dados.
-* `./rapinav2 atualizar 2023`: baixar apenar um ano específico.
+* `rapinav2 atualizar`: baixar todos os dados.
+* `rapinav2 atualizar 2023`: baixar apenar um ano específico.
 
 ### Criação do Relatório
 
 Para criar uma planilha com os dados financeiros trimestrais de um empresa, execute o seguinte comando:
 
-`./rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c]`
+`rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c]`
 
 As empresas serão listadas em ordem alfabética. Basta navegar com as setas, ou use a tecla <kbd>/</kbd> para procurar uma empresa.
 
 Exemplos:
-* `./rapinav2 relatorio`: cria o relatório no diretório corrente.
-* `./rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
-* `./rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
+* `rapinav2 relatorio`: cria o relatório no diretório corrente.
+* `rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
+* `rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
 
 Os relatório será gravado com o nome da empresa. Exemplos:
 
@@ -74,7 +72,7 @@ RAIA_DROGASIL_S.A.xlsx
 
 ### `rapina.yaml`
 
-Para customizar os parâmetros, crie o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com um ou mais dos seguintes parâmetros:
+Para personalizar os parâmetros, crie o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com um ou mais dos seguintes parâmetros:
 
 
 | Parâmetro | Descrição |
@@ -86,22 +84,24 @@ Para customizar os parâmetros, crie o arquivo `rapina.yaml` no mesmo diretório
 
 Exemplo:
 ```yaml
-dataSrc: "/home/user1/dados/rapinav2.db
+dataSrc: "/home/user1/dados/rapinav2.db"
 tempDir: "/home/user1/dados"
 reportDir: "/home/user1/relatorios"
 ```
 
 ## Build
 
-Para compilar o código fonte, basta seguir as instruções deste link: https://go.dev/doc/install
+Para compilar o código fonte, siga estas instruções:
 
-Também é necessário instalar o Git, que você pode encontrar aqui: https://git-scm.com/book/pt-br/v2/Come%C3%A7ando-Instalando-o-Git
+1. Instale o Go: https://go.dev/doc/install
+2. Instale o Git, que você pode encontrar aqui: https://git-scm.com/book/pt-br/v2/Come%C3%A7ando-Instalando-o-Git
+3. Abra o terminal (ou [CMD](https://superuser.com/a/340051/61616) no Windows) e execute os seguintes comandos:
 
-Depois de instalados, abra o terminal ([CMD](https://superuser.com/a/340051/61616) no Windows) e execute os seguintes comandos:
-
-1. `git clone github.com/dude333/rapinav2`
-2. `cd rapinav2`
-4. `go build -o rapinav2 cmd/*`
+```bash
+git clone github.com/dude333/rapinav2
+cd rapinav2
+go build -o rapinav2 cmd/*
+```
 
 O arquivo `rapinav2`, ou `rapinav2.exe` no Windows, será criado.
 
