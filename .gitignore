@@ -16,3 +16,4 @@ debug.test
 target/*
 on
 *.xlsx
+golangci*.y*ml

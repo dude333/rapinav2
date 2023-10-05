@@ -316,9 +316,9 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Co
 			if sqliteErr.Code != sqlite3.ErrConstraint {
 				_ = tx.Rollback()
 				return err
-			} else {
-				progress.ErrorMsg("%s: %d, %s, %#v", err, id, nome, contas[i])
 			}
+			progress.ErrorMsg("%s: %d, %s, %#v", err, id, nome, contas[i])
+
 		}
 	}
 

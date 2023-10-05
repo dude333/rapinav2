@@ -20,31 +20,31 @@ type DemonstraçãoFinanceira struct {
 	Contas       []Conta
 }
 
-func (d DemonstraçãoFinanceira) Válida() bool {
-	return len(d.CNPJ) == len("17.836.901/0001-10") &&
-		len(d.Nome) > 0 &&
-		d.Ano >= 2000 && d.Ano < 2221 && // 2 séculos de rapina :)
-		len(d.Contas) > 0
+func (df *DemonstraçãoFinanceira) Válida() bool {
+	return len(df.CNPJ) == len("17.836.901/0001-10") &&
+		len(df.Nome) > 0 &&
+		df.Ano >= 2000 && df.Ano < 2221 && // 2 séculos de rapina :)
+		len(df.Contas) > 0
 }
 
 // Conta com os dados das Demonstrações Financeiras Padronizadas (DFP) ou
 // com as Informações Trimestrais (ITR).
 type Conta struct {
-	Código       string // 1, 1.01, 1.02...
-	Descr        string
-	Consolidado  bool   // Individual ou Consolidado
-	Grupo        string // BPA, BPP, DRE, DFC...
-	DataIniExerc string // AAAA-MM-DD
-	DataFimExerc string // AAAA-MM-DD
-	Meses        int    // Meses acumulados desde o início do período
-	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
-	Total        rapina.Dinheiro
+	Código       string          // 1, 1.01, 1.02...
+	Descr        string          // Descrição
+	Grupo        string          // BPA, BPP, DRE, DFC...
+	DataIniExerc string          // AAAA-MM-DD
+	DataFimExerc string          // AAAA-MM-DD
+	OrdemExerc   string          // ÚLTIMO ou PENÚLTIMO
+	Total        rapina.Dinheiro // $
+	Meses        int             // Meses acumulados desde o início do período
+	Consolidado  bool            // Individual ou Consolidado
 }
 
 // Válida retorna verdadeiro se os dados da conta são válidos. Ignora os registros
 // do penúltimo ano, com exceção de 2009, uma vez que a CVM só disponibliza (pelo
 // menos em 2021) dados até 2010.
-func (c Conta) Válida() bool {
+func (c *Conta) Válida() bool {
 	return len(c.Código) > 0 &&
 		len(c.Descr) > 0 &&
 		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
@@ -52,9 +52,10 @@ func (c Conta) Válida() bool {
 			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
 }
 
-func (df DemonstraçãoFinanceira) String() string {
+func (df *DemonstraçãoFinanceira) String() string {
 	var contasStr []string
-	for _, conta := range df.Contas {
+	for i := range df.Contas {
+		conta := &df.Contas[i]
 		contaStr := fmt.Sprintf(
 			"Código: %s\nDescr: %s\nConsolidado: %t\nGrupo: %s\nDataIniExerc: %s\nDataFimExerc: %s\nMeses: %d\nOrdemExerc: %s\nTotal: %v\n",
 			conta.Código, conta.Descr, conta.Consolidado, conta.Grupo, conta.DataIniExerc, conta.DataFimExerc,
@@ -102,9 +103,9 @@ type ConfigConta struct {
 // -- REPOSITÓRIO & SERVIÇO --
 
 type Resultado struct {
+	Error   error
 	Empresa *DemonstraçãoFinanceira
 	Hash    string
-	Error   error
 }
 
 type Serviço interface {

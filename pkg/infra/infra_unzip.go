@@ -30,7 +30,7 @@ func Unzip(src, dest string, filters []string, verbose bool) ([]string, error) {
 
 	for _, f := range r.File {
 
-		// https://stackoverflow.com/a/45617791/276311
+		// deferInLoop: stackoverflow.com/a/45617791/276311
 		ff, err := func() ([]string, error) {
 			if !matchFilter(f.Name, filters) {
 				return filenames, nil // continue

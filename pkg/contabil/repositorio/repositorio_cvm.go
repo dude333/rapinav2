@@ -118,13 +118,13 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dom
 
 		url := urlArquivo(ano, trimestral)
 
-		arquivos, err := c.infra.DownloadAndUnzip(url, filtros())
+		arquivos, err := c.DownloadAndUnzip(url, filtros())
 		if err != nil {
 			results <- dominio.Resultado{Error: err}
 			return
 		}
 		defer func() {
-			_ = c.infra.Cleanup(arquivos)
+			_ = c.Cleanup(arquivos)
 		}()
 
 		for _, arquivo := range arquivos {
@@ -170,10 +170,12 @@ func filtros() []string {
 	}
 
 	for _, t := range tipo {
-		filtros = append(filtros, "dfp_cia_aberta_"+t+"_con")
-		filtros = append(filtros, "dfp_cia_aberta_"+t+"_ind")
-		filtros = append(filtros, "itr_cia_aberta_"+t+"_con")
-		filtros = append(filtros, "itr_cia_aberta_"+t+"_ind")
+		filtros = append(filtros,
+			"dfp_cia_aberta_"+t+"_con",
+			"dfp_cia_aberta_"+t+"_ind",
+			"itr_cia_aberta_"+t+"_con",
+			"itr_cia_aberta_"+t+"_ind",
+		)
 	}
 
 	return filtros
@@ -188,7 +190,7 @@ func urlArquivo(ano int, trimestral bool) string {
 	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/` + tipo + `/DADOS/` + zip
 }
 
-func processarArquivoDFP(ctx context.Context, arquivo Arquivo, results chan<- dominio.Resultado) error {
+func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- dominio.Resultado) error {
 	fh, err := os.Open(arquivo.path)
 	if err != nil {
 		return err

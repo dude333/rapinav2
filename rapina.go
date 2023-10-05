@@ -248,9 +248,8 @@ func equalizarValores(ano int, v1, v2 ValoresTrimestrais) (ValoresTrimestrais, b
 		}
 		if v1Tn != 0.0 && v2Tn == 0.0 {
 			return v1Tn, true
-		} else {
-			return v2Tn, true
 		}
+		return v2Tn, true
 	}
 
 	v.T1, ok = check(v1.T1, v2.T1)

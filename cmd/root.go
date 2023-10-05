@@ -18,13 +18,13 @@ import (
 )
 
 var flags = struct {
-	debug     bool
-	trace     bool
 	cfgFile   string
-	atualizar flagsAtualizar
-	relatorio flagsRelatorio
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
 	tempDir   string // arquivos temporários
+	relatorio flagsRelatorio
+	atualizar flagsAtualizar
+	debug     bool
+	trace     bool
 }{}
 
 const (
