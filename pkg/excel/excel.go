@@ -69,7 +69,7 @@ func (x *Excel) FreezePane(cell string) error {
 	})
 }
 
-func (x *Excel) SetFont(size float64, bold bool, wrap bool) (int, error) {
+func (x *Excel) SetFont(size float64, bold, wrap bool) (int, error) {
 	return x.file.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Size: size,
@@ -91,7 +91,7 @@ func (x *Excel) SetNumber(size float64, bold bool, format string) (int, error) {
 	})
 }
 
-func (x *Excel) PrintCell(row, col int, style int, value interface{}) {
+func (x *Excel) PrintCell(row, col, style int, value interface{}) {
 	_ = x.file.SetCellValue(x.sheetName, cell(row, col), value)
 	_ = x.file.SetCellStyle(x.sheetName, cell(row, col), cell(row, col), style)
 }
@@ -124,7 +124,7 @@ func (x *Excel) Close() error {
 }
 
 func StringWidth(str string) float64 {
-	var width float64 = 0.0
+	var width = 0.0
 	for _, ch := range str {
 		width += charWidth(ch)
 	}

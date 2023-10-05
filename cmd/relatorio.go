@@ -18,6 +18,12 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
+const (
+	_customerNumFmt  = `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
+	_customerPercFmt = `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
+	_customerFracFmt = `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
+)
+
 type flagsRelatorio struct {
 	outputDir string
 	crescente bool
@@ -145,9 +151,8 @@ func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente boo
 
 	normalFont, _ := x.SetFont(10.0, false, false)
 	titleFont, _ := x.SetFont(10.0, true, false)
-	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
-	numberNormal, _ := x.SetNumber(10.0, false, customerNumFmt)
-	numberBold, _ := x.SetNumber(10.0, true, customerNumFmt)
+	numberNormal, _ := x.SetNumber(10.0, false, _customerNumFmt)
+	numberBold, _ := x.SetNumber(10.0, true, _customerNumFmt)
 
 	// ===== Relatório - início =====
 
@@ -403,12 +408,9 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 		progress.Fatal(err)
 	}
 
-	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
-	number, _ := x.SetNumber(10.0, false, customerNumFmt)
-	customerPercFmt := `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
-	percent, _ := x.SetNumber(10.0, false, customerPercFmt)
-	customerFracFmt := `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
-	frac, _ := x.SetNumber(10.0, false, customerFracFmt)
+	number, _ := x.SetNumber(10.0, false, _customerNumFmt)
+	percent, _ := x.SetNumber(10.0, false, _customerPercFmt)
+	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
 	titleFont, _ := x.SetFont(10.0, true, false)
 
 	seq := []int{0, 1, 2, 3}
@@ -533,12 +535,9 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 		progress.Fatal(err)
 	}
 
-	customerNumFmt := `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
-	number, _ := x.SetNumber(10.0, false, customerNumFmt)
-	customerPercFmt := `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
-	percent, _ := x.SetNumber(10.0, false, customerPercFmt)
-	customerFracFmt := `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
-	frac, _ := x.SetNumber(10.0, false, customerFracFmt)
+	number, _ := x.SetNumber(10.0, false, _customerNumFmt)
+	percent, _ := x.SetNumber(10.0, false, _customerPercFmt)
+	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
 	titleFont, _ := x.SetFont(10.0, true, true)
 
 	seq := []int{0, 1, 2, 3}
@@ -642,17 +641,10 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
-	// Trim empty columns
+	// Delete empty columns
 	for i := len(sumRows) - 1; i >= 0; i-- {
-		if sumRows[i] != 0.0 {
-			break
+		if sumRows[i] == 0.0 {
+			_ = x.RemoveRow(row2 + i)
 		}
-		_ = x.RemoveRow(row2 + i)
-	}
-	for i := 0; i < len(sumRows); i++ {
-		if sumRows[i] != 0.0 {
-			break
-		}
-		_ = x.RemoveRow(row2)
 	}
 }
