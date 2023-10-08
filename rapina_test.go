@@ -197,7 +197,7 @@ func TestDivVTs(t *testing.T) {
 				v1: []ValoresTrimestrais{{2011, 2, 2, 2, 2}, {2012, 5, 5, 5, 5}, {2023, 100, 100, 100, 100}},
 				v2: []ValoresTrimestrais{{2011, 1, 1, 1, 1}, {2023, 10, 10, 10, 10}},
 			},
-			want: []ValoresTrimestrais{{2011, 2, 2, 2, 2}, {2012, 5, 5, 5, 5}, {2023, 10, 10, 10, 10}},
+			want: []ValoresTrimestrais{{2011, 2, 2, 2, 2}, {2012, 0, 0, 0, 0}, {2023, 10, 10, 10, 10}},
 		},
 	}
 	for _, tt := range tests {

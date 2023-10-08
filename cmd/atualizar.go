@@ -31,7 +31,7 @@ func init() {
 	rootCmd.AddCommand(atualizarCmd)
 }
 
-func atualizar(cmd *cobra.Command, args []string) {
+func atualizar(_ *cobra.Command, _ []string) {
 	progress.Status("{%d}", flags.atualizar.ano)
 
 	anoi := 2010

@@ -122,26 +122,34 @@ func OpVTs(op rune, v1, v2 []ValoresTrimestrais) []ValoresTrimestrais {
 	}
 	v := make([]ValoresTrimestrais, 0, len(anos))
 	for k := range anos {
+		var p1Ptr, p2Ptr ValoresTrimestrais
+		i := pares[k].p1Idx
+		j := pares[k].p2Idx
 		if pares[k].p1 && pares[k].p2 {
-			i := pares[k].p1Idx
-			j := pares[k].p2Idx
-			r := ValoresTrimestrais{}
-			switch op {
-			case '+':
-				r = v1[i].Add(v2[j])
-			case '-':
-				r = v1[i].Sub(v2[j])
-			case '*':
-				r = v1[i].Mult(v2[j])
-			case '/':
-				r = v1[i].Div(v2[j])
-			}
-			v = append(v, r)
-		} else if pares[k].p1 {
-			v = append(v, v1[pares[k].p1Idx])
-		} else if pares[k].p2 {
-			v = append(v, v2[pares[k].p2Idx])
+			p1Ptr = v1[i]
+			p2Ptr = v2[j]
+		} else if pares[k].p1 && !pares[k].p2 {
+			p1Ptr = v1[i]
+			p2Ptr = ValoresTrimestrais{v1[i].Ano, 0.0, 0.0, 0.0, 0.0}
+		} else if !pares[k].p1 && pares[k].p2 {
+			p1Ptr = ValoresTrimestrais{v2[j].Ano, 0.0, 0.0, 0.0, 0.0}
+			p2Ptr = v2[j]
+		} else {
+			continue
 		}
+
+		r := ValoresTrimestrais{}
+		switch op {
+		case '+':
+			r = p1Ptr.Add(p2Ptr)
+		case '-':
+			r = p1Ptr.Sub(p2Ptr)
+		case '*':
+			r = p1Ptr.Mult(p2Ptr)
+		case '/':
+			r = p1Ptr.Div(p2Ptr)
+		}
+		v = append(v, r)
 	}
 	return v
 }
