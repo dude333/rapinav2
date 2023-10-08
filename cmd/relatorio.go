@@ -227,15 +227,23 @@ func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente boo
 	// Freeze panes
 	_ = x.FreezePane("C2")
 
-	// Remover colunas vazias
+	// Trim empty columns
 	hasData := rapina.TrimestresComDados(itr)
 	if decrescente {
 		reverseb(hasData)
 	}
 	for i := len(hasData) - 1; i >= 0; i-- {
-		if !hasData[i] {
-			_ = x.RemoveCol(initCol + i)
+		if hasData[i] {
+			break
 		}
+		_ = x.RemoveCol(initCol + i)
+	}
+	for i := 0; i < len(hasData); i++ {
+		if hasData[i] {
+			break
+		}
+		_ = x.RemoveCol(initCol)
+
 	}
 } // excelReport =====
 
@@ -481,8 +489,8 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	p("Caixa", number, caixa)
 	p("Dívida Bruta", number, dividaBruta)
 	p("Dívida Líq.", number, dividaLiquida)
-	p("Dív. Bru./PL", percent, rapina.DivVTs(dividaBruta, c[Equity]))
-	p("Dív.Líq./EBITDA", percent, rapina.DivVTs(dividaLiquida, ebitda))
+	p("Dív. Bru./PL", frac, rapina.DivVTs(dividaBruta, c[Equity]))
+	p("Dív.Líq./EBITDA", frac, rapina.DivVTs(dividaLiquida, ebitda))
 	row++
 	p("FCO", number, c[FCO])
 	p("FCI", number, c[FCI])
@@ -507,11 +515,18 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
-	// Remover colunas vazias
+	// Trim empty columns
 	for i := len(sumCols) - 1; i >= 0; i-- {
-		if sumCols[i] == 0.0 {
-			_ = x.RemoveCol(colB + i)
+		if sumCols[i] != 0.0 {
+			break
 		}
+		_ = x.RemoveCol(colB + i)
+	}
+	for i := 0; i < len(sumCols); i++ {
+		if sumCols[i] != 0.0 {
+			break
+		}
+		_ = x.RemoveCol(colB)
 	}
 }
 
@@ -601,8 +616,8 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	p("Caixa", number, caixa)
 	p("Dívida Bruta", number, dividaBruta)
 	p("Dívida Líq.", number, dividaLiquida)
-	p("Dív. Bru./PL", percent, rapina.DivVTs(dividaBruta, c[Equity]))
-	p("Dív.Líq./ EBITDA", percent, rapina.DivVTs(dividaLiquida, ebitda))
+	p("Dív. Bru./PL", frac, rapina.DivVTs(dividaBruta, c[Equity]))
+	p("Dív.Líq./ EBITDA", frac, rapina.DivVTs(dividaLiquida, ebitda))
 	// col++
 	p("FCO", number, c[FCO])
 	p("FCI", number, c[FCI])
@@ -626,10 +641,17 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
-	// Remover colunas vazias
+	// Trim empty columns
 	for i := len(sumRows) - 1; i >= 0; i-- {
-		if sumRows[i] == 0.0 {
-			_ = x.RemoveRow(row2 + i)
+		if sumRows[i] != 0.0 {
+			break
 		}
+		_ = x.RemoveRow(row2 + i)
+	}
+	for i := 0; i < len(sumRows); i++ {
+		if sumRows[i] != 0.0 {
+			break
+		}
+		_ = x.RemoveRow(row2)
 	}
 }
