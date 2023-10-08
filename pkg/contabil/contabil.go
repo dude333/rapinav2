@@ -79,16 +79,16 @@ func (df *DemonstraçãoFinanceira) Importar(ano int, trimestral bool) error {
 			progress.Error(result.Error)
 			continue
 		}
-		if len(result.Hash) > 0 {
-			err := df.bd.SalvarHash(ctx, result.Hash)
-			if err != nil {
-				progress.ErrorMsg("erro salvando hash: %v", err)
-			}
-		}
 		if result.Empresa != nil {
 			err := df.bd.Salvar(ctx, result.Empresa)
 			if err != nil {
 				return err
+			}
+		}
+		if len(result.Hash) > 0 {
+			err := df.bd.SalvarHash(ctx, result.Hash)
+			if err != nil {
+				progress.ErrorMsg("erro salvando hash: %v", err)
 			}
 		}
 	}
