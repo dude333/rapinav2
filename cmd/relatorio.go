@@ -45,7 +45,7 @@ func init() {
 	rootCmd.AddCommand(relatorioCmd)
 }
 
-func menuRelatório(cmd *cobra.Command, args []string) {
+func menuRelatório(_ *cobra.Command, _ []string) {
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
 		progress.Fatal(err)
@@ -227,23 +227,15 @@ func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente boo
 	// Freeze panes
 	_ = x.FreezePane("C2")
 
-	// Trim empty columns
+	// Remover colunas vazias
 	hasData := rapina.TrimestresComDados(itr)
 	if decrescente {
 		reverseb(hasData)
 	}
 	for i := len(hasData) - 1; i >= 0; i-- {
-		if hasData[i] {
-			break
+		if !hasData[i] {
+			_ = x.RemoveCol(initCol + i)
 		}
-		_ = x.RemoveCol(initCol + i)
-	}
-	for i := 0; i < len(hasData); i++ {
-		if hasData[i] {
-			break
-		}
-		_ = x.RemoveCol(initCol)
-
 	}
 } // excelReport =====
 
@@ -515,18 +507,11 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decresce
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
-	// Trim empty columns
+	// Remover colunas vazias
 	for i := len(sumCols) - 1; i >= 0; i-- {
-		if sumCols[i] != 0.0 {
-			break
+		if sumCols[i] == 0.0 {
+			_ = x.RemoveCol(colB + i)
 		}
-		_ = x.RemoveCol(colB + i)
-	}
-	for i := 0; i < len(sumCols); i++ {
-		if sumCols[i] != 0.0 {
-			break
-		}
-		_ = x.RemoveCol(colB)
 	}
 }
 
@@ -641,7 +626,7 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
-	// Delete empty columns
+	// Remover colunas vazias
 	for i := len(sumRows) - 1; i >= 0; i-- {
 		if sumRows[i] == 0.0 {
 			_ = x.RemoveRow(row2 + i)
