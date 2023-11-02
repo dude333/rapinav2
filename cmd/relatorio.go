@@ -98,12 +98,12 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 		if err = x.NewSheet("resumo - consolidado"); err != nil {
 			progress.Fatal(err)
 		}
-		excelSummaryReport(x, itrUnificado, !flags.relatorio.crescente)
+		excelSummaryReport(x, itrUnificado, false, !flags.relatorio.crescente)
 
 		if err = x.NewSheet("resumo - consolidado vert"); err != nil {
 			progress.Fatal(err)
 		}
-		excelSummaryReportVertical(x, itrUnificado, !flags.relatorio.crescente)
+		excelSummaryReport(x, itrUnificado, true, !flags.relatorio.crescente)
 	}
 	progress.RunOK()
 
@@ -126,7 +126,12 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 			if err = x.NewSheet("resumo - individual"); err != nil {
 				progress.Fatal(err)
 			}
-			excelSummaryReport(x, itrUnificado, !flags.relatorio.crescente)
+			excelSummaryReport(x, itrUnificado, false, !flags.relatorio.crescente)
+
+			if err = x.NewSheet("resumo - individual vert"); err != nil {
+				progress.Fatal(err)
+			}
+			excelSummaryReport(x, itrUnificado, true, !flags.relatorio.crescente)
 		}
 		progress.RunOK()
 	}
@@ -403,134 +408,14 @@ func acctCode(cod, descr string) accountType {
 	return UNDEF
 }
 
-func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente bool) {
-	if err := x.SetZoom(90.0); err != nil {
-		progress.Fatal(err)
+func ifElse[T any](cond bool, a, b T) T {
+	if cond {
+		return a
 	}
-
-	number, _ := x.SetNumber(10.0, false, _customerNumFmt)
-	percent, _ := x.SetNumber(10.0, false, _customerPercFmt)
-	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
-	titleFont, _ := x.SetFont(10.0, true, false)
-
-	seq := []int{0, 1, 2, 3}
-	anos := rapina.RangeAnos(itr)
-	if decrescente {
-		reverse(seq)
-		reverse(anos)
-	}
-
-	cabeçalho := func(row int) {
-		x.PrintCell(row, 1, titleFont, "Descrição")
-		col := 2
-		for _, ano := range anos {
-			x.PrintCell(row, col+seq[0], titleFont, fmt.Sprintf("1T%d", ano))
-			x.PrintCell(row, col+seq[1], titleFont, fmt.Sprintf("2T%d", ano))
-			x.PrintCell(row, col+seq[2], titleFont, fmt.Sprintf("3T%d", ano))
-			x.PrintCell(row, col+seq[3], titleFont, fmt.Sprintf("4T%d", ano))
-			col += 4
-		}
-	}
-
-	c := map[accountType][]rapina.ValoresTrimestrais{}
-	for _, informe := range itr {
-		c[acctCode(informe.Codigo, informe.Descr)] = informe.Valores
-	}
-
-	const colB = 2
-	sumCols := make([]float64, len(anos)*4)
-	imprimirTrimestres := func(col, row int, estilo int, valores []rapina.ValoresTrimestrais) {
-		for _, ano := range anos {
-			for _, valor := range valores {
-				if valor.Ano != ano {
-					continue
-				}
-				x.PrintCell(row, col+seq[0], estilo, valor.T1)
-				x.PrintCell(row, col+seq[1], estilo, valor.T2)
-				x.PrintCell(row, col+seq[2], estilo, valor.T3)
-				x.PrintCell(row, col+seq[3], estilo, valor.T4)
-
-				sumCols[col+seq[0]-colB] += valor.T1
-				sumCols[col+seq[1]-colB] += valor.T2
-				sumCols[col+seq[2]-colB] += valor.T3
-				sumCols[col+seq[3]-colB] += valor.T4
-			}
-			col += 4
-		}
-	}
-
-	// ------------------[ Relatório ]------------------
-	cabeçalho(1)
-	row := 2
-	p := func(descr string, estilo int, valores []rapina.ValoresTrimestrais) {
-		x.PrintCell(row, 1, titleFont, descr)
-		imprimirTrimestres(2, row, estilo, valores)
-		row++
-	}
-	p("Patrimônio Líquido", number, c[Equity])
-	row++
-	p("Receita Líquida", number, c[Vendas])
-	ebitda := rapina.SubVTs(c[EBIT], c[Deprec])
-	p("EBITDA", number, ebitda)
-	p("EBIT", number, c[EBIT])
-	p("Resultado Financeiro", number, c[ResulFinanc])
-	p("Operações Descont.", number, c[ResulOpDescont])
-	p("Lucro Líquido", number, c[LucLiq])
-	row++
-	p("Marg. EBITDA", percent, rapina.DivVTs(ebitda, c[Vendas]))
-	p("Marg. EBIT", percent, rapina.DivVTs(c[EBIT], c[Vendas]))
-	p("Marg. Líq.", percent, rapina.DivVTs(c[LucLiq], c[Vendas]))
-	p("ROA", percent, rapina.DivVTs(c[LucLiq], c[AtivoTotal]))
-	p("ROE", percent, rapina.DivVTs(c[LucLiq], c[Equity]))
-	row++
-	caixa := rapina.AddVTs(c[Caixa], c[AplicFinanceiras])
-	dividaBruta := rapina.AddVTs(c[DividaCirc], c[DividaNCirc])
-	dividaLiquida := rapina.SubVTs(dividaBruta, caixa)
-	p("Caixa", number, caixa)
-	p("Dívida Bruta", number, dividaBruta)
-	p("Dívida Líq.", number, dividaLiquida)
-	p("Dív. Bru./PL", frac, rapina.DivVTs(dividaBruta, c[Equity]))
-	p("Dív.Líq./EBITDA", frac, rapina.DivVTs(dividaLiquida, ebitda))
-	row++
-	p("FCO", number, c[FCO])
-	p("FCI", number, c[FCI])
-	p("FCF", number, c[FCF])
-	p("FCT", number, rapina.AddVTs(rapina.AddVTs(c[FCO], c[FCI]), c[FCF]))
-	p("FCL (FCO+FCI)", number, rapina.AddVTs(c[FCO], c[FCI]))
-	row++
-	proventos := rapina.AddVTs(c[Dividendos], c[JurosCapProp])
-	p("Proventos", number, proventos)
-	p("Payout", frac, rapina.DivVTs(proventos, c[LucLiq]))
-	// -------------------------------------------------
-
-	// Auto-resize columns
-	cols := colB + len(anos)*4
-	widths := make([]float64, cols)
-	widths[0] = 17
-	for i := 1; i < cols; i++ {
-		widths[i] = 12
-	}
-	x.SetColWidth(widths)
-
-	// Freeze panes
-	_ = x.FreezePane("B2")
-
-	// Trim empty columns
-	for i := len(sumCols) - 1; i >= 0; i-- {
-		if sumCols[i] != 0.0 {
-			break
-		}
-		_ = x.RemoveCol(colB + i)
-	}
-	for i := 0; i < len(sumCols); i++ {
-		if sumCols[i] != 0.0 {
-			break
-		}
-		_ = x.RemoveCol(colB)
-	}
+	return b
 }
 
-func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente bool) {
+func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, vert, decrescente bool) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
@@ -538,7 +423,7 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	number, _ := x.SetNumber(10.0, false, _customerNumFmt)
 	percent, _ := x.SetNumber(10.0, false, _customerPercFmt)
 	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
-	titleFont, _ := x.SetFont(10.0, true, true)
+	titleFont, _ := x.SetFont(10.0, true, vert)
 
 	seq := []int{0, 1, 2, 3}
 	anos := rapina.RangeAnos(itr)
@@ -547,15 +432,24 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 		reverse(anos)
 	}
 
-	cabeçalho := func(col int) {
-		x.PrintCell(1, col, titleFont, "Trimestre")
-		row := 2
+	cabeçalho := func(row, col int) {
+		x.PrintCell(row, col, titleFont, ifElse(vert, "Trimestre", "Descrição"))
+		row += ifElse(vert, 1, 0)
+		col += ifElse(vert, 0, 1)
 		for _, ano := range anos {
-			x.PrintCell(row+seq[0], col, titleFont, fmt.Sprintf("1T%d", ano))
-			x.PrintCell(row+seq[1], col, titleFont, fmt.Sprintf("2T%d", ano))
-			x.PrintCell(row+seq[2], col, titleFont, fmt.Sprintf("3T%d", ano))
-			x.PrintCell(row+seq[3], col, titleFont, fmt.Sprintf("4T%d", ano))
-			row += 4
+			if !vert {
+				x.PrintCell(row, col+seq[0], titleFont, fmt.Sprintf("1T%d", ano))
+				x.PrintCell(row, col+seq[1], titleFont, fmt.Sprintf("2T%d", ano))
+				x.PrintCell(row, col+seq[2], titleFont, fmt.Sprintf("3T%d", ano))
+				x.PrintCell(row, col+seq[3], titleFont, fmt.Sprintf("4T%d", ano))
+				col += 4
+			} else {
+				x.PrintCell(row+seq[0], col, titleFont, fmt.Sprintf("1T%d", ano))
+				x.PrintCell(row+seq[1], col, titleFont, fmt.Sprintf("2T%d", ano))
+				x.PrintCell(row+seq[2], col, titleFont, fmt.Sprintf("3T%d", ano))
+				x.PrintCell(row+seq[3], col, titleFont, fmt.Sprintf("4T%d", ano))
+				row += 4
+			}
 		}
 	}
 
@@ -565,37 +459,62 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	}
 
 	const row2 = 2
+	const colB = 2
 	sumRows := make([]float64, len(anos)*4)
+	sumCols := make([]float64, len(anos)*4)
 	imprimirTrimestres := func(row, col int, estilo int, valores []rapina.ValoresTrimestrais) {
 		for _, ano := range anos {
 			for _, valor := range valores {
 				if valor.Ano != ano {
 					continue
 				}
-				x.PrintCell(row+seq[0], col, estilo, valor.T1)
-				x.PrintCell(row+seq[1], col, estilo, valor.T2)
-				x.PrintCell(row+seq[2], col, estilo, valor.T3)
-				x.PrintCell(row+seq[3], col, estilo, valor.T4)
+				if !vert {
+					x.PrintCell(row, col+seq[0], estilo, valor.T1)
+					x.PrintCell(row, col+seq[1], estilo, valor.T2)
+					x.PrintCell(row, col+seq[2], estilo, valor.T3)
+					x.PrintCell(row, col+seq[3], estilo, valor.T4)
 
-				sumRows[row+seq[0]-row2] += valor.T1
-				sumRows[row+seq[1]-row2] += valor.T2
-				sumRows[row+seq[2]-row2] += valor.T3
-				sumRows[row+seq[3]-row2] += valor.T4
+					sumCols[col+seq[0]-colB] += valor.T1
+					sumCols[col+seq[1]-colB] += valor.T2
+					sumCols[col+seq[2]-colB] += valor.T3
+					sumCols[col+seq[3]-colB] += valor.T4
+				} else {
+					x.PrintCell(row+seq[0], col, estilo, valor.T1)
+					x.PrintCell(row+seq[1], col, estilo, valor.T2)
+					x.PrintCell(row+seq[2], col, estilo, valor.T3)
+					x.PrintCell(row+seq[3], col, estilo, valor.T4)
+
+					sumRows[row+seq[0]-row2] += valor.T1
+					sumRows[row+seq[1]-row2] += valor.T2
+					sumRows[row+seq[2]-row2] += valor.T3
+					sumRows[row+seq[3]-row2] += valor.T4
+				}
 			}
-			row += 4
+			if !vert {
+				col += 4
+			} else {
+				row += 4
+			}
 		}
 	}
 
 	// ------------------[ Relatório ]------------------
-	cabeçalho(1)
-	col := 2
+	cabeçalho(1, 1)
+	row := ifElse(vert, 1, 2)
+	col := ifElse(vert, 2, 1)
 	p := func(descr string, estilo int, valores []rapina.ValoresTrimestrais) {
-		x.PrintCell(1, col, titleFont, descr)
-		imprimirTrimestres(2, col, estilo, valores)
-		col++
+		if !vert {
+			x.PrintCell(row, 1, titleFont, descr)
+			imprimirTrimestres(row, 2, estilo, valores)
+			row++
+		} else {
+			x.PrintCell(1, col, titleFont, descr)
+			imprimirTrimestres(2, col, estilo, valores)
+			col++
+		}
 	}
 	p("Patrimônio Líquido", number, c[Equity])
-	// col++
+	row += ifElse(vert, 0, 1)
 	p("Receita Líquida", number, c[Vendas])
 	ebitda := rapina.SubVTs(c[EBIT], c[Deprec])
 	p("EBITDA", number, ebitda)
@@ -603,13 +522,13 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	p("Resultado Financeiro", number, c[ResulFinanc])
 	p("Operações Descont.", number, c[ResulOpDescont])
 	p("Lucro Líquido", number, c[LucLiq])
-	// col++
+	row += ifElse(vert, 0, 1)
 	p("Marg. EBITDA", percent, rapina.DivVTs(ebitda, c[Vendas]))
 	p("Marg. EBIT", percent, rapina.DivVTs(c[EBIT], c[Vendas]))
 	p("Marg. Líq.", percent, rapina.DivVTs(c[LucLiq], c[Vendas]))
 	p("ROA", percent, rapina.DivVTs(c[LucLiq], c[AtivoTotal]))
 	p("ROE", percent, rapina.DivVTs(c[LucLiq], c[Equity]))
-	// col++
+	row += ifElse(vert, 0, 1)
 	caixa := rapina.AddVTs(c[Caixa], c[AplicFinanceiras])
 	dividaBruta := rapina.AddVTs(c[DividaCirc], c[DividaNCirc])
 	dividaLiquida := rapina.SubVTs(dividaBruta, caixa)
@@ -618,22 +537,23 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	p("Dívida Líq.", number, dividaLiquida)
 	p("Dív. Bru./PL", frac, rapina.DivVTs(dividaBruta, c[Equity]))
 	p("Dív.Líq./ EBITDA", frac, rapina.DivVTs(dividaLiquida, ebitda))
-	// col++
+	row += ifElse(vert, 0, 1)
 	p("FCO", number, c[FCO])
 	p("FCI", number, c[FCI])
 	p("FCF", number, c[FCF])
 	p("FCT", number, rapina.AddVTs(rapina.AddVTs(c[FCO], c[FCI]), c[FCF]))
 	p("FCL (FCO+FCI)", number, rapina.AddVTs(c[FCO], c[FCI]))
-	// col++
+	row += ifElse(vert, 0, 1)
 	proventos := rapina.AddVTs(c[Dividendos], c[JurosCapProp])
 	p("Proventos", number, proventos)
 	p("Payout", frac, rapina.DivVTs(proventos, c[LucLiq]))
 	// -------------------------------------------------
 
 	// Auto-resize columns
-	widths := make([]float64, col)
-	widths[0] = 8.5
-	for i := 1; i < col; i++ {
+	cols := ifElse(vert, col, colB+len(anos)*4)
+	widths := make([]float64, cols)
+	widths[0] = ifElse(vert, 8.5, 18)
+	for i := 1; i < cols; i++ {
 		widths[i] = 12
 	}
 	x.SetColWidth(widths)
@@ -641,17 +561,33 @@ func excelSummaryReportVertical(x *excel.Excel, itr []rapina.InformeTrimestral, 
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
-	// Trim empty columns
-	for i := len(sumRows) - 1; i >= 0; i-- {
-		if sumRows[i] != 0.0 {
-			break
+	if !vert {
+		// Trim empty columns
+		for i := len(sumCols) - 1; i >= 0; i-- {
+			if sumCols[i] != 0.0 {
+				break
+			}
+			_ = x.RemoveCol(colB + i)
 		}
-		_ = x.RemoveRow(row2 + i)
-	}
-	for i := 0; i < len(sumRows); i++ {
-		if sumRows[i] != 0.0 {
-			break
+		for i := 0; i < len(sumCols); i++ {
+			if sumCols[i] != 0.0 {
+				break
+			}
+			_ = x.RemoveCol(colB)
 		}
-		_ = x.RemoveRow(row2)
+	} else {
+		// Trim empty rows
+		for i := len(sumRows) - 1; i >= 0; i-- {
+			if sumRows[i] != 0.0 {
+				break
+			}
+			_ = x.RemoveRow(row2 + i)
+		}
+		for i := 0; i < len(sumRows); i++ {
+			if sumRows[i] != 0.0 {
+				break
+			}
+			_ = x.RemoveRow(row2)
+		}
 	}
 }
