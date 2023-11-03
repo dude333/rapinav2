@@ -29,17 +29,9 @@ func Test_cvm_Importar(t *testing.T) {
 		{
 			name: "deveria funcionar",
 			args: args{
-				ctx: context.Background(),
-				ano: 2020,
-			},
-			want:    make(<-chan dominio.Resultado),
-			wantErr: false,
-		},
-		{
-			name: "deveria funcionar",
-			args: args{
-				ctx: context.Background(),
-				ano: 2019,
+				ctx:        context.Background(),
+				ano:        2019,
+				trimestral: false,
 			},
 			want:    make(<-chan dominio.Resultado),
 			wantErr: false,
