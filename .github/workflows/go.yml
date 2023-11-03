@@ -96,7 +96,8 @@ jobs:
         uses: crazy-max/ghaction-upx@v2
         with:
           files: |
-            ./build/rapinav2-*
+            ./build/rapinav2-*linux*
+            ./build/rapinav2-*windows*
           args: '-9'
       - name: Checksum
         run: |
