@@ -552,9 +552,9 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, vert, de
 	// Auto-resize columns
 	cols := ifElse(vert, col, colB+len(anos)*4)
 	widths := make([]float64, cols)
-	widths[0] = ifElse(vert, 8.5, 18)
+	widths[0] = ifElse(vert, 8.5, 18.0)
 	for i := 1; i < cols; i++ {
-		widths[i] = 12
+		widths[i] = 12.0
 	}
 	x.SetColWidth(widths)
 
