@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -132,8 +131,7 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dom
 
 			// Ignora arquivos já processados
 			if c.existe(arquivo.hash) {
-				progress.RunFail()
-				progress.Warning("Arquivo %s já foi processado anteriormente", filepath.Base(arquivo.path))
+				progress.RunWarningMsg("já foi processado anteriormente")
 				continue
 			}
 			// Processa o arquivo e envia o resultado para o canal 'results'

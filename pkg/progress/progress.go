@@ -224,6 +224,29 @@ func RunFail() {
 	output([]byte(colorReset))
 }
 
+func RunWarningMsg(msg string) {
+	runEndMsg(colorYellow, msg)
+}
+
+func RunFailMsg(msg string) {
+	runEndMsg(colorRed, msg)
+}
+
+func runEndMsg(color, msg string) {
+	output([]byte(color))
+
+	if len(p.running) > 0 {
+		clearLine()
+		output(p.running)
+		output([]byte(": " + msg))
+	}
+
+	outputln(evRunFail)
+	p.running = p.running[:0]
+
+	output([]byte(colorReset))
+}
+
 func Download(a string) {
 	p.running = []byte(fmt.Sprintf("[          ] %s", a))
 	output(p.running)
