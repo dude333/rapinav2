@@ -526,8 +526,8 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, vert, de
 	p("Marg. EBITDA", percent, rapina.DivVTs(ebitda, c[Vendas]))
 	p("Marg. EBIT", percent, rapina.DivVTs(c[EBIT], c[Vendas]))
 	p("Marg. Líq.", percent, rapina.DivVTs(c[LucLiq], c[Vendas]))
-	p("ROA", percent, rapina.DivVTs(c[LucLiq], c[AtivoTotal]))
-	p("ROE", percent, rapina.DivVTs(c[LucLiq], c[Equity]))
+	p("ROA", percent, rapina.DivVTs(ttm(c[LucLiq]), c[AtivoTotal]))
+	p("ROE", percent, rapina.DivVTs(ttm(c[LucLiq]), c[Equity]))
 	row += ifElse(vert, 0, 1)
 	caixa := rapina.AddVTs(c[Caixa], c[AplicFinanceiras])
 	dividaBruta := rapina.AddVTs(c[DividaCirc], c[DividaNCirc])
@@ -590,4 +590,82 @@ func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, vert, de
 			_ = x.RemoveRow(row2)
 		}
 	}
+}
+
+// ultTrim retorna o último trimestre com valor não nulo
+func ultTrim(ano int, valores []rapina.ValoresTrimestrais) int {
+	for _, valor := range valores {
+		if valor.Ano != ano {
+			continue
+		}
+		if valor.T4 != 0.0 {
+			return 4
+		} else if valor.T3 != 0.0 {
+			return 3
+		} else if valor.T2 != 0.0 {
+			return 2
+		}
+	}
+	return 1
+}
+
+// ttm armazena a soma dos últimos 4 trimestres em cada um dos trimestres; usado em métricas
+// que comparam como valores do balanço patrimonial.
+// Exemplo: ROE = Patrim.Líq. / Lucro Líq. dos últimos 12 meses
+func ttm(acct []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
+	min, max := rapina.MinMax([]rapina.InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
+	t := ultTrim(max, acct)
+
+	// if min == max && t <= 3 {
+	// 	return []rapina.ValoresTrimestrais{{Ano: acct[0].Ano}}
+	// }
+
+	valores := make([]float64, len(acct)*4)
+
+	for ano := min; ano <= max; ano++ {
+		for _, valor := range acct {
+			if valor.Ano != ano {
+				continue
+			}
+			idx := 4 * (ano - min)
+			valores[idx+0] = valor.T1
+			valores[idx+1] = valor.T2
+			valores[idx+2] = valor.T3
+			valores[idx+3] = valor.T4
+		}
+	}
+
+	somaValores := func(from, to int) float64 {
+		invalidParm := from < 0 || to >= len(valores) || from > to
+		invalidPeriod := to >= (len(valores) - (4 - t))
+		if invalidParm || invalidPeriod {
+			return 0.0
+		}
+
+		total := 0.0
+		for i := from; i <= to; i++ {
+			total += valores[i]
+		}
+		return total
+	}
+
+	valoresAcum := make([]rapina.ValoresTrimestrais, len(acct))
+
+	for ano := min; ano <= max; ano++ {
+		for _, valor := range acct {
+			if valor.Ano != ano {
+				continue
+			}
+			idx := 4 * (ano - min)
+			valoresAcum[ano-min] = rapina.ValoresTrimestrais{
+				Ano: ano,
+				T1:  somaValores(idx-3, idx+0),
+				T2:  somaValores(idx-2, idx+1),
+				T3:  somaValores(idx-1, idx+2),
+				T4:  somaValores(idx-0, idx+3),
+			}
+		}
+	}
+
+	return valoresAcum
 }
