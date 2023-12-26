@@ -613,14 +613,14 @@ func ultTrim(ano int, valores []rapina.ValoresTrimestrais) int {
 // que comparam como valores do balanço patrimonial.
 // Exemplo: ROE = Patrim.Líq. / Lucro Líq. dos últimos 12 meses
 func ttm(acct []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
+	if len(acct) == 0 {
+		return []rapina.ValoresTrimestrais{{Ano: acct[0].Ano}}
+	}
+
 	min, max := rapina.MinMax([]rapina.InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
 	t := ultTrim(max, acct)
 
-	// if min == max && t <= 3 {
-	// 	return []rapina.ValoresTrimestrais{{Ano: acct[0].Ano}}
-	// }
-
-	valores := make([]float64, len(acct)*4)
+	valores := make([]float64, (max-min+1)*4)
 
 	for ano := min; ano <= max; ano++ {
 		for _, valor := range acct {
@@ -649,7 +649,7 @@ func ttm(acct []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
 		return total
 	}
 
-	valoresAcum := make([]rapina.ValoresTrimestrais, len(acct))
+	valoresAcum := make([]rapina.ValoresTrimestrais, (max-min+1)*4)
 
 	for ano := min; ano <= max; ano++ {
 		for _, valor := range acct {
