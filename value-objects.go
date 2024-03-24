@@ -13,8 +13,8 @@ import (
 
 // Empresa ------------------------------------------------
 type Empresa struct {
-	CNPJ string
-	Nome string
+	CNPJ string `json:"cnpj"`
+	Nome string `json:"nome"`
 }
 
 func (e Empresa) String() string {

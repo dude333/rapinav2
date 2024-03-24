@@ -23,6 +23,7 @@ var flags = struct {
 	tempDir   string // arquivos temporários
 	relatorio flagsRelatorio
 	atualizar flagsAtualizar
+	servidor  flagsServidor
 	debug     bool
 	trace     bool
 }{}

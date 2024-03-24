@@ -1,0 +1,126 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --select-border: #777;
+  --select-focus: blue;
+  --select-arrow: var(--select-border);
+  --text-bg-color: #f2e9e4;
+  --bg-color: #e3d5ca;
+}
+
+select {
+  height: 20em;
+  width: 100%;
+  min-width: 35ch;
+  /* max-width: 30ch; */
+  border: 1px solid var(--select-border);
+  border-radius: 0.25em;
+  padding: 0.25em 0.5em;
+  font-family: Rubik, sans-serif;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1.1;
+  background-color: var(--text-bg-color);
+  /* background-image: linear-gradient(to top, #f9f9f9, #fff 33%); */
+}
+
+select::after {
+  content: "";
+  width: 0.8em;
+  height: 0.5em;
+  background-color: var(--select-arrow);
+  clip-path: polygon(100% 0%, 0 0%, 50% 100%);
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg-color);
+  font-family:
+    System,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+h1 {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 80%;
+  max-width: 100%;
+}
+
+select {
+  padding: 10px;
+  margin: 10px;
+  width: calc(50% - 20px); /* 50% width with margins subtracted */
+  box-sizing: border-box;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.btn1 {
+  display: inline-block;
+  margin: 0 0.5rem;
+  outline: 0;
+  border: 0;
+  cursor: pointer;
+  background-color: #4299e1;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 16px;
+  border-bottom: 4px solid #2b6cb0;
+  font-weight: 700;
+  color: white;
+  line-height: 26px;
+  box-shadow:
+    0 5px 6px rgba(50, 50, 93, 0.11),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.btn1:hover {
+  filter: brightness(110%);
+}
+
+.btn1:active {
+  transform: translateY(1px);
+  /* Disable shadow on click */
+  box-shadow: none;
+}
+
+.terminal {
+  margin: 1rem 0.5rem;
+  padding: 1rem;
+  width: 100%;
+  font-family: monospace;
+  font-size: 1rem;
+  background: #f7f7f7;
+  color: #333;
+  background-color: var(--text-bg-color);
+  box-sizing: border-box;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+@media screen and (max-width: 640px) {
+  .container {
+    width: 100%;
+  }
+}

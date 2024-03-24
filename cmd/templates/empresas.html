@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Select Empresas</title>
+    <script src="https://unpkg.com/htmx.org@1.9.11"></script>
+    <link rel="stylesheet" href="assets/style.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik:wght@300..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Selecione as Empresas</h1>
+      <form class="container" hx-post="/select" hx-target="#terminal">
+        <select
+          class="select"
+          name="state_id"
+          id="state_container"
+          size="10"
+          ondblclick="moveOption(this);"
+          onkeypress="handleKeyPress(event);"
+        >
+          {{ range $index, $element := . }}
+          <option data-index="{{ $index }}" value="{{ $element.CNPJ }}">
+            {{ $element.Nome }}
+          </option>
+          {{ end }}
+        </select>
+        <select
+          name="selected"
+          id="selected"
+          size="10"
+          ondblclick="moveOption(this);"
+          onkeypress="handleKeyPress(event);"
+        ></select>
+        <input type="hidden" id="allOptions" name="allOptions" />
+        <div width="100%">
+          <button class="btn1" type="submit">Baixar relatórios</button>
+          <button class="btn1" hx-get="#" hx-target="#selected">
+            Atualizar Banco de Dados
+          </button>
+        </div>
+      </form>
+      <div id="terminal" class="terminal" width="100%">
+        Lorem ipsum dolor sit amet, qui minim labore adipisicing minim sint
+        cillum sint consectetur cupidatat. Lorem ipsum dolor sit amet, officia
+        excepteur ex fugiat reprehenderit enim labore culpa sint ad nisi Lorem
+        pariatur mollit ex esse exercitation amet. Nisi anim cupidatat excepteur
+        officia. Reprehenderit nostrud nostrud ipsum Lorem est aliquip amet
+        voluptate voluptate dolor minim nulla est proident. Nostrud officia
+        pariatur ut officia. Sit irure elit esse ea nulla sunt ex occaecat
+        reprehenderit commodo officia dolor Lorem duis laboris cupidatat officia
+        voluptate. Culpa proident adipisicing id nulla nisi laboris ex in Lorem
+        sunt duis officia eiusmod. Aliqua reprehenderit commodo ex non excepteur
+        duis sunt velit enim. Voluptate laboris sint cupidatat ullamco ut ea
+        consectetur et est culpa et culpa duis.
+      </div>
+    </div>
+    <script src="assets/script.js"></script>
+  </body>
+</html>

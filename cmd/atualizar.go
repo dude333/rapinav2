@@ -13,7 +13,8 @@ import (
 )
 
 type flagsAtualizar struct {
-	ano int
+	ano  int
+	tudo bool
 }
 
 // atualizarCmd represents the atualizar command
@@ -27,19 +28,23 @@ var atualizarCmd = &cobra.Command{
 
 func init() {
 	atualizarCmd.Flags().IntVarP(&flags.atualizar.ano, "ano", "a", 0, "Ano do relatório")
+	atualizarCmd.Flags().BoolVar(&flags.atualizar.tudo, "all", false, "Atualiza todos os anos, desde 2009")
 
 	rootCmd.AddCommand(atualizarCmd)
 }
 
 func atualizar(_ *cobra.Command, _ []string) {
-	progress.Status("{%d}", flags.atualizar.ano)
+	var anoi, anof int
 
-	anoi := 2010
-	anof := time.Now().Year()
-
-	if flags.atualizar.ano >= 2000 {
+	if flags.atualizar.tudo {
+		anoi = 2010
+		anof = time.Now().Year()
+	} else if flags.atualizar.ano >= 2009 {
+		progress.Status("{%d}", flags.atualizar.ano)
 		anoi = flags.atualizar.ano
 		anof = anoi
+	} else {
+		return
 	}
 
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
@@ -59,5 +64,4 @@ func atualizar(_ *cobra.Command, _ []string) {
 
 	importar(false)
 	importar(true)
-
 }
