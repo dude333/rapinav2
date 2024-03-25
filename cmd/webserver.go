@@ -11,6 +11,8 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
@@ -39,13 +41,19 @@ func init() {
 func webserver(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/empresas", displayEmpresas)
 	http.HandleFunc("/select", handleSelection)
+	http.HandleFunc("/files", handleFiles)
 
-	fs := http.FileServer(http.Dir("./cmd/templates/"))
-	http.Handle("/assets/", logHandler(fs))
+	fs := http.FileServer(http.Dir("./cmd/assets/"))
+	http.Handle("/scripts/", logHandler(fs))
+	http.Handle("/styles/", logHandler(fs))
+
+	fsRelat := http.FileServer(http.Dir(flags.relatorio.outputDir))
+	http.Handle("/relatorios/", logHandler(stripPrefixHandler("/relatorios", fsRelat)))
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-//go:embed templates
+//go:embed assets/templates
 var indexHTML embed.FS
 
 func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
@@ -59,7 +67,7 @@ func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
 		progress.Fatal(err)
 	}
 
-	t, err := template.ParseFS(indexHTML, "templates/empresas.html")
+	t, err := template.ParseFS(indexHTML, "assets/templates/empresas.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -108,5 +116,55 @@ func logHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Request: %s %s", r.Method, r.URL.Path)
 		next.ServeHTTP(w, r)
+	})
+}
+
+type File struct {
+	Name    string
+	ModTime string
+	Size    int64
+	Mode    os.FileMode
+	IsDir   bool
+}
+
+func handleFiles(w http.ResponseWriter, _ *http.Request) {
+	path := flags.relatorio.outputDir
+	files, err := os.ReadDir(path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var filesList []File
+	for _, f := range files {
+		info, err := f.Info()
+		if err != nil {
+			continue
+		}
+		filesList = append(filesList, File{
+			Name:    f.Name(),
+			Size:    info.Size(),
+			Mode:    info.Mode(),
+			ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
+			IsDir:   f.IsDir(),
+		})
+	}
+
+	t, err := template.ParseFS(indexHTML, "assets/templates/files.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := t.Execute(w, filesList); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func stripPrefixHandler(prefix string, handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		trimmedPath := strings.TrimPrefix(r.URL.Path, prefix)
+		r.URL.Path = trimmedPath
+		handler.ServeHTTP(w, r)
 	})
 }

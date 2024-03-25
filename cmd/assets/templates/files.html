@@ -1,0 +1,26 @@
+<!doctype html>
+<html></html>
+<body>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Size</th>
+        <th>Modified</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .}}
+      <tr>
+        <td>
+          <a href="relatorios/{{if .IsDir}}/{{.Name}}{{else}}{{.Name}}{{end}}"
+            >{{.Name}}</a
+          >
+        </td>
+        <td>{{if .IsDir}}-{{else}}{{.Size}}{{end}}</td>
+        <td>{{.ModTime}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</body>

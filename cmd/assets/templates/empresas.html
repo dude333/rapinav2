@@ -3,7 +3,7 @@
   <head>
     <title>Select Empresas</title>
     <script src="https://unpkg.com/htmx.org@1.9.11"></script>
-    <link rel="stylesheet" href="assets/style.css" />
+    <link rel="stylesheet" href="styles/style.css" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -59,7 +59,16 @@
         duis sunt velit enim. Voluptate laboris sint cupidatat ullamco ut ea
         consectetur et est culpa et culpa duis.
       </div>
+
+      <div
+        id="files"
+        hx-get="/files"
+        hx-trigger="load"
+        width="100%"
+        class="terminal"
+      ></div>
     </div>
-    <script src="assets/script.js"></script>
+
+    <script src="scripts/script.js"></script>
   </body>
 </html>
