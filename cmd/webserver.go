@@ -73,11 +73,6 @@ func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
 func handleSelection(w http.ResponseWriter, r *http.Request) {
 	var selectedEmpresas []rapina.Empresa
 
-	// r.ParseForm()
-	// for _, key := range r.Form["allOptions"] {
-	// 	selectedEmpresas = append(selectedEmpresas, rapina.Empresa{CNPJ: key})
-	// }
-
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -96,6 +91,17 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 
 	// fmt.Fprintf(w, "Empresa(s) selecionada(s): %#v", selectedEmpresas)
 	progress.Debug("Empresa(s) selecionada(s): %+v", selectedEmpresas)
+
+	progress.SetOutput(w)
+	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		progress.Fatal(err)
+	}
+
+	for _, empresa := range selectedEmpresas {
+		criarRelatório(empresa, dfp)
+	}
 }
 
 func logHandler(next http.Handler) http.Handler {

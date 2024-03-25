@@ -61,3 +61,28 @@ function sortOptions(parent) {
   parent.innerHTML = "";
   sortedOptions.forEach((option) => parent.appendChild(option));
 }
+
+document.body.addEventListener("htmx:afterSwap", function (event) {
+  if (event.detail.elt.id === "terminal") {
+    // Extract data from the response
+    let responseData = event.detail.xhr.responseText;
+    // Process the data as needed
+    let processedData = formatData(responseData);
+    // Update the target element with the processed data
+    document.querySelector("#terminal").innerHTML = processedData;
+  }
+});
+
+const terminalDiv = document.getElementById("terminal");
+
+function formatData(data) {
+  // Replace ANSI escape codes with HTML span elements for colors
+  const formattedData = data
+    .replace(
+      /\x1b\[(\d+)m/g,
+      (_, colorCode) => `</span><span class="color${colorCode}m">`,
+    )
+    .replace(/\r|\n/g, "<br />");
+
+  return "<span>" + formattedData;
+}

@@ -124,3 +124,31 @@ select {
     width: 100%;
   }
 }
+
+span.color0m {
+  color: inherit;
+}
+span.color30m {
+  color: black;
+}
+span.color31m {
+  color: red;
+}
+span.color32m {
+  color: green;
+}
+span.color33m {
+  color: yellow;
+}
+span.color34m {
+  color: blue;
+}
+span.color35m {
+  color: magenta;
+}
+span.color36m {
+  color: cyan;
+}
+span.color37m {
+  color: white;
+}

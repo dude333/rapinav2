@@ -51,6 +51,10 @@ func init() {
 	p = &Progress{out: os.Stderr, debug: false}
 }
 
+func SetOutput(w io.Writer) {
+	p.out = w
+}
+
 func SetDebug(on bool) {
 	p.debug = on
 }
