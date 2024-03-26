@@ -86,19 +86,15 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	objs := r.Form["allOptions"]
-	progress.Debug("obj: %v", objs)
 	if err := json.Unmarshal([]byte(objs[0]), &selectedEmpresas); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	for _, opt := range selectedEmpresas {
-		fmt.Fprintf(w, "CNPJ: %s, Name: %s <br />\n", opt.CNPJ, opt.Nome)
-	}
-
-	// fmt.Fprintf(w, "Empresa(s) selecionada(s): %#v", selectedEmpresas)
-	progress.Debug("Empresa(s) selecionada(s): %+v", selectedEmpresas)
+	// w.WriteHeader(http.StatusOK)
+	// for _, opt := range selectedEmpresas {
+	// 	fmt.Fprintf(w, "CNPJ: %s, Nome: %s <br />\n", opt.CNPJ, opt.Nome)
+	// }
 
 	progress.SetOutput(w)
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
@@ -122,7 +118,7 @@ func logHandler(next http.Handler) http.Handler {
 type File struct {
 	Name    string
 	ModTime string
-	Size    int64
+	Size    string
 	Mode    os.FileMode
 	IsDir   bool
 }
@@ -135,6 +131,11 @@ func handleFiles(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
+	if len(files) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	var filesList []File
 	for _, f := range files {
 		info, err := f.Info()
@@ -143,7 +144,7 @@ func handleFiles(w http.ResponseWriter, _ *http.Request) {
 		}
 		filesList = append(filesList, File{
 			Name:    f.Name(),
-			Size:    info.Size(),
+			Size:    humanize(info.Size()),
 			Mode:    info.Mode(),
 			ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
 			IsDir:   f.IsDir(),
@@ -167,4 +168,17 @@ func stripPrefixHandler(prefix string, handler http.Handler) http.Handler {
 		r.URL.Path = trimmedPath
 		handler.ServeHTTP(w, r)
 	})
+}
+
+func humanize(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d  B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }

@@ -119,6 +119,19 @@ select {
   border: 1px solid #ccc;
 }
 
+td {
+  min-width: 10ch;
+  padding: 0 2ch;
+}
+
+td.center {
+  text-align: center;
+}
+
+td.right {
+  text-align: right;
+}
+
 @media screen and (max-width: 640px) {
   .container {
     width: 100%;

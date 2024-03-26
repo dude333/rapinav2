@@ -1,13 +1,7 @@
 const _fromList = document.getElementById("state_container");
 const _toList = document.getElementById("selected");
 const _allOptions = document.getElementById("allOptions");
-const _terminalDiv = document.getElementById("terminal");
-const _filesDiv = document.getElementById("files");
-
 let _options = [];
-
-const _customEvent = new CustomEvent("reloadFiles");
-_filesDiv.dispatchEvent(_customEvent);
 
 function handleKeyPress(event) {
   if (event.key === "Enter") {
@@ -70,11 +64,16 @@ function sortOptions(parent) {
 
 document.body.addEventListener("htmx:afterSwap", function (event) {
   if (event.detail.elt.id === "terminal") {
+    // Extract data from the response
     let responseData = event.detail.xhr.responseText;
+    // Process the data as needed
     let processedData = formatData(responseData);
+    // Update the target element with the processed data
     document.querySelector("#terminal").innerHTML = processedData;
   }
 });
+
+const terminalDiv = document.getElementById("terminal");
 
 function formatData(data) {
   // Replace ANSI escape codes with HTML span elements for colors
@@ -87,17 +86,3 @@ function formatData(data) {
 
   return "<span>" + formattedData;
 }
-
-document
-  .querySelector("form.container")
-  .addEventListener("htmx:beforeRequest", (event) => {
-    _terminalDiv.innerHTML =
-      "Criando relatórios...<br />" +
-      _options.map((e) => "* " + e.cnpj + ": " + e.nome + "<br />").join("\n");
-  });
-
-document
-  .querySelector("form.container")
-  .addEventListener("htmx:afterRequest", (event) => {
-    htmx.trigger(_filesDiv, "reloadFiles");
-  });

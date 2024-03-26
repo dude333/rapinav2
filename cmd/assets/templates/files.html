@@ -17,8 +17,8 @@
             >{{.Name}}</a
           >
         </td>
-        <td>{{if .IsDir}}-{{else}}{{.Size}}{{end}}</td>
-        <td>{{.ModTime}}</td>
+        <td class="right">{{if .IsDir}}-{{else}}{{.Size}}{{end}}</td>
+        <td class="center">{{.ModTime}}</td>
       </tr>
       {{end}}
     </tbody>
