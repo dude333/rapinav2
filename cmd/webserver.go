@@ -5,14 +5,17 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
@@ -41,6 +44,7 @@ func init() {
 func webserver(_ *cobra.Command, _ []string) {
 	http.HandleFunc("/empresas", displayEmpresas)
 	http.HandleFunc("/select", handleSelection)
+	http.HandleFunc("/update", handleUpdate)
 	http.HandleFunc("/files", handleFiles)
 
 	fs := http.FileServer(http.Dir("./cmd/assets/"))
@@ -105,6 +109,102 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 
 	for _, empresa := range selectedEmpresas {
 		criarRelatório(empresa, dfp)
+	}
+}
+
+type sseWriter struct {
+	w io.Writer
+}
+
+func (sw sseWriter) Write(p []byte) (n int, err error) {
+	log.Printf("SSE: %s", string(p))
+	return sw.w.Write([]byte("data: " + string(p) + "\n\n"))
+}
+
+var alreadyIn = false
+
+func handleUpdate(w http.ResponseWriter, r *http.Request) {
+	log.Println("***************************************************")
+	if alreadyIn {
+		log.Println("Cancelando update")
+		_, cancel := context.WithCancel(r.Context())
+		cancel()
+		return
+	}
+	alreadyIn = true
+	w.Header().Set("Content-Type", "text/event-stream;  charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	progress.SetOutput(sseWriter{w: w})
+
+	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		panic(err)
+	}
+
+	f, ok := w.(http.Flusher)
+	if !ok {
+		progress.Warning("Servidor não suporta flush")
+	}
+	flush := func() {
+		if ok {
+			f.Flush()
+		}
+	}
+
+	done := make(chan bool, 1)
+	defer close(done)
+
+	anof := time.Now().Year()
+	anoi := anof - 1
+
+	importar := func(trimestral bool) {
+		for ano := anof; ano >= anoi; ano-- {
+			err := dfp.Importar(ano, trimestral)
+			if err != nil {
+				progress.Error(err)
+				continue
+			}
+		}
+	}
+
+	go func() {
+		importar(false)
+		importar(true)
+		// heavyWork()
+		progress.SetOutput(os.Stdout)
+		done <- true
+	}()
+
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			fmt.Fprintf(w, "event: close\ndata: [>] Importação concluída\n\n")
+			flush()
+			progress.Status("Importação concluída")
+			alreadyIn = false
+			return
+		case <-ticker.C:
+			// log.Println("ticker")
+			fmt.Fprintf(w, ": keep-alive")
+			flush()
+		}
+	}
+}
+
+func heavyWork() {
+	// Replace this with your actual heavy work
+	tasks := []string{"task1", "task2", "task3"}
+	for _, task := range tasks {
+		time.Sleep(4 * time.Second) // simulate heavy work
+		// fmt.Fprintf(w, "%s completed", task)
+		progress.Status("%s completed", task)
 	}
 }
 

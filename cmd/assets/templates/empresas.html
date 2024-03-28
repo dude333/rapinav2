@@ -39,10 +39,14 @@
           ondblclick="moveOption(this);"
           onkeypress="handleKeyPress(event);"
         ></select>
+
         <input type="hidden" id="allOptions" name="allOptions" />
-        <div width="100%">
-          <button class="btn1" type="submit">Criar relatórios</button>
-          <button class="btn1" hx-get="#" hx-target="#selected">
+
+        <div id="buttons" width="100%">
+          <button id="submit" class="btn1" type="submit">
+            Criar relatórios
+          </button>
+          <button id="update" class="btn1" onclick="startEventSource(event);">
             Atualizar Banco de Dados
           </button>
         </div>

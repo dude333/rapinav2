@@ -76,28 +76,89 @@ document.body.addEventListener("htmx:afterSwap", function (event) {
   }
 });
 
+let currentColor = "0";
 function formatData(data) {
+  if (data.trim().length === 0) {
+    return data;
+  }
   // Replace ANSI escape codes with HTML span elements for colors
   const formattedData = data
-    .replace(
-      /\x1b\[(\d+)m/g,
-      (_, colorCode) => `</span><span class="color${colorCode}m">`,
-    )
+    .replace(/\x1b\[(\d+)m/g, (_, colorCode) => {
+      currentColor = colorCode;
+      return "";
+    })
     .replace(/\r|\n/g, "<br />");
 
-  return "<span>" + formattedData;
+  console.log(
+    `data: ${data}\n-- currentColor: ${currentColor}\n-- formattedData: ${formattedData}`,
+  );
+
+  if (!formattedData) {
+    return "";
+  }
+
+  return `<span class="color${currentColor}m">` + formattedData + "</span>";
 }
 
 document
   .querySelector("form.container")
   .addEventListener("htmx:beforeRequest", (event) => {
-    _terminalDiv.innerHTML =
-      "Criando relatórios...<br />" +
-      _options.map((e) => "* " + e.cnpj + ": " + e.nome + "<br />").join("\n");
+    if ((event.ta = document.getElementById("submit"))) {
+      _terminalDiv.innerHTML =
+        "Criando relatórios...<br />" +
+        _options
+          .map((e) => "* " + e.cnpj + ": " + e.nome + "<br />")
+          .join("\n");
+    }
   });
 
 document
   .querySelector("form.container")
-  .addEventListener("htmx:afterRequest", (event) => {
+  .addEventListener("htmx:beforeRequest", (_) => disableButtons(true));
+document
+  .querySelector("form.container")
+  .addEventListener("htmx:afterRequest", (_) => {
+    disableButtons(false);
     htmx.trigger(_filesDiv, "reloadFiles");
   });
+
+function startEventSource(event) {
+  event.preventDefault();
+
+  console.log("Starting EventSource...");
+
+  const eventSource = new EventSource("/update");
+  disableButtons(true);
+
+  eventSource.onmessage = function (event) {
+    if (event.data.trim().length === 0) {
+      return;
+    }
+    console.log("EventSource message:", event.data);
+    _terminalDiv.innerHTML += formatData(event.data);
+  };
+
+  eventSource.addEventListener("close", function (event) {
+    console.log("Server has closed the connection.");
+    eventSource.close();
+    running = false;
+    disableButtons(false);
+    _terminalDiv.innerHTML += "<br />[>] Importação concluída";
+  });
+
+  eventSource.onerror = function (event) {
+    console.error("EventSource failed:", event);
+    eventSource.close();
+    disableButtons(false);
+    running = false;
+  };
+}
+
+function disableButtons(disable) {
+  const buttonsInDiv = document.querySelectorAll("#buttons button");
+  buttonsInDiv.forEach((button) => {
+    button.disabled = disable;
+    button.style.cursor = disable ? "not-allowed" : "pointer";
+    button.style.opacity = disable ? "0.5" : "1";
+  });
+}

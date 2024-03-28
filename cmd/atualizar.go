@@ -5,6 +5,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dude333/rapinav2/pkg/contabil"
@@ -44,12 +45,13 @@ func atualizar(_ *cobra.Command, _ []string) {
 		anoi = flags.atualizar.ano
 		anof = anoi
 	} else {
+		progress.Error(fmt.Errorf("escolher o ano com --ano <ano> ou --all"))
 		return
 	}
 
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
-		panic(err)
+		progress.Fatal(err)
 	}
 
 	importar := func(trimestral bool) {
