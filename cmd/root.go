@@ -21,9 +21,9 @@ var flags = struct {
 	cfgFile   string
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
 	tempDir   string // arquivos temporários
+	servidor  flagsServidor
 	relatorio flagsRelatorio
 	atualizar flagsAtualizar
-	servidor  flagsServidor
 	debug     bool
 	trace     bool
 }{}

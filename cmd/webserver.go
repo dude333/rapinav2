@@ -41,24 +41,25 @@ func init() {
 	rootCmd.AddCommand(servidorCmd)
 }
 
+//go:embed assets
+var assets embed.FS
+
 func webserver(_ *cobra.Command, _ []string) {
-	http.HandleFunc("/empresas", displayEmpresas)
+	http.HandleFunc("/", displayEmpresas)
 	http.HandleFunc("/select", handleSelection)
 	http.HandleFunc("/update", handleUpdate)
 	http.HandleFunc("/files", handleFiles)
 
-	fs := http.FileServer(http.Dir("./cmd/assets/"))
-	http.Handle("/scripts/", logHandler(fs))
-	http.Handle("/styles/", logHandler(fs))
+	fs := http.FileServer(http.FS(assets))
+	http.Handle("/assets/", logHandler(fs))
 
 	fsRelat := http.FileServer(http.Dir(flags.relatorio.outputDir))
 	http.Handle("/relatorios/", logHandler(stripPrefixHandler("/relatorios", fsRelat)))
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	addr := ":8080"
+	progress.Status("Iniciando servidor em %s", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
 }
-
-//go:embed assets/templates
-var indexHTML embed.FS
 
 func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
@@ -71,7 +72,7 @@ func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
 		progress.Fatal(err)
 	}
 
-	t, err := template.ParseFS(indexHTML, "assets/templates/empresas.html")
+	t, err := template.ParseFS(assets, "assets/templates/empresas.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -95,11 +96,6 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// w.WriteHeader(http.StatusOK)
-	// for _, opt := range selectedEmpresas {
-	// 	fmt.Fprintf(w, "CNPJ: %s, Nome: %s <br />\n", opt.CNPJ, opt.Nome)
-	// }
-
 	progress.SetOutput(w)
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
@@ -113,11 +109,14 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 }
 
 type sseWriter struct {
-	w io.Writer
+	w  io.Writer
+	w2 io.Writer
 }
 
 func (sw sseWriter) Write(p []byte) (n int, err error) {
-	log.Printf("SSE: %s", string(p))
+	if sw.w2 != nil {
+		_, _ = sw.w2.Write(p)
+	}
 	return sw.w.Write([]byte("data: " + string(p) + "\n\n"))
 }
 
@@ -137,7 +136,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	progress.SetOutput(sseWriter{w: w})
+	progress.SetOutput(sseWriter{w: w, w2: os.Stdout})
 
 	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
 	if err != nil {
@@ -174,7 +173,6 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		importar(false)
 		importar(true)
-		// heavyWork()
 		progress.SetOutput(os.Stdout)
 		done <- true
 	}()
@@ -191,20 +189,9 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 			alreadyIn = false
 			return
 		case <-ticker.C:
-			// log.Println("ticker")
 			fmt.Fprintf(w, ": keep-alive")
 			flush()
 		}
-	}
-}
-
-func heavyWork() {
-	// Replace this with your actual heavy work
-	tasks := []string{"task1", "task2", "task3"}
-	for _, task := range tasks {
-		time.Sleep(4 * time.Second) // simulate heavy work
-		// fmt.Fprintf(w, "%s completed", task)
-		progress.Status("%s completed", task)
 	}
 }
 
@@ -251,7 +238,7 @@ func handleFiles(w http.ResponseWriter, _ *http.Request) {
 		})
 	}
 
-	t, err := template.ParseFS(indexHTML, "assets/templates/files.html")
+	t, err := template.ParseFS(assets, "assets/templates/files.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

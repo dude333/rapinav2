@@ -4,10 +4,12 @@ const _allOptions = document.getElementById("allOptions");
 const _terminalDiv = document.getElementById("terminal");
 const _filesDiv = document.getElementById("files");
 
-let _options = [];
-
 const _customEvent = new CustomEvent("reloadFiles");
 _filesDiv.dispatchEvent(_customEvent);
+
+// Mover opções de um select para o outro -------------------------------------
+
+let _options = [];
 
 function handleKeyPress(event) {
   if (event.key === "Enter") {
@@ -68,11 +70,13 @@ function sortOptions(parent) {
   sortedOptions.forEach((option) => parent.appendChild(option));
 }
 
+// Terminal -------------------------------------------------------------------
+
 document.body.addEventListener("htmx:afterSwap", function (event) {
   if (event.detail.elt.id === "terminal") {
     let responseData = event.detail.xhr.responseText;
     let processedData = formatData(responseData);
-    document.querySelector("#terminal").innerHTML = processedData;
+    _terminalDiv.innerHTML = processedData;
   }
 });
 
@@ -89,10 +93,6 @@ function formatData(data) {
     })
     .replace(/\r|\n/g, "<br />");
 
-  console.log(
-    `data: ${data}\n-- currentColor: ${currentColor}\n-- formattedData: ${formattedData}`,
-  );
-
   if (!formattedData) {
     return "";
   }
@@ -100,10 +100,13 @@ function formatData(data) {
   return `<span class="color${currentColor}m">` + formattedData + "</span>";
 }
 
+// Submit form (criar relatórios) --------------------------------------------
+
 document
   .querySelector("form.container")
   .addEventListener("htmx:beforeRequest", (event) => {
     if ((event.ta = document.getElementById("submit"))) {
+      disableButtons(true);
       _terminalDiv.innerHTML =
         "Criando relatórios...<br />" +
         _options
@@ -111,16 +114,14 @@ document
           .join("\n");
     }
   });
-
-document
-  .querySelector("form.container")
-  .addEventListener("htmx:beforeRequest", (_) => disableButtons(true));
 document
   .querySelector("form.container")
   .addEventListener("htmx:afterRequest", (_) => {
     disableButtons(false);
     htmx.trigger(_filesDiv, "reloadFiles");
   });
+
+// Atualizar banco de dados --------------------------------------------------
 
 function startEventSource(event) {
   event.preventDefault();
@@ -134,7 +135,6 @@ function startEventSource(event) {
     if (event.data.trim().length === 0) {
       return;
     }
-    console.log("EventSource message:", event.data);
     _terminalDiv.innerHTML += formatData(event.data);
   };
 
@@ -153,6 +153,8 @@ function startEventSource(event) {
     running = false;
   };
 }
+
+// Botões ---------------------------------------------------------------------
 
 function disableButtons(disable) {
   const buttonsInDiv = document.querySelectorAll("#buttons button");
