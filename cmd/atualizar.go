@@ -10,6 +10,7 @@ import (
 
 	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/progress"
+	"github.com/dude333/rapinav2/pkg/tickers"
 	"github.com/spf13/cobra"
 )
 
@@ -66,4 +67,8 @@ func atualizar(_ *cobra.Command, _ []string) {
 
 	importar(false)
 	importar(true)
+
+	if err := tickers.Update(db().DB); err != nil {
+		progress.Error(err)
+	}
 }

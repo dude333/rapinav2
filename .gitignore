@@ -1,19 +1,36 @@
+# Executables
 *.exe
+rapinav2
+rapina
+
+# Test artifacts
 *.test
+debug.test
+
+# Profiling files
 *.prof
+
+# Temporary files
 *.tmp
 *.log
+tmp
+
+# Configuration files
 *.cfg
 *.conf
 
-.bd/*
-bin/*
+# Databases
+.bd/
+*.db
+
+# Build directories
+bin/
+target/
+
+# Visual Studio Code workspace settings
 .vscode/*
-tmp
-rapinav2
-rapina
-debug.test
-target/*
+
+# Other specific files
 on
 *.xlsx
 golangci*.y*ml

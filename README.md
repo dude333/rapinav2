@@ -40,8 +40,9 @@ Antes de se criar um relatório pela primeira vez, é **necessário** baixar os 
 `rapinav2 atualizar [ano]`
 
 Exemplos:
-* `rapinav2 atualizar`: baixar todos os dados.
-* `rapinav2 atualizar 2023`: baixar apenar um ano específico.
+
+- `rapinav2 atualizar`: baixar todos os dados.
+- `rapinav2 atualizar 2023`: baixar apenar um ano específico.
 
 ### Criação do Relatório
 
@@ -52,9 +53,10 @@ Para criar uma planilha com os dados financeiros trimestrais de um empresa, exec
 As empresas serão listadas em ordem alfabética. Basta navegar com as setas, ou use a tecla <kbd>/</kbd> para procurar uma empresa.
 
 Exemplos:
-* `rapinav2 relatorio`: cria o relatório no diretório corrente.
-* `rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
-* `rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
+
+- `rapinav2 relatorio`: cria o relatório no diretório corrente.
+- `rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
+- `rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
 
 Os relatório será gravado com o nome da empresa. Exemplos:
 
@@ -74,15 +76,14 @@ RAIA_DROGASIL_S.A.xlsx
 
 Para personalizar os parâmetros, crie o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com um ou mais dos seguintes parâmetros:
 
-
-| Parâmetro | Descrição |
-|-----------|-----------|
-| `dataSrc` | Arquivo onde serão gravados os dados coletados <br> Default: ./.dados |
-| `tempDir` | Diretório onde os arquivos temporários serão armazernados <br> Default: ./.dados |
-| `reportDir` | Diretório onde os relatórios serão salvos <br> Default: ./ |
-
+| Parâmetro   | Descrição                                                                        |
+| ----------- | -------------------------------------------------------------------------------- |
+| `dataSrc`   | Arquivo onde serão gravados os dados coletados <br> Default: ./.dados            |
+| `tempDir`   | Diretório onde os arquivos temporários serão armazernados <br> Default: ./.dados |
+| `reportDir` | Diretório onde os relatórios serão salvos <br> Default: ./                       |
 
 Exemplo:
+
 ```yaml
 dataSrc: "/home/user1/dados/rapinav2.db"
 tempDir: "/home/user1/dados"
@@ -105,7 +106,14 @@ go build -o rapinav2 cmd/*
 
 O arquivo `rapinav2`, ou `rapinav2.exe` no Windows, será criado.
 
+## Dados
+
+- Relação tickets CNPJ:
+  https://sistemaswebb3-listados.b3.com.br/isinPage
+  https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetTextDownload/
+  => obj.geralPt.id => btoa(JSON.stringify(obj.geralPt.id))
+  https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetFileDownload/{id}
+
 ## Nota Final
 
 Os relatórios tem finalidade apenas informativa e podem conter informações incorretas.
-
