@@ -8,6 +8,11 @@ package main
 
 func main() {
 	// defer profile.Start().Stop()
+	defer func() {
+		if _db != nil {
+			_db.Close()
+		}
+	}()
 
 	Execute()
 }
