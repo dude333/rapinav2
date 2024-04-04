@@ -24,6 +24,20 @@ const (
 	_customerFracFmt = `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
 )
 
+type Excel interface {
+	NewSheet(sheetName string) error
+	SetZoom(zoomScale float64) error
+	SetColWidth(widths []float64)
+	FreezePane(cell string) error
+	SetFont(size float64, bold, wrap bool) (int, error)
+	SetNumber(size float64, bold bool, format string) (int, error)
+	PrintCell(row, col, style int, value interface{})
+	RemoveRow(row int) error
+	RemoveCol(col int) error
+	SaveAs(name string) error
+	Close() error
+}
+
 type flagsRelatorio struct {
 	outputDir string
 	crescente bool
@@ -73,7 +87,7 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 		progress.Fatal(err)
 	}
 
-	x := excel.New()
+	var x Excel = excel.New()
 	defer func() {
 		if err := x.Close(); err != nil {
 			progress.Error(err)
@@ -149,7 +163,7 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 	progress.Status(line + "\n\n")
 }
 
-func excelReport(x *excel.Excel, itr []rapina.InformeTrimestral, decrescente bool) {
+func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
@@ -415,7 +429,7 @@ func ifElse[T any](cond bool, a, b T) T {
 	return b
 }
 
-func excelSummaryReport(x *excel.Excel, itr []rapina.InformeTrimestral, vert, decrescente bool) {
+func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescente bool) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
