@@ -104,7 +104,7 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, empresa := range selectedEmpresas {
-		criarRelatório(empresa, dfp)
+		criarRelatórios(empresa, dfp)
 	}
 }
 

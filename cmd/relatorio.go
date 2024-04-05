@@ -77,11 +77,11 @@ func menuRelatório(_ *cobra.Command, _ []string) {
 			os.Exit(0)
 		}
 
-		criarRelatório(empresa, dfp)
+		criarRelatórios(empresa, dfp)
 	}
 }
 
-func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira) {
+func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira) {
 	filename, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
 	if err != nil {
 		progress.Fatal(err)
@@ -95,59 +95,11 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 	}()
 
 	// DADOS CONSOLIDADOS
-	progress.Running("Relatório de dados consolidados")
-	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ, true)
-	if err != nil {
-		progress.Fatal(err)
-	}
-	if len(itr) > 0 {
-		progress.Debug("Dados consolidados: %d registros", len(itr))
-		itrUnificado := rapina.UnificarContasSimilares(itr)
-
-		if err = x.NewSheet("consolidado"); err != nil {
-			progress.Fatal(err)
-		}
-		excelReport(x, itrUnificado, !flags.relatorio.crescente)
-
-		if err = x.NewSheet("resumo - consolidado"); err != nil {
-			progress.Fatal(err)
-		}
-		excelSummaryReport(x, itrUnificado, false, !flags.relatorio.crescente)
-
-		if err = x.NewSheet("resumo - consolidado vert"); err != nil {
-			progress.Fatal(err)
-		}
-		excelSummaryReport(x, itrUnificado, true, !flags.relatorio.crescente)
-	}
-	progress.RunOK()
-
+	ok := criarPlanilhas(x, empresa, dfp, true)
+	//
 	// DADOS INDIVIDUAIS
-	if len(itr) == 0 {
-		progress.Running("Relatório de dados individual")
-		itr, err = dfp.RelatórioTrimestal(empresa.CNPJ, false)
-		if err != nil {
-			progress.Fatal(err)
-		}
-		if len(itr) > 0 {
-			progress.Debug("Dados individuais: %d registros", len(itr))
-			itrUnificado := rapina.UnificarContasSimilares(itr)
-
-			if err = x.NewSheet("individual"); err != nil {
-				progress.Fatal(err)
-			}
-			excelReport(x, itrUnificado, !flags.relatorio.crescente)
-
-			if err = x.NewSheet("resumo - individual"); err != nil {
-				progress.Fatal(err)
-			}
-			excelSummaryReport(x, itrUnificado, false, !flags.relatorio.crescente)
-
-			if err = x.NewSheet("resumo - individual vert"); err != nil {
-				progress.Fatal(err)
-			}
-			excelSummaryReport(x, itrUnificado, true, !flags.relatorio.crescente)
-		}
-		progress.RunOK()
+	if !ok {
+		criarPlanilhas(x, empresa, dfp, false)
 	}
 
 	// Salva planilha
@@ -161,6 +113,47 @@ func criarRelatório(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinance
 	progress.Status(line)
 	progress.Status(status)
 	progress.Status(line + "\n\n")
+}
+
+func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira, consolidado bool) bool {
+	titulo := "consolidado"
+	if !consolidado {
+		titulo = "individual"
+	}
+
+	progress.Running("Relatório de dados " + titulo)
+	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ, consolidado)
+	if err != nil {
+		progress.Fatal(err)
+	}
+	if len(itr) == 0 {
+		progress.RunFail()
+		return false
+	}
+
+	progress.Debug("Dados %s: %d registros", titulo, len(itr))
+	itrUnificado := rapina.UnificarContasSimilares(itr)
+
+	// Relatório completo
+	if err = x.NewSheet(titulo); err != nil {
+		progress.Fatal(err)
+	}
+	excelReport(x, itrUnificado, !flags.relatorio.crescente)
+
+	// Relatório resumo
+	if err = x.NewSheet(fmt.Sprintf("resumo - %s", titulo)); err != nil {
+		progress.Fatal(err)
+	}
+	excelSummaryReport(x, itrUnificado, false, !flags.relatorio.crescente)
+
+	// Relatório resumo, vertical
+	if err = x.NewSheet(fmt.Sprintf("resumo - %s vert", titulo)); err != nil {
+		progress.Fatal(err)
+	}
+	excelSummaryReport(x, itrUnificado, true, !flags.relatorio.crescente)
+	progress.RunOK()
+
+	return true
 }
 
 func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
