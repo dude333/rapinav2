@@ -81,6 +81,8 @@ func menuRelatório(_ *cobra.Command, _ []string) {
 	}
 }
 
+// criarRelatórios gera e salva relatórios da empresa em planilhas Excel.
+// Os relatórios podem ser consolidados ou, caso não existam, individuais.
 func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira) {
 	filename, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
 	if err != nil {
@@ -115,6 +117,7 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanc
 	progress.Status(line + "\n\n")
 }
 
+// criarPlanilhas gera e salva relatório consolidado/individual em Excel.
 func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira, consolidado bool) bool {
 	titulo := "consolidado"
 	if !consolidado {
@@ -156,6 +159,10 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	return true
 }
 
+// excelReport cria e formata o relatório trimestral completo em planilha Excel
+// com base nos dados fornecidos. O parâmetro 'decrescente' indica se o
+// relatório deve ser criado em ordem crescente (false) ou decrescente (true)
+// de ano.
 func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
@@ -422,6 +429,9 @@ func ifElse[T any](cond bool, a, b T) T {
 	return b
 }
 
+// excelSummaryReport cria e formata o relatório resumido em planilha Excel com
+// base nos dados fornecidos. O parâmetro 'decrescente' indica se o relatório
+// deve ser criado em ordem crescente (false) ou decrescente (true) de ano.
 func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescente bool) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
@@ -569,19 +579,24 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 	// Freeze panes
 	_ = x.FreezePane("B2")
 
+	trimEmpty(x, row2, colB, sumRows, sumCols, vert)
+}
+
+// trimEmpty remove linhas e colunas vazias.
+func trimEmpty(x Excel, row, col int, sumRows, sumCols []float64, vert bool) {
 	if !vert {
 		// Trim empty columns
 		for i := len(sumCols) - 1; i >= 0; i-- {
 			if sumCols[i] != 0.0 {
 				break
 			}
-			_ = x.RemoveCol(colB + i)
+			_ = x.RemoveCol(col + i)
 		}
 		for i := 0; i < len(sumCols); i++ {
 			if sumCols[i] != 0.0 {
 				break
 			}
-			_ = x.RemoveCol(colB)
+			_ = x.RemoveCol(col)
 		}
 	} else {
 		// Trim empty rows
@@ -589,13 +604,13 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 			if sumRows[i] != 0.0 {
 				break
 			}
-			_ = x.RemoveRow(row2 + i)
+			_ = x.RemoveRow(row + i)
 		}
 		for i := 0; i < len(sumRows); i++ {
 			if sumRows[i] != 0.0 {
 				break
 			}
-			_ = x.RemoveRow(row2)
+			_ = x.RemoveRow(row)
 		}
 	}
 }
