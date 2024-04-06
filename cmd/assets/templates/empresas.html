@@ -1,11 +1,10 @@
 <!doctype html>
 <html>
   <head>
-    <title>Select Empresas</title>
+    <title>Rapina</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦅</text></svg>"
-    />
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦅</text></svg>" />
     <link rel="stylesheet" href="assets/styles/style.css" />
 
     <!-- <script src="https://unpkg.com/htmx.org@1.9.11"></script> -->
@@ -15,21 +14,23 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Rubik:wght@300..900&display=swap"
-      rel="stylesheet"
-    />
+      rel="stylesheet" />
   </head>
   <body>
     <div class="container">
-      <h1>Selecione as Empresas</h1>
+      <h1>Rapina</h1>
       <form class="container" hx-post="/select" hx-target="#terminal">
+        <label for="state_container">
+          Selecione as empresas para criar os relatórios:
+        </label>
         <select
           class="select"
           name="state_id"
           id="state_container"
           size="10"
+          onInput="moveOption(this);"
           ondblclick="moveOption(this);"
-          onkeypress="handleKeyPress(event);"
-        >
+          onkeypress="handleKeyPress(event);">
           {{ range $index, $element := . }}
           <option data-index="{{ $index }}" value="{{ $element.CNPJ }}">
             {{ $element.Nome }}
@@ -40,9 +41,9 @@
           name="selected"
           id="selected"
           size="10"
+          onInput="moveOption(this);"
           ondblclick="moveOption(this);"
-          onkeypress="handleKeyPress(event);"
-        ></select>
+          onkeypress="handleKeyPress(event);"></select>
 
         <input type="hidden" id="allOptions" name="allOptions" />
 
@@ -63,8 +64,7 @@
         hx-get="/files"
         hx-trigger="load, reloadFiles"
         width="100%"
-        class="terminal"
-      ></div>
+        class="terminal"></div>
     </div>
 
     <script src="assets/scripts/script.js"></script>
