@@ -208,3 +208,75 @@ func TestDivVTs(t *testing.T) {
 		})
 	}
 }
+
+func TestRangeAnos(t *testing.T) {
+	type args struct {
+		itr     []InformeTrimestral
+		reverse bool
+	}
+	tests := []struct {
+		name string
+		want []int
+		args args
+	}{
+		{
+			name: "deveria retornar anos de 2010 à 2020",
+			args: args{
+				itr: []InformeTrimestral{
+					{
+						Valores: []ValoresTrimestrais{{Ano: 2010}, {Ano: 2011}, {Ano: 2012}, {Ano: 2013}, {Ano: 2014}, {Ano: 2015}, {Ano: 2016}, {Ano: 2017}, {Ano: 2018}, {Ano: 2019}, {Ano: 2020}},
+					},
+				},
+				reverse: false,
+			},
+			want: []int{2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020},
+		},
+		{
+			name: "deveria retornar anos de 2023 à 2018",
+			args: args{
+				itr: []InformeTrimestral{
+					{
+						Valores: []ValoresTrimestrais{{Ano: 2023}, {Ano: 2022}, {Ano: 2021}, {Ano: 2020}, {Ano: 2019}, {Ano: 2018}},
+					},
+				},
+				reverse: true,
+			},
+			want: []int{2023, 2022, 2021, 2020, 2019, 2018},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RangeAnos(tt.args.itr, tt.args.reverse); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RangeAnos() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRangeAnosVTs(t *testing.T) {
+	type args struct {
+		v1 []ValoresTrimestrais
+		v2 []ValoresTrimestrais
+	}
+	tests := []struct {
+		name string
+		args args
+		want []int
+	}{
+		{
+			name: "deveria retornar anos de 2010 até 2014",
+			args: args{
+				v1: []ValoresTrimestrais{{Ano: 2011}, {Ano: 2012}, {Ano: 2013}, {Ano: 2014}},
+				v2: []ValoresTrimestrais{{Ano: 2010}, {Ano: 2011}},
+			},
+			want: []int{2010, 2011, 2012, 2013, 2014},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RangeAnosVTs(tt.args.v1, tt.args.v2); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RangeAnosVTs() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

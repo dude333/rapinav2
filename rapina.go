@@ -198,7 +198,7 @@ func codPai(codigo string) string {
 func UnificarContasSimilares(itr []InformeTrimestral) []InformeTrimestral {
 	itrUnificado := make([]InformeTrimestral, 1, len(itr))
 	unida := make([]bool, len(itr))
-	anos := RangeAnos(itr)
+	anos := RangeAnos(itr, false)
 	ultimaLinha := len(itr) - 1
 	for linha1 := 0; linha1 <= ultimaLinha; linha1++ {
 		if unida[linha1] {
@@ -334,9 +334,17 @@ func MinMax(itr []InformeTrimestral) (int, int) {
 	return minAno, maxAno
 }
 
-func RangeAnos(itr []InformeTrimestral) []int {
+func RangeAnos(itr []InformeTrimestral, reverse bool) []int {
 	min, max := MinMax(itr)
 	seq := make([]int, max-min+1)
+
+	if reverse {
+		for i := max; i >= min; i-- {
+			seq[max-i] = i
+		}
+		return seq
+	}
+
 	for i := min; i <= max; i++ {
 		seq[i-min] = i
 	}
@@ -348,5 +356,5 @@ func RangeAnosVTs(v1, v2 []ValoresTrimestrais) []int {
 		{"", "", v1},
 		{"", "", v2},
 	}
-	return RangeAnos(itr)
+	return RangeAnos(itr, false)
 }

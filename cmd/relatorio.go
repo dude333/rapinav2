@@ -125,7 +125,7 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	}
 
 	progress.Running("Relatório de dados " + titulo)
-	itr, err := dfp.RelatórioTrimestal(empresa.CNPJ, consolidado)
+	itr, err := dfp.DadosTrimestrais(empresa.CNPJ, consolidado)
 	if err != nil {
 		progress.Fatal(err)
 	}
@@ -174,25 +174,20 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	numberBold, _ := x.SetNumber(10.0, true, _customerNumFmt)
 
 	// ===== Relatório - início =====
-
-	seq := []int{0, 1, 2, 3}
-	anos := rapina.RangeAnos(itr)
-
-	if decrescente {
-		reverse(seq)
-		reverse(anos)
+	anos := rapina.RangeAnos(itr, decrescente)
+	seq4 := func(n int) int {
+		return seq(4, n, decrescente)
 	}
-
 	const initCol = 3
 
 	cabeçalho := func(row, col int) {
 		x.PrintCell(row, 1, titleFont, "Código")
 		x.PrintCell(row, 2, titleFont, "Descrição")
 		for _, ano := range anos {
-			x.PrintCell(row, col+seq[0], titleFont, fmt.Sprintf("1T%d", ano))
-			x.PrintCell(row, col+seq[1], titleFont, fmt.Sprintf("2T%d", ano))
-			x.PrintCell(row, col+seq[2], titleFont, fmt.Sprintf("3T%d", ano))
-			x.PrintCell(row, col+seq[3], titleFont, fmt.Sprintf("4T%d", ano))
+			x.PrintCell(row, col+seq4(0), titleFont, fmt.Sprintf("1T%d", ano))
+			x.PrintCell(row, col+seq4(1), titleFont, fmt.Sprintf("2T%d", ano))
+			x.PrintCell(row, col+seq4(2), titleFont, fmt.Sprintf("3T%d", ano))
+			x.PrintCell(row, col+seq4(3), titleFont, fmt.Sprintf("4T%d", ano))
 			col += 4
 		}
 	}
@@ -225,10 +220,10 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 				if valor.Ano != ano {
 					continue
 				}
-				x.PrintCell(row, col+seq[0], number, valor.T1)
-				x.PrintCell(row, col+seq[1], number, valor.T2)
-				x.PrintCell(row, col+seq[2], number, valor.T3)
-				x.PrintCell(row, col+seq[3], number, valor.T4)
+				x.PrintCell(row, col+seq4(0), number, valor.T1)
+				x.PrintCell(row, col+seq4(1), number, valor.T2)
+				x.PrintCell(row, col+seq4(2), number, valor.T3)
+				x.PrintCell(row, col+seq4(3), number, valor.T4)
 			}
 			col += 4
 		}
@@ -266,6 +261,18 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	}
 } // excelReport =====
 
+// seq retorna o enésimo valor da sequência de valores de 0 a max (exclusivo),
+// ou de max (exclusivo) a 0 se reverse for true: 0 <= n < max.
+func seq(max, n int, reverse bool) int {
+	if n >= max || n < 0 || max < 0 {
+		return 0
+	}
+	if reverse {
+		return max - n - 1
+	}
+	return n
+}
+
 func colWidths(itr []rapina.InformeTrimestral) (float64, float64) {
 	var codWidth, descrWidth float64
 	for i := range itr {
@@ -283,12 +290,6 @@ func space(str string) string {
 		n--
 	}
 	return strings.Repeat("  ", n)
-}
-
-func reverse(s []int) {
-	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
 }
 
 func reverseb(s []bool) {
@@ -442,11 +443,9 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
 	titleFont, _ := x.SetFont(10.0, true, vert)
 
-	seq := []int{0, 1, 2, 3}
-	anos := rapina.RangeAnos(itr)
-	if decrescente {
-		reverse(seq)
-		reverse(anos)
+	anos := rapina.RangeAnos(itr, decrescente)
+	seq4 := func(n int) int {
+		return seq(4, n, decrescente)
 	}
 
 	cabeçalho := func(row, col int) {
@@ -455,16 +454,16 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 		col += ifElse(vert, 0, 1)
 		for _, ano := range anos {
 			if !vert {
-				x.PrintCell(row, col+seq[0], titleFont, fmt.Sprintf("1T%d", ano))
-				x.PrintCell(row, col+seq[1], titleFont, fmt.Sprintf("2T%d", ano))
-				x.PrintCell(row, col+seq[2], titleFont, fmt.Sprintf("3T%d", ano))
-				x.PrintCell(row, col+seq[3], titleFont, fmt.Sprintf("4T%d", ano))
+				x.PrintCell(row, col+seq4(0), titleFont, fmt.Sprintf("1T%d", ano))
+				x.PrintCell(row, col+seq4(1), titleFont, fmt.Sprintf("2T%d", ano))
+				x.PrintCell(row, col+seq4(2), titleFont, fmt.Sprintf("3T%d", ano))
+				x.PrintCell(row, col+seq4(3), titleFont, fmt.Sprintf("4T%d", ano))
 				col += 4
 			} else {
-				x.PrintCell(row+seq[0], col, titleFont, fmt.Sprintf("1T%d", ano))
-				x.PrintCell(row+seq[1], col, titleFont, fmt.Sprintf("2T%d", ano))
-				x.PrintCell(row+seq[2], col, titleFont, fmt.Sprintf("3T%d", ano))
-				x.PrintCell(row+seq[3], col, titleFont, fmt.Sprintf("4T%d", ano))
+				x.PrintCell(row+seq4(0), col, titleFont, fmt.Sprintf("1T%d", ano))
+				x.PrintCell(row+seq4(1), col, titleFont, fmt.Sprintf("2T%d", ano))
+				x.PrintCell(row+seq4(2), col, titleFont, fmt.Sprintf("3T%d", ano))
+				x.PrintCell(row+seq4(3), col, titleFont, fmt.Sprintf("4T%d", ano))
 				row += 4
 			}
 		}
@@ -486,25 +485,25 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 					continue
 				}
 				if !vert {
-					x.PrintCell(row, col+seq[0], estilo, valor.T1)
-					x.PrintCell(row, col+seq[1], estilo, valor.T2)
-					x.PrintCell(row, col+seq[2], estilo, valor.T3)
-					x.PrintCell(row, col+seq[3], estilo, valor.T4)
+					x.PrintCell(row, col+seq4(0), estilo, valor.T1)
+					x.PrintCell(row, col+seq4(1), estilo, valor.T2)
+					x.PrintCell(row, col+seq4(2), estilo, valor.T3)
+					x.PrintCell(row, col+seq4(3), estilo, valor.T4)
 
-					sumCols[col+seq[0]-colB] += valor.T1
-					sumCols[col+seq[1]-colB] += valor.T2
-					sumCols[col+seq[2]-colB] += valor.T3
-					sumCols[col+seq[3]-colB] += valor.T4
+					sumCols[col+seq4(0)-colB] += valor.T1
+					sumCols[col+seq4(1)-colB] += valor.T2
+					sumCols[col+seq4(2)-colB] += valor.T3
+					sumCols[col+seq4(3)-colB] += valor.T4
 				} else {
-					x.PrintCell(row+seq[0], col, estilo, valor.T1)
-					x.PrintCell(row+seq[1], col, estilo, valor.T2)
-					x.PrintCell(row+seq[2], col, estilo, valor.T3)
-					x.PrintCell(row+seq[3], col, estilo, valor.T4)
+					x.PrintCell(row+seq4(0), col, estilo, valor.T1)
+					x.PrintCell(row+seq4(1), col, estilo, valor.T2)
+					x.PrintCell(row+seq4(2), col, estilo, valor.T3)
+					x.PrintCell(row+seq4(3), col, estilo, valor.T4)
 
-					sumRows[row+seq[0]-row2] += valor.T1
-					sumRows[row+seq[1]-row2] += valor.T2
-					sumRows[row+seq[2]-row2] += valor.T3
-					sumRows[row+seq[3]-row2] += valor.T4
+					sumRows[row+seq4(0)-row2] += valor.T1
+					sumRows[row+seq4(1)-row2] += valor.T2
+					sumRows[row+seq4(2)-row2] += valor.T3
+					sumRows[row+seq4(3)-row2] += valor.T4
 				}
 			}
 			if !vert {
@@ -567,7 +566,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 	p("Payout", frac, rapina.DivVTs(proventos, c[LucLiq]))
 	// -------------------------------------------------
 
-	// Auto-resize columns
+	// Auto-resize columns, trim empty rows/cols, and freeze pane
 	cols := ifElse(vert, col, colB+len(anos)*4)
 	widths := make([]float64, cols)
 	widths[0] = ifElse(vert, 8.5, 18.0)
@@ -575,11 +574,8 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 		widths[i] = 12.0
 	}
 	x.SetColWidth(widths)
-
-	// Freeze panes
-	_ = x.FreezePane("B2")
-
 	trimEmpty(x, row2, colB, sumRows, sumCols, vert)
+	_ = x.FreezePane("B2")
 }
 
 // trimEmpty remove linhas e colunas vazias.
