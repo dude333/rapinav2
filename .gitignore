@@ -34,3 +34,4 @@ target/
 on
 *.xlsx
 golangci*.y*ml
+cover.out

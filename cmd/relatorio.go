@@ -52,6 +52,12 @@ var relatorioCmd = &cobra.Command{
 	Run:     menuRelatório,
 }
 
+type reportOpts struct {
+	anual       bool
+	vertical    bool
+	decrescente bool
+}
+
 func init() {
 	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", ".", "Diretório do relatório")
 	relatorioCmd.Flags().BoolVarP(&flags.relatorio.crescente, "crescente", "c", false, "Mostrar trimestres em ordem crescente")
@@ -137,6 +143,12 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	progress.Debug("Dados %s: %d registros", titulo, len(itr))
 	itrUnificado := rapina.UnificarContasSimilares(itr)
 
+	// Relatório resumo, vertical, anual
+	if err = x.NewSheet(fmt.Sprintf("resumo anual - %s vert", titulo)); err != nil {
+		progress.Fatal(err)
+	}
+	excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: true, decrescente: !flags.relatorio.crescente})
+
 	// Relatório completo
 	if err = x.NewSheet(titulo); err != nil {
 		progress.Fatal(err)
@@ -147,15 +159,21 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	if err = x.NewSheet(fmt.Sprintf("resumo - %s", titulo)); err != nil {
 		progress.Fatal(err)
 	}
-	excelSummaryReport(x, itrUnificado, false, !flags.relatorio.crescente)
+	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: false, decrescente: !flags.relatorio.crescente})
 
 	// Relatório resumo, vertical
 	if err = x.NewSheet(fmt.Sprintf("resumo - %s vert", titulo)); err != nil {
 		progress.Fatal(err)
 	}
-	excelSummaryReport(x, itrUnificado, true, !flags.relatorio.crescente)
-	progress.RunOK()
+	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: true, decrescente: !flags.relatorio.crescente})
 
+	// Relatório resumo, vertical, anual
+	// if err = x.NewSheet(fmt.Sprintf("resumo anual - %s vert", titulo)); err != nil {
+	// 	progress.Fatal(err)
+	// }
+	// excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: true, decrescente: !flags.relatorio.crescente})
+
+	progress.RunOK()
 	return true
 }
 
@@ -433,7 +451,7 @@ func ifElse[T any](cond bool, a, b T) T {
 // excelSummaryReport cria e formata o relatório resumido em planilha Excel com
 // base nos dados fornecidos. O parâmetro 'decrescente' indica se o relatório
 // deve ser criado em ordem crescente (false) ou decrescente (true) de ano.
-func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescente bool) {
+func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
@@ -441,25 +459,35 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 	number, _ := x.SetNumber(10.0, false, _customerNumFmt)
 	percent, _ := x.SetNumber(10.0, false, _customerPercFmt)
 	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
-	titleFont, _ := x.SetFont(10.0, true, vert)
+	titleFont, _ := x.SetFont(10.0, true, opts.vertical)
 
-	anos := rapina.RangeAnos(itr, decrescente)
+	anos := rapina.RangeAnos(itr, opts.decrescente)
 	seq4 := func(n int) int {
-		return seq(4, n, decrescente)
+		return seq(4, n, opts.decrescente)
 	}
 
 	cabeçalho := func(row, col int) {
-		x.PrintCell(row, col, titleFont, ifElse(vert, "Trimestre", "Descrição"))
-		row += ifElse(vert, 1, 0)
-		col += ifElse(vert, 0, 1)
+		x.PrintCell(row, col, titleFont, ifElse(opts.vertical, "Trimestre", "Descrição"))
+		row += ifElse(opts.vertical, 1, 0)
+		col += ifElse(opts.vertical, 0, 1)
 		for _, ano := range anos {
-			if !vert {
+			if !opts.vertical {
+				if opts.anual {
+					x.PrintCell(row, col, titleFont, fmt.Sprintf("%d", ano))
+					col++
+					continue
+				}
 				x.PrintCell(row, col+seq4(0), titleFont, fmt.Sprintf("1T%d", ano))
 				x.PrintCell(row, col+seq4(1), titleFont, fmt.Sprintf("2T%d", ano))
 				x.PrintCell(row, col+seq4(2), titleFont, fmt.Sprintf("3T%d", ano))
 				x.PrintCell(row, col+seq4(3), titleFont, fmt.Sprintf("4T%d", ano))
 				col += 4
 			} else {
+				if opts.anual {
+					x.PrintCell(row, col, titleFont, fmt.Sprintf("%d", ano))
+					row++
+					continue
+				}
 				x.PrintCell(row+seq4(0), col, titleFont, fmt.Sprintf("1T%d", ano))
 				x.PrintCell(row+seq4(1), col, titleFont, fmt.Sprintf("2T%d", ano))
 				x.PrintCell(row+seq4(2), col, titleFont, fmt.Sprintf("3T%d", ano))
@@ -484,7 +512,12 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 				if valor.Ano != ano {
 					continue
 				}
-				if !vert {
+				if !opts.vertical {
+					if opts.anual {
+						x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
+						sumCols[col-colB] += valor.T1 + valor.T2 + valor.T3 + valor.T4
+						continue
+					}
 					x.PrintCell(row, col+seq4(0), estilo, valor.T1)
 					x.PrintCell(row, col+seq4(1), estilo, valor.T2)
 					x.PrintCell(row, col+seq4(2), estilo, valor.T3)
@@ -495,6 +528,11 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 					sumCols[col+seq4(2)-colB] += valor.T3
 					sumCols[col+seq4(3)-colB] += valor.T4
 				} else {
+					if opts.anual {
+						x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
+						sumRows[row-row2] += valor.T1 + valor.T2 + valor.T3 + valor.T4
+						continue
+					}
 					x.PrintCell(row+seq4(0), col, estilo, valor.T1)
 					x.PrintCell(row+seq4(1), col, estilo, valor.T2)
 					x.PrintCell(row+seq4(2), col, estilo, valor.T3)
@@ -506,20 +544,20 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 					sumRows[row+seq4(3)-row2] += valor.T4
 				}
 			}
-			if !vert {
-				col += 4
+			if !opts.vertical {
+				col += ifElse(opts.anual, 1, 4)
 			} else {
-				row += 4
+				row += ifElse(opts.anual, 1, 4)
 			}
 		}
 	}
 
 	// ------------------[ Relatório ]------------------
 	cabeçalho(1, 1)
-	row := ifElse(vert, 1, 2)
-	col := ifElse(vert, 2, 1)
+	row := ifElse(opts.vertical, 1, 2)
+	col := ifElse(opts.vertical, 2, 1)
 	p := func(descr string, estilo int, valores []rapina.ValoresTrimestrais) {
-		if !vert {
+		if !opts.vertical {
 			x.PrintCell(row, 1, titleFont, descr)
 			imprimirTrimestres(row, 2, estilo, valores)
 			row++
@@ -529,8 +567,59 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 			col++
 		}
 	}
-	p("Patrimônio Líquido", number, c[Equity])
-	row += ifElse(vert, 0, 1)
+	// ttm calcula o 12 trail month para os relatórios trimestral. Para ao anual,
+	// mantém apenas o último trimestre com valor maior que zero.
+	ttm := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
+		if !opts.anual {
+			return ttm(vts)
+		}
+		w := make([]rapina.ValoresTrimestrais, len(vts))
+		for i, v := range vts {
+			t := ultTrim(v.Ano, vts)
+			w[i].Ano = v.Ano
+			w[i].SetT(t, v.T(t))
+		}
+		return w
+	}
+	// ajusteBalanço ajusta os VTs do balanço patrimonial para o relatório anual
+	// (retém apenas o último valor).
+	ajusteBalanço := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
+		if !opts.anual {
+			return vts
+		}
+		// Usar os valores do último trimestres não nulo de cada ano no T4, com T1, T2 e T3 zerrados
+		w := make([]rapina.ValoresTrimestrais, len(vts))
+		for i, v := range vts {
+			t := ultTrim(v.Ano, vts)
+			w[i].Ano = v.Ano
+			w[i].SetT(t, v.T(4))
+		}
+		return w
+	}
+	// divVTs divide os VTs trimestrais normalmente, ou soma todos os trimestres no T4,
+	// deixando os outros 3 trimestres zerados, se for o relatório anual:
+	// Se trimestral => T1 = v1.T1/v2.T1, T2 = v1.T2/v2.T2, T3 = v1.T3/v2.T3, T4 = v1.T4/v2.T4
+	// Se anual => T4 = (v1.T1 + v1.T2 + v1.T3 + v1.T4) / (v2.T1 + v2.T2 + v2.T3 + v2.T4)
+	divVTs := func(v1, v2 []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
+		if !opts.anual {
+			return rapina.DivVTs(v1, v2)
+		}
+		// Somar todos os trimestres de cada ano no T4, com T1, T2 e T3 zerrados
+		var w1, w2 []rapina.ValoresTrimestrais
+		for _, ano := range anos {
+			for _, v := range v1 {
+				if v.Ano == ano {
+					w1 = append(w1, rapina.ValoresTrimestrais{Ano: ano, T4: v.T1 + v.T2 + v.T3 + v.T4})
+				}
+			}
+			for _, v := range v2 {
+				if v.Ano == ano {
+					w2 = append(w2, rapina.ValoresTrimestrais{Ano: ano, T4: v.T1 + v.T2 + v.T3 + v.T4})
+				}
+			}
+		}
+		return rapina.DivVTs(w1, w2)
+	}
 	p("Receita Líquida", number, c[Vendas])
 	ebitda := rapina.SubVTs(c[EBIT], c[Deprec])
 	p("EBITDA", number, ebitda)
@@ -538,43 +627,43 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, vert, decrescen
 	p("Resultado Financeiro", number, c[ResulFinanc])
 	p("Operações Descont.", number, c[ResulOpDescont])
 	p("Lucro Líquido", number, c[LucLiq])
-	row += ifElse(vert, 0, 1)
-	p("Marg. EBITDA", percent, rapina.DivVTs(ebitda, c[Vendas]))
-	p("Marg. EBIT", percent, rapina.DivVTs(c[EBIT], c[Vendas]))
-	p("Marg. Líq.", percent, rapina.DivVTs(c[LucLiq], c[Vendas]))
-	p("ROA", percent, rapina.DivVTs(ttm(c[LucLiq]), c[AtivoTotal]))
-	p("ROE", percent, rapina.DivVTs(ttm(c[LucLiq]), c[Equity]))
-	row += ifElse(vert, 0, 1)
-	caixa := rapina.AddVTs(c[Caixa], c[AplicFinanceiras])
-	dividaBruta := rapina.AddVTs(c[DividaCirc], c[DividaNCirc])
-	dividaLiquida := rapina.SubVTs(dividaBruta, caixa)
+	row += ifElse(opts.vertical, 0, 1)
+	p("Marg. EBITDA", percent, divVTs(ebitda, c[Vendas]))
+	p("Marg. EBIT", percent, divVTs(c[EBIT], c[Vendas]))
+	p("Marg. Líq.", percent, divVTs(c[LucLiq], c[Vendas]))
+	p("ROA", percent, divVTs(ttm(c[LucLiq]), c[AtivoTotal]))
+	p("ROE", percent, divVTs(ttm(c[LucLiq]), c[Equity]))
+	row += ifElse(opts.vertical, 0, 1)
+	caixa := ajusteBalanço(rapina.AddVTs(c[Caixa], c[AplicFinanceiras]))
+	dividaBruta := ajusteBalanço(rapina.AddVTs(c[DividaCirc], c[DividaNCirc]))
+	dividaLiquida := ajusteBalanço(rapina.SubVTs(dividaBruta, caixa))
 	p("Caixa", number, caixa)
 	p("Dívida Bruta", number, dividaBruta)
 	p("Dívida Líq.", number, dividaLiquida)
-	p("Dív. Bru./PL", frac, rapina.DivVTs(dividaBruta, c[Equity]))
-	ebitdattm := rapina.SubVTs(ttm(c[EBIT]), ttm(c[Deprec]))
-	p("Dív.Líq./ EBITDA TTM", frac, rapina.DivVTs(dividaLiquida, ebitdattm))
-	row += ifElse(vert, 0, 1)
+	p("Dív. Bru./PL", frac, divVTs(dividaBruta, c[Equity]))
+	ebitdattm := ajusteBalanço(rapina.SubVTs(ttm(c[EBIT]), ttm(c[Deprec])))
+	p("Dív.Líq./ EBITDA TTM", frac, divVTs(dividaLiquida, ebitdattm))
+	row += ifElse(opts.vertical, 0, 1)
 	p("FCO", number, c[FCO])
 	p("FCI", number, c[FCI])
 	p("FCF", number, c[FCF])
 	p("FCT", number, rapina.AddVTs(rapina.AddVTs(c[FCO], c[FCI]), c[FCF]))
 	p("FCL (FCO+FCI)", number, rapina.AddVTs(c[FCO], c[FCI]))
-	row += ifElse(vert, 0, 1)
+	row += ifElse(opts.vertical, 0, 1)
 	proventos := rapina.AddVTs(c[Dividendos], c[JurosCapProp])
 	p("Proventos", number, proventos)
-	p("Payout", frac, rapina.DivVTs(proventos, c[LucLiq]))
+	p("Payout", frac, divVTs(proventos, c[LucLiq]))
 	// -------------------------------------------------
 
 	// Auto-resize columns, trim empty rows/cols, and freeze pane
-	cols := ifElse(vert, col, colB+len(anos)*4)
+	cols := ifElse(opts.vertical, col, colB+len(anos)*4)
 	widths := make([]float64, cols)
-	widths[0] = ifElse(vert, 8.5, 18.0)
+	widths[0] = ifElse(opts.vertical, 8.5, 18.0)
 	for i := 1; i < cols; i++ {
 		widths[i] = 12.0
 	}
 	x.SetColWidth(widths)
-	trimEmpty(x, row2, colB, sumRows, sumCols, vert)
+	trimEmpty(x, row2, colB, sumRows, sumCols, opts.vertical)
 	_ = x.FreezePane("B2")
 }
 
@@ -630,12 +719,8 @@ func ultTrim(ano int, valores []rapina.ValoresTrimestrais) int {
 
 // ttm armazena a soma dos últimos 4 trimestres em cada um dos trimestres; usado em métricas
 // que comparam como valores do balanço patrimonial.
-// Exemplo: ROE = Patrim.Líq. / Lucro Líq. dos últimos 12 meses
+// Exemplo: ROE = Lucro Líq. dos últimos 12 meses / Patrim.Líq.
 func ttm(acct []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
-	// if len(acct) == 0 {
-	// 	return []rapina.ValoresTrimestrais{{Ano: acct[0].Ano}}
-	// }
-
 	min, max := rapina.MinMax([]rapina.InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
 	t := ultTrim(max, acct)
 

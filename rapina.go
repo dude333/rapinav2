@@ -24,6 +24,35 @@ type ValoresTrimestrais struct {
 	T4  float64
 }
 
+// T retorna o valor do trimestre pelo índice (0 <= n < 4)
+func (v *ValoresTrimestrais) T(n int) float64 {
+	switch n {
+	case 1:
+		return v.T1
+	case 2:
+		return v.T2
+	case 3:
+		return v.T3
+	case 4:
+		return v.T4
+	}
+	return 0.0
+}
+
+// SetT salva o valor do trimestre pelo índice (0 <= n < 4)
+func (v *ValoresTrimestrais) SetT(n int, val float64) {
+	switch n {
+	case 1:
+		v.T1 = val
+	case 2:
+		v.T2 = val
+	case 3:
+		v.T3 = val
+	case 4:
+		v.T4 = val
+	}
+}
+
 func (v ValoresTrimestrais) Add(other ValoresTrimestrais) ValoresTrimestrais {
 	if v.Ano != other.Ano {
 		return v
