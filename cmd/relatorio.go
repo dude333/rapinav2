@@ -567,19 +567,23 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 			col++
 		}
 	}
-	// ttm calcula o 12 trail month para os relatórios trimestral. Para ao anual,
-	// mantém apenas o último trimestre com valor maior que zero.
-	ttm := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
-		if !opts.anual {
-			return ttm(vts)
-		}
+	// manterÚltimoTrimestre mantém apenas o último trimestre não nulo de cada ano
+	manterÚltimoTrimestre := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
 		w := make([]rapina.ValoresTrimestrais, len(vts))
 		for i, v := range vts {
-			t := ultTrim(v.Ano, vts)
+			t := rapina.ÚltimoTrimestre(v.Ano, vts)
 			w[i].Ano = v.Ano
 			w[i].SetT(t, v.T(t))
 		}
 		return w
+	}
+	// ttm calcula o 12 trail month para os relatórios trimestral. Para ao anual,
+	// mantém apenas o último trimestre com valor maior que zero.
+	ttm := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
+		if !opts.anual {
+			return rapina.TTM(vts)
+		}
+		return manterÚltimoTrimestre(rapina.TTM(vts))
 	}
 	// ajusteBalanço ajusta os VTs do balanço patrimonial para o relatório anual
 	// (retém apenas o último valor).
@@ -587,39 +591,15 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 		if !opts.anual {
 			return vts
 		}
-		// Usar os valores do último trimestres não nulo de cada ano no T4, com T1, T2 e T3 zerrados
-		w := make([]rapina.ValoresTrimestrais, len(vts))
-		for i, v := range vts {
-			t := ultTrim(v.Ano, vts)
-			w[i].Ano = v.Ano
-			w[i].SetT(t, v.T(4))
-		}
-		return w
+		return manterÚltimoTrimestre(vts)
 	}
-	// divVTs divide os VTs trimestrais normalmente, ou soma todos os trimestres no T4,
-	// deixando os outros 3 trimestres zerados, se for o relatório anual:
-	// Se trimestral => T1 = v1.T1/v2.T1, T2 = v1.T2/v2.T2, T3 = v1.T3/v2.T3, T4 = v1.T4/v2.T4
-	// Se anual => T4 = (v1.T1 + v1.T2 + v1.T3 + v1.T4) / (v2.T1 + v2.T2 + v2.T3 + v2.T4)
+	// divVTs divide os VTs trimestrais normalmente, usa o último trimestre não
+	// nulo do ttm para relatório anual.
 	divVTs := func(v1, v2 []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
-		if !opts.anual {
-			return rapina.DivVTs(v1, v2)
-		}
-		// Somar todos os trimestres de cada ano no T4, com T1, T2 e T3 zerrados
-		var w1, w2 []rapina.ValoresTrimestrais
-		for _, ano := range anos {
-			for _, v := range v1 {
-				if v.Ano == ano {
-					w1 = append(w1, rapina.ValoresTrimestrais{Ano: ano, T4: v.T1 + v.T2 + v.T3 + v.T4})
-				}
-			}
-			for _, v := range v2 {
-				if v.Ano == ano {
-					w2 = append(w2, rapina.ValoresTrimestrais{Ano: ano, T4: v.T1 + v.T2 + v.T3 + v.T4})
-				}
-			}
-		}
-		return rapina.DivVTs(w1, w2)
+		return rapina.DivVTs(v1, v2)
 	}
+	p("Patrimônio Líquido", number, ajusteBalanço(c[Equity]))
+	row += ifElse(opts.vertical, 0, 1)
 	p("Receita Líquida", number, c[Vendas])
 	ebitda := rapina.SubVTs(c[EBIT], c[Deprec])
 	p("EBITDA", number, ebitda)
@@ -631,8 +611,8 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 	p("Marg. EBITDA", percent, divVTs(ebitda, c[Vendas]))
 	p("Marg. EBIT", percent, divVTs(c[EBIT], c[Vendas]))
 	p("Marg. Líq.", percent, divVTs(c[LucLiq], c[Vendas]))
-	p("ROA", percent, divVTs(ttm(c[LucLiq]), c[AtivoTotal]))
-	p("ROE", percent, divVTs(ttm(c[LucLiq]), c[Equity]))
+	p("ROA", percent, divVTs(ttm(c[LucLiq]), ajusteBalanço(c[AtivoTotal])))
+	p("ROE", percent, divVTs(ttm(c[LucLiq]), ajusteBalanço(c[Equity])))
 	row += ifElse(opts.vertical, 0, 1)
 	caixa := ajusteBalanço(rapina.AddVTs(c[Caixa], c[AplicFinanceiras]))
 	dividaBruta := ajusteBalanço(rapina.AddVTs(c[DividaCirc], c[DividaNCirc]))
@@ -698,78 +678,4 @@ func trimEmpty(x Excel, row, col int, sumRows, sumCols []float64, vert bool) {
 			_ = x.RemoveRow(row)
 		}
 	}
-}
-
-// ultTrim retorna o último trimestre com valor não nulo
-func ultTrim(ano int, valores []rapina.ValoresTrimestrais) int {
-	for _, valor := range valores {
-		if valor.Ano != ano {
-			continue
-		}
-		if valor.T4 != 0.0 {
-			return 4
-		} else if valor.T3 != 0.0 {
-			return 3
-		} else if valor.T2 != 0.0 {
-			return 2
-		}
-	}
-	return 1
-}
-
-// ttm armazena a soma dos últimos 4 trimestres em cada um dos trimestres; usado em métricas
-// que comparam como valores do balanço patrimonial.
-// Exemplo: ROE = Lucro Líq. dos últimos 12 meses / Patrim.Líq.
-func ttm(acct []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
-	min, max := rapina.MinMax([]rapina.InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
-	t := ultTrim(max, acct)
-
-	valores := make([]float64, (max-min+1)*4)
-
-	for ano := min; ano <= max; ano++ {
-		for _, valor := range acct {
-			if valor.Ano != ano {
-				continue
-			}
-			idx := 4 * (ano - min)
-			valores[idx+0] = valor.T1
-			valores[idx+1] = valor.T2
-			valores[idx+2] = valor.T3
-			valores[idx+3] = valor.T4
-		}
-	}
-
-	somaValores := func(from, to int) float64 {
-		invalidParm := from < 0 || to >= len(valores) || from > to
-		invalidPeriod := to >= (len(valores) - (4 - t))
-		if invalidParm || invalidPeriod {
-			return 0.0
-		}
-
-		total := 0.0
-		for i := from; i <= to; i++ {
-			total += valores[i]
-		}
-		return total
-	}
-
-	valoresAcum := make([]rapina.ValoresTrimestrais, (max-min+1)*4)
-
-	for ano := min; ano <= max; ano++ {
-		for _, valor := range acct {
-			if valor.Ano != ano {
-				continue
-			}
-			idx := 4 * (ano - min)
-			valoresAcum[ano-min] = rapina.ValoresTrimestrais{
-				Ano: ano,
-				T1:  somaValores(idx-3, idx+0),
-				T2:  somaValores(idx-2, idx+1),
-				T3:  somaValores(idx-1, idx+2),
-				T4:  somaValores(idx-0, idx+3),
-			}
-		}
-	}
-
-	return valoresAcum
 }

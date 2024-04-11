@@ -387,3 +387,77 @@ func RangeAnosVTs(v1, v2 []ValoresTrimestrais) []int {
 	}
 	return RangeAnos(itr, false)
 }
+
+// ÚÚltimoTrimestre retorna o último trimestre com valor não nulo
+func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
+	for _, valor := range valores {
+		if valor.Ano != ano {
+			continue
+		}
+		if valor.T4 != 0.0 {
+			return 4
+		} else if valor.T3 != 0.0 {
+			return 3
+		} else if valor.T2 != 0.0 {
+			return 2
+		}
+	}
+	return 1
+}
+
+// TTM armazena a soma dos últimos 4 trimestres em cada um dos trimestres; usado em métricas
+// que comparam como valores do balanço patrimonial.
+// Exemplo: ROE = Lucro Líq. dos últimos 12 meses / Patrim.Líq.
+func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
+	min, max := MinMax([]InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
+	t := ÚltimoTrimestre(max, acct)
+
+	valores := make([]float64, (max-min+1)*4)
+
+	for ano := min; ano <= max; ano++ {
+		for _, valor := range acct {
+			if valor.Ano != ano {
+				continue
+			}
+			idx := 4 * (ano - min)
+			valores[idx+0] = valor.T1
+			valores[idx+1] = valor.T2
+			valores[idx+2] = valor.T3
+			valores[idx+3] = valor.T4
+		}
+	}
+
+	somaValores := func(from, to int) float64 {
+		invalidParm := from < 0 || to >= len(valores) || from > to
+		invalidPeriod := to >= (len(valores) - (4 - t))
+		if invalidParm || invalidPeriod {
+			return 0.0
+		}
+
+		total := 0.0
+		for i := from; i <= to; i++ {
+			total += valores[i]
+		}
+		return total
+	}
+
+	valoresAcum := make([]ValoresTrimestrais, (max-min+1)*4)
+
+	for ano := min; ano <= max; ano++ {
+		for _, valor := range acct {
+			if valor.Ano != ano {
+				continue
+			}
+			idx := 4 * (ano - min)
+			valoresAcum[ano-min] = ValoresTrimestrais{
+				Ano: ano,
+				T1:  somaValores(idx-3, idx+0),
+				T2:  somaValores(idx-2, idx+1),
+				T3:  somaValores(idx-1, idx+2),
+				T4:  somaValores(idx-0, idx+3),
+			}
+		}
+	}
+
+	return valoresAcum
+}
