@@ -143,38 +143,30 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	progress.Debug("Dados %s: %d registros", titulo, len(itr))
 	itrUnificado := rapina.UnificarContasSimilares(itr)
 
-	// Relatório resumo, vertical, anual
-	if err = x.NewSheet(fmt.Sprintf("resumo anual - %s vert", titulo)); err != nil {
-		progress.Fatal(err)
-	}
-	excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: true, decrescente: !flags.relatorio.crescente})
-
 	// Relatório completo
-	if err = x.NewSheet(titulo); err != nil {
-		progress.Fatal(err)
-	}
+	newSheet(x, titulo)
 	excelReport(x, itrUnificado, !flags.relatorio.crescente)
 
 	// Relatório resumo
-	if err = x.NewSheet(fmt.Sprintf("resumo - %s", titulo)); err != nil {
-		progress.Fatal(err)
-	}
+	newSheet(x, fmt.Sprintf("resumo - %s", titulo))
 	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: false, decrescente: !flags.relatorio.crescente})
 
 	// Relatório resumo, vertical
-	if err = x.NewSheet(fmt.Sprintf("resumo - %s vert", titulo)); err != nil {
-		progress.Fatal(err)
-	}
+	newSheet(x, fmt.Sprintf("resumo - %s vert", titulo))
 	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: true, decrescente: !flags.relatorio.crescente})
 
 	// Relatório resumo, vertical, anual
-	// if err = x.NewSheet(fmt.Sprintf("resumo anual - %s vert", titulo)); err != nil {
-	// 	progress.Fatal(err)
-	// }
-	// excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: true, decrescente: !flags.relatorio.crescente})
+	newSheet(x, fmt.Sprintf("resumo anual - %s vert", titulo))
+	excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: true, decrescente: !flags.relatorio.crescente})
 
 	progress.RunOK()
 	return true
+}
+
+func newSheet(x Excel, name string) {
+	if err := x.NewSheet(name); err != nil {
+		progress.Fatal(err)
+	}
 }
 
 // excelReport cria e formata o relatório trimestral completo em planilha Excel
