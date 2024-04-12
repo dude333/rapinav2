@@ -461,3 +461,14 @@ func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 
 	return valoresAcum
 }
+
+// ManterÚltimoTrimestre mantém apenas o último trimestre não nulo de cada ano
+func ManterÚltimoTrimestre(vts []ValoresTrimestrais) []ValoresTrimestrais {
+	w := make([]ValoresTrimestrais, len(vts))
+	for i, v := range vts {
+		t := ÚltimoTrimestre(v.Ano, vts)
+		w[i].Ano = v.Ano
+		w[i].SetT(t, v.T(t))
+	}
+	return w
+}

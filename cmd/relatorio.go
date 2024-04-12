@@ -567,36 +567,31 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 			col++
 		}
 	}
-	// manterÚltimoTrimestre mantém apenas o último trimestre não nulo de cada ano
-	manterÚltimoTrimestre := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
-		w := make([]rapina.ValoresTrimestrais, len(vts))
-		for i, v := range vts {
-			t := rapina.ÚltimoTrimestre(v.Ano, vts)
-			w[i].Ano = v.Ano
-			w[i].SetT(t, v.T(t))
-		}
-		return w
-	}
-	// ttm calcula o 12 trail month para os relatórios trimestral. Para ao anual,
+	// ttm calcula o trailing 12-month para os relatórios trimestrais. Para ao anual,
 	// mantém apenas o último trimestre com valor maior que zero.
 	ttm := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
 		if !opts.anual {
 			return rapina.TTM(vts)
 		}
-		return manterÚltimoTrimestre(rapina.TTM(vts))
+		return rapina.ManterÚltimoTrimestre(rapina.TTM(vts))
 	}
 	// ajusteBalanço ajusta os VTs do balanço patrimonial para o relatório anual
-	// (retém apenas o último valor).
+	// (retém apenas o último valor). Aplicar em todos os items do balanço patrimonial.
 	ajusteBalanço := func(vts []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
 		if !opts.anual {
 			return vts
 		}
-		return manterÚltimoTrimestre(vts)
+		return rapina.ManterÚltimoTrimestre(vts)
 	}
 	// divVTs divide os VTs trimestrais normalmente, usa o último trimestre não
 	// nulo do ttm para relatório anual.
 	divVTs := func(v1, v2 []rapina.ValoresTrimestrais) []rapina.ValoresTrimestrais {
-		return rapina.DivVTs(v1, v2)
+		if !opts.anual {
+			return rapina.DivVTs(v1, v2)
+		}
+		w1 := rapina.ManterÚltimoTrimestre(rapina.TTM(v1))
+		w2 := rapina.ManterÚltimoTrimestre(rapina.TTM(v2))
+		return rapina.DivVTs(w1, w2)
 	}
 	p("Patrimônio Líquido", number, ajusteBalanço(c[Equity]))
 	row += ifElse(opts.vertical, 0, 1)
@@ -620,7 +615,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 	p("Caixa", number, caixa)
 	p("Dívida Bruta", number, dividaBruta)
 	p("Dívida Líq.", number, dividaLiquida)
-	p("Dív. Bru./PL", frac, divVTs(dividaBruta, c[Equity]))
+	p("Dív. Bru./PL", frac, divVTs(dividaBruta, ajusteBalanço(c[Equity])))
 	ebitdattm := ajusteBalanço(rapina.SubVTs(ttm(c[EBIT]), ttm(c[Deprec])))
 	p("Dív.Líq./ EBITDA TTM", frac, divVTs(dividaLiquida, ebitdattm))
 	row += ifElse(opts.vertical, 0, 1)
