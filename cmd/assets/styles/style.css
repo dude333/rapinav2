@@ -67,6 +67,15 @@ h1 {
   max-width: 100%;
 }
 
+#filterInput {
+  width: 100%;
+  margin: 10px 5% 0;
+  line-height: 1.2em;
+  box-sizing: border-box;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
 .container > label {
   width: 100%;
   text-align: center;
@@ -79,6 +88,11 @@ select {
   box-sizing: border-box;
   border-radius: 5px;
   border: 1px solid #ccc;
+}
+
+select option:disabled,
+select option[disabled="disabled"] {
+  display: none;
 }
 
 .btn1 {

@@ -1,6 +1,6 @@
 BUILDDIR     := cmd/*.go
 SOURCEDIR    := .
-SOURCES      := $(shell find $(SOURCEDIR) -name '*.html' -o -name '*.go' -a -not -name '*_test.go')
+SOURCES      := $(shell find $(SOURCEDIR) -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.go' -a -not -name '*_test.go')
 
 BINARYDIR    := .
 BINARY       := rapinav2
