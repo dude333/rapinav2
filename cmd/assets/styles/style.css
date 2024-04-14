@@ -12,7 +12,7 @@
   --bg-color: #e3d5ca;
 }
 
-select {
+.select {
   height: 20em;
   width: 100%;
   min-width: 35ch;
@@ -20,12 +20,39 @@ select {
   border: 1px solid var(--select-border);
   border-radius: 0.25em;
   padding: 0.25em 0.5em;
-  font-family: Rubik, sans-serif;
-  font-size: 1rem;
+  font-family: "VT323", sans-serif;
+  font-size: 1.2rem;
   cursor: pointer;
   line-height: 1.1;
   background-color: var(--text-bg-color);
   /* background-image: linear-gradient(to top, #f9f9f9, #fff 33%); */
+}
+
+.slim-select {
+  margin-bottom: 2rem;
+  padding: 0.25em 0.5em;
+  border: 1px solid var(--select-border);
+  border-radius: 0.25em;
+  background-color: var(--text-bg-color) !important;
+  font-size: 1.2rem;
+  line-height: 1.8;
+}
+
+.ss-open-below {
+  border: 2px solid var(--select-border);
+  box-shadow: 0px 10px 32px -11px var(--select-border);
+}
+
+.ss-content .ss-search input {
+  font-family: "VT323", sans-serif;
+  font-size: 1.4rem !important;
+}
+
+.ss-option,
+.ss-search {
+  font-family: "VT323", sans-serif;
+  font-size: 1.2rem;
+  line-height: 0.6;
 }
 
 select::after {
@@ -42,6 +69,7 @@ body {
   align-items: center;
   min-height: 100vh;
   margin: 0;
+  align-items: flex-start;
   background: var(--bg-color);
   font-family:
     System,
