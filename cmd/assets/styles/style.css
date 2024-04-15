@@ -152,6 +152,14 @@ select option[disabled="disabled"] {
   box-shadow: none;
 }
 
+.btn1:focus {
+  outline: 2px solid #a6baef;
+  box-shadow:
+    0 0 0 3px rgba(50, 50, 93, 0.2),
+    0 5px 6px rgba(50, 50, 93, 0.11),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 .terminal {
   margin: 1rem 0.5rem;
   padding: 1rem;
