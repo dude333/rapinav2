@@ -18,6 +18,16 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
+// Títulos das abas dos relatórios (máximo 31 caracteres)
+const (
+	tituloRelatCompletoAnual   = "completo anual (%s)" // %s = "consolidado" ou "individual"
+	tituloRelatCompletoTrim    = "completo trim. (%s)"
+	tituloRelatResumoAnual     = "resumo anual (%s)"
+	tituloRelatResumoTrim      = "resumo trim. (%s)"
+	tituloRelatResumoAnualVert = "resumo anual vert. (%s)"
+	tituloRelatResumoTrimVert  = "resumo trim. vert. (%s)"
+)
+
 const (
 	_customerNumFmt  = `_(* #,##0_);[RED]_(* (#,##0);_(* "-"_);_(@_)`
 	_customerPercFmt = `0.0%;[RED]0.0%;_(* "-"_);_(@_)`
@@ -125,9 +135,9 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanc
 
 // criarPlanilhas gera e salva relatório consolidado/individual em Excel.
 func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanceira, consolidado bool) bool {
-	titulo := "consolidado"
+	titulo := "consolid"
 	if !consolidado {
-		titulo = "individual"
+		titulo = "individ"
 	}
 
 	progress.Running("Relatório de dados " + titulo)
@@ -143,21 +153,23 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	progress.Debug("Dados %s: %d registros", titulo, len(itr))
 	itrUnificado := rapina.UnificarContasSimilares(itr)
 
-	// Relatório completo
-	newSheet(x, titulo)
+	// Relatório completo, trimestral
+	newSheet(x, fmt.Sprintf(tituloRelatCompletoTrim, titulo))
 	excelReport(x, itrUnificado, !flags.relatorio.crescente)
 
-	// Relatório resumo
-	newSheet(x, fmt.Sprintf("resumo - %s", titulo))
+	// Relatório resumo, anual
+	newSheet(x, fmt.Sprintf(tituloRelatResumoAnual, titulo))
+	excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: false, decrescente: !flags.relatorio.crescente})
+	// Relatório resumo, trimestral
+	newSheet(x, fmt.Sprintf(tituloRelatResumoTrim, titulo))
 	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: false, decrescente: !flags.relatorio.crescente})
 
-	// Relatório resumo, vertical
-	newSheet(x, fmt.Sprintf("resumo - %s vert", titulo))
-	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: true, decrescente: !flags.relatorio.crescente})
-
 	// Relatório resumo, vertical, anual
-	newSheet(x, fmt.Sprintf("resumo anual - %s vert", titulo))
+	newSheet(x, fmt.Sprintf(tituloRelatResumoAnualVert, titulo))
 	excelSummaryReport(x, itrUnificado, reportOpts{anual: true, vertical: true, decrescente: !flags.relatorio.crescente})
+	// Relatório resumo, vertical, trimestral
+	newSheet(x, fmt.Sprintf(tituloRelatResumoTrimVert, titulo))
+	excelSummaryReport(x, itrUnificado, reportOpts{anual: false, vertical: true, decrescente: !flags.relatorio.crescente})
 
 	progress.RunOK()
 	return true
@@ -585,19 +597,25 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 		w2 := rapina.ManterÚltimoTrimestre(rapina.TTM(v2))
 		return rapina.DivVTs(w1, w2)
 	}
+	p("Ativo Total", number, ajusteBalanço(c[AtivoTotal]))
 	p("Patrimônio Líquido", number, ajusteBalanço(c[Equity]))
 	row += ifElse(opts.vertical, 0, 1)
 	p("Receita Líquida", number, c[Vendas])
+	lucroBruto := rapina.AddVTs(c[Vendas], c[CustoVendas])
+	p("Lucro Bruto", number, lucroBruto)
+	p("Marg. Bruta", percent, divVTs(lucroBruto, c[Vendas]))
 	ebitda := rapina.SubVTs(c[EBIT], c[Deprec])
 	p("EBITDA", number, ebitda)
-	p("EBIT", number, c[EBIT])
-	p("Resultado Financeiro", number, c[ResulFinanc])
-	p("Operações Descont.", number, c[ResulOpDescont])
-	p("Lucro Líquido", number, c[LucLiq])
-	row += ifElse(opts.vertical, 0, 1)
 	p("Marg. EBITDA", percent, divVTs(ebitda, c[Vendas]))
+	p("EBIT", number, c[EBIT])
 	p("Marg. EBIT", percent, divVTs(c[EBIT], c[Vendas]))
+	p("Resultado Financeiro", number, c[ResulFinanc])
+	if !rapina.Zerado(c[ResulOpDescont]) {
+		p("Operações Descont.", number, c[ResulOpDescont])
+	}
+	p("Lucro Líquido", number, c[LucLiq])
 	p("Marg. Líq.", percent, divVTs(c[LucLiq], c[Vendas]))
+	row += ifElse(opts.vertical, 0, 1)
 	p("ROA", percent, divVTs(ttm(c[LucLiq]), ajusteBalanço(c[AtivoTotal])))
 	p("ROE", percent, divVTs(ttm(c[LucLiq]), ajusteBalanço(c[Equity])))
 	row += ifElse(opts.vertical, 0, 1)
