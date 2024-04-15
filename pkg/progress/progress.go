@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 
 	"github.com/pkg/errors"
@@ -90,11 +91,13 @@ func Status(format string, a ...interface{}) {
 
 func Fatal(err error) {
 	Error(err)
+	log.Fatal(err)
 	os.Exit(1)
 }
 
 func FatalMsg(format string, a ...interface{}) {
 	ErrorMsg(format, a...)
+	log.Fatalf(format, a...)
 	os.Exit(1)
 }
 
