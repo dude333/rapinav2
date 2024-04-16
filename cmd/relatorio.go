@@ -153,9 +153,12 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.Demonstraçã
 	progress.Debug("Dados %s: %d registros", titulo, len(itr))
 	itrUnificado := rapina.UnificarContasSimilares(itr)
 
+	// Relatório completo, anual
+	newSheet(x, fmt.Sprintf(tituloRelatCompletoAnual, titulo))
+	excelReport(x, itrUnificado, reportOpts{anual: true, vertical: false, decrescente: !flags.relatorio.crescente})
 	// Relatório completo, trimestral
 	newSheet(x, fmt.Sprintf(tituloRelatCompletoTrim, titulo))
-	excelReport(x, itrUnificado, !flags.relatorio.crescente)
+	excelReport(x, itrUnificado, reportOpts{anual: false, vertical: false, decrescente: !flags.relatorio.crescente})
 
 	// Relatório resumo, anual
 	newSheet(x, fmt.Sprintf(tituloRelatResumoAnual, titulo))
@@ -185,7 +188,7 @@ func newSheet(x Excel, name string) {
 // com base nos dados fornecidos. O parâmetro 'decrescente' indica se o
 // relatório deve ser criado em ordem crescente (false) ou decrescente (true)
 // de ano.
-func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
+func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
@@ -196,9 +199,9 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 	numberBold, _ := x.SetNumber(10.0, true, _customerNumFmt)
 
 	// ===== Relatório - início =====
-	anos := rapina.RangeAnos(itr, decrescente)
+	anos := rapina.RangeAnos(itr, opts.decrescente)
 	seq4 := func(n int) int {
-		return seq(4, n, decrescente)
+		return seq(4, n, opts.decrescente)
 	}
 	const initCol = 3
 
@@ -206,6 +209,11 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 		x.PrintCell(row, 1, titleFont, "Código")
 		x.PrintCell(row, 2, titleFont, "Descrição")
 		for _, ano := range anos {
+			if opts.anual {
+				x.PrintCell(row, col, titleFont, fmt.Sprintf("%d", ano))
+				col++
+				continue
+			}
 			x.PrintCell(row, col+seq4(0), titleFont, fmt.Sprintf("1T%d", ano))
 			x.PrintCell(row, col+seq4(1), titleFont, fmt.Sprintf("2T%d", ano))
 			x.PrintCell(row, col+seq4(2), titleFont, fmt.Sprintf("3T%d", ano))
@@ -242,12 +250,21 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 				if valor.Ano != ano {
 					continue
 				}
+				if opts.anual {
+					total := valor.T1 + valor.T2 + valor.T3 + valor.T4
+					if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
+						u := rapina.ÚltimoTrimestre(ano, []rapina.ValoresTrimestrais{valor})
+						total = valor.T(u)
+					}
+					x.PrintCell(row, col, number, total)
+					continue
+				}
 				x.PrintCell(row, col+seq4(0), number, valor.T1)
 				x.PrintCell(row, col+seq4(1), number, valor.T2)
 				x.PrintCell(row, col+seq4(2), number, valor.T3)
 				x.PrintCell(row, col+seq4(3), number, valor.T4)
 			}
-			col += 4
+			col += ifElse(opts.anual, 1, 4)
 		}
 		row++
 	}
@@ -265,7 +282,7 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, decrescente bool) {
 
 	// Trim empty columns
 	hasData := rapina.TrimestresComDados(itr)
-	if decrescente {
+	if opts.decrescente {
 		reverseb(hasData)
 	}
 	for i := len(hasData) - 1; i >= 0; i-- {
