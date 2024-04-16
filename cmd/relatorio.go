@@ -184,10 +184,10 @@ func newSheet(x Excel, name string) {
 	}
 }
 
-// excelReport cria e formata o relatório trimestral completo em planilha Excel
-// com base nos dados fornecidos. O parâmetro 'decrescente' indica se o
-// relatório deve ser criado em ordem crescente (false) ou decrescente (true)
-// de ano.
+// excelReport cria e formata o relatório anual ou trimestral completo em
+// planilha Excel com base nos dados fornecidos. O parâmetro 'decrescente'
+// indica se o relatório deve ser criado em ordem crescente (false) ou
+// decrescente (true) de ano.
 func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
@@ -253,8 +253,8 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 				if opts.anual {
 					total := valor.T1 + valor.T2 + valor.T3 + valor.T4
 					if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-						u := rapina.ÚltimoTrimestre(ano, []rapina.ValoresTrimestrais{valor})
-						total = valor.T(u)
+						progress.Trace("informe.Valores[0]: %+v", informe.Valores[0])
+						total = valor.T(4) // TODO: ajustar período para TTM para o último ano
 					}
 					x.PrintCell(row, col, number, total)
 					continue
