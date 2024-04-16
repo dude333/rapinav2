@@ -11,9 +11,15 @@ type Excel struct {
 }
 
 func New() *Excel {
+	file := excelize.NewFile()
+	_ = file.SetDocProps(&excelize.DocProperties{
+		Creator:     "Rapina",
+		Description: "https://github.com/dude333/rapinav2",
+		Version:     "2",
+	})
 	return &Excel{
-		file:       excelize.NewFile(),
-		sheetName:  "Informe Trimestral",
+		file:       file,
+		sheetName:  "rapina",
 		sheetIndex: 0,
 	}
 }
