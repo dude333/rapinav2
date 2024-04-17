@@ -87,6 +87,15 @@ h1 {
   margin-bottom: 20px;
 }
 
+.shadow {
+  transition: filter 200ms ease-out;
+  filter: none;
+}
+.shadow:hover {
+  transition: filter 200ms ease-out;
+  filter: drop-shadow(2px 1px 2px #777);
+}
+
 .container {
   display: flex;
   flex-wrap: wrap;
