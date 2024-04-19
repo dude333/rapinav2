@@ -1,12 +1,12 @@
 <p align="center" style="text-align: center">
-  <img src="https://i.postimg.cc/htdDDfdD/Rapina-logo.png" width="70%"><br/>
+  <img src="https://i.postimg.cc/1zbBSYy5/Rapina-logo-rounded.png" width="40%">
 </p>
 <p align="center">
   Crie Relatórios Financeiros de Empresas Listadas na B3
   <br/>
   <br/>
   <a href="https://github.com/dude333/rapinav2/releases">
-    <img alt="GitHub release" src="https://img.shields.io/github/tag/dude333/rapinav2.svg?label=latest"/>
+    <img alt="GitHub release" src="https://img.shields.io/github/tag/dude333/rapinav2.svg?label=download"/>
   </a>
   <a href="https://github.com/dude333/rapinav2/blob/v2/LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/dude333/rapinav2?label=license"/>
@@ -15,13 +15,7 @@
 
 # Rapina
 
-### Nota da Versão 2
-
-No momento, esta versão só apresenta relatórios dados trimestrais. A ideia é integrar este modificação na versão original do rapina.
-
-## Introdução
-
-Este programa processa os arquivos de demonstrações financeiras trimestrais (ITR) e anuais (DFP) do site da CVM e os armazena em um banco de dados local (sqlite). A partir desses dados, são extraídas informações do balanço patrimonial, fluxo de caixa, DRE (demonstração de resultado) e DVA (demonstração de valor adicionado).
+Rapina é um programa que cria relatórios financeiros de empresas listadas na B3, processando arquivos de demonstrações financeiras trimestrais (ITR) e anuais (DFP) do site da CVM e armazenando-os em um banco de dados local (sqlite). As informações são extraídas do balanço patrimonial, fluxo de caixa, DRE (demonstração de resultado) e DVA (demonstração de valor adicionado).
 
 O programa coleta arquivos desde 2010. Como estes arquivos contém os dados do ano corrente e do ano anterior, foi possível também a extração de dados de 2009.
 
@@ -35,14 +29,14 @@ Baixe o executável da [página de release](https://github.com/dude333/rapinav2/
 
 ### Criação/Atualização dos Dados
 
-Antes de se criar um relatório pela primeira vez, é **necessário** baixar os dados do site da CVM. Para isso, execute o seguinte comando no terminal:
+Antes de se criar um relatório pela primeira vez, **é necessário** baixar os dados do site da CVM. Para isso, execute o seguinte comando no terminal:
 
-`rapinav2 atualizar [ano]`
+`rapinav2 atualizar <--all | --ano <ano>>`
 
 Exemplos:
 
-- `rapinav2 atualizar`: baixar todos os dados.
-- `rapinav2 atualizar 2023`: baixar apenar um ano específico.
+- `rapinav2 atualizar --all`: baixar e atualizar dados de todos os anos.
+- `rapinav2 atualizar --ano 2023`: baixar e atualizar um ano específico.
 
 ### Criação do Relatório
 
@@ -70,11 +64,25 @@ LOJAS_RENNER_S.A.xlsx
 RAIA_DROGASIL_S.A.xlsx
 ```
 
+### Servidor Web
+
+Para criar os relatório em uma interface web, execute o comando `servidor`:
+
+```sh
+$ ./rapinav2 servidor
+
+[>] Iniciando servidor em :8080
+
+```
+E acesse a página através do endereço http://localhost:8080, onde é possível criar relatórios das empresas selecionadas e atualizar os dados (do ano corrente e do ano anterior).
+
+[![webserver.png](https://i.postimg.cc/Y9h1vNqD/webserver.png)](https://postimg.cc/PpnLcwD1)
+
 ## Configuração
 
 ### `rapina.yaml`
 
-Para personalizar os parâmetros, crie o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) com um ou mais dos seguintes parâmetros:
+Personalize os parâmetros criando o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) usando os seguintes parâmetros:
 
 | Parâmetro   | Descrição                                                                        |
 | ----------- | -------------------------------------------------------------------------------- |
@@ -95,7 +103,7 @@ reportDir: "/home/user1/relatorios"
 Para compilar o código fonte, siga estas instruções:
 
 1. Instale o Go: https://go.dev/doc/install
-2. Instale o Git, que você pode encontrar aqui: https://git-scm.com/book/pt-br/v2/Come%C3%A7ando-Instalando-o-Git
+2. Instale o Git: https://git-scm.com/book/pt-br/v2/Come%C3%A7ando-Instalando-o-Git
 3. Abra o terminal (ou [CMD](https://superuser.com/a/340051/61616) no Windows) e execute os seguintes comandos:
 
 ```bash
@@ -108,11 +116,13 @@ O arquivo `rapinav2`, ou `rapinav2.exe` no Windows, será criado.
 
 ## Dados
 
-- Relação tickets CNPJ:
+- Relação tickers x CNPJ:
+  ```
   https://sistemaswebb3-listados.b3.com.br/isinPage
   https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetTextDownload/
   => obj.geralPt.id => btoa(JSON.stringify(obj.geralPt.id))
   https://sistemaswebb3-listados.b3.com.br/isinProxy/IsinCall/GetFileDownload/{id}
+  ```
 
 ## Nota Final
 
