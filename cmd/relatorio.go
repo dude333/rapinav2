@@ -113,12 +113,10 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DemonstraçãoFinanc
 	}()
 
 	// DADOS CONSOLIDADOS
-	ok := criarPlanilhas(x, empresa, dfp, true)
+	criarPlanilhas(x, empresa, dfp, true)
 	//
 	// DADOS INDIVIDUAIS
-	if !ok {
-		criarPlanilhas(x, empresa, dfp, false)
-	}
+	criarPlanilhas(x, empresa, dfp, false)
 
 	// Salva planilha
 	if err := x.SaveAs(filename); err != nil {
