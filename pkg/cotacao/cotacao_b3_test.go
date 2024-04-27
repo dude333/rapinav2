@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositorio_test
+package cotacao_test
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"time"
 
 	rapina "github.com/dude333/rapinav2"
-	repositório "github.com/dude333/rapinav2/pkg/cotacao/repositorio"
+	"github.com/dude333/rapinav2/pkg/cotacao"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -20,7 +20,7 @@ func Test_b3_Importar(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
-	b3 := repositório.NovoB3(os.TempDir())
+	b3 := cotacao.NovoB3(os.TempDir())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

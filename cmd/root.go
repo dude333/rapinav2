@@ -24,6 +24,7 @@ var flags = struct {
 	servidor  flagsServidor
 	relatorio flagsRelatorio
 	atualizar flagsAtualizar
+	cotação   flagsCotação
 	debug     bool
 	trace     bool
 }{}

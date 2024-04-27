@@ -29,6 +29,14 @@ type Dinheiro struct {
 	Escala int
 }
 
+func NovoDinheiro(moeda string, valor float64, escala int) Dinheiro {
+	return Dinheiro{
+		Moeda:  moeda,
+		Valor:  valor,
+		Escala: escala,
+	}
+}
+
 func (d Dinheiro) String() string {
 	p := message.NewPrinter(language.BrazilianPortuguese)
 	e := float64(d.Escala)
@@ -36,6 +44,14 @@ func (d Dinheiro) String() string {
 		e = 1
 	}
 	return p.Sprintf(`%s %.2f`, d.Moeda, e*d.Valor)
+}
+
+func (d Dinheiro) Total() float64 {
+	e := float64(d.Escala)
+	if e == 0 {
+		e = 1
+	}
+	return d.Valor * e
 }
 
 // Data ---------------------------------------------------

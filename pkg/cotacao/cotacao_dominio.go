@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package cotação
+package cotacao
 
 import rapina "github.com/dude333/rapinav2"
 
