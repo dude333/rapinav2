@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositorio
+package cotacao
 
 import (
 	"bufio"
@@ -14,10 +14,17 @@ import (
 	"strings"
 
 	rapina "github.com/dude333/rapinav2"
-	cotação "github.com/dude333/rapinav2/pkg/cotacao"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
+)
+
+// Erros
+var (
+	ErrFalhaDownload      = errors.New("falha no download")
+	ErrAtivoNãoEncontrado = errors.New("ativo não encontrado")
+
+	ErrDataInválidaFn = func(dia string) error { return fmt.Errorf("data com formato inválido: %s", dia) }
 )
 
 // B3 implementa RepositórioImportaçãoAtivo. Busca a cotação de ativos
@@ -34,25 +41,25 @@ func NovoB3(dirDados string) *B3 {
 
 // Importar baixa o arquivo de cotações de todas as empresas de um determinado
 // dia do site da B3.
-func (b *B3) Importar(ctx context.Context, dia rapina.Data) <-chan cotação.Resultado {
-	results := make(chan cotação.Resultado)
+func (b *B3) Importar(ctx context.Context, dia rapina.Data) <-chan Resultado {
+	results := make(chan Resultado)
 
 	go func() {
 		defer close(results)
 
 		url, zip, err := arquivoCotação(dia)
 		if err != nil {
-			results <- cotação.Resultado{Error: err}
+			results <- Resultado{Error: err}
 			return
 		}
 
-		arquivos, err := b.infra.DownloadAndUnzip(url, zip, []string{})
+		arquivos, err := b.DownloadAndUnzip(url, zip, []string{})
 		if err != nil {
-			results <- cotação.Resultado{Error: err}
+			results <- Resultado{Error: err}
 			return
 		}
 		defer func() {
-			_ = b.infra.Cleanup(arquivos)
+			_ = b.Cleanup(arquivos)
 		}()
 
 		for _, arquivo := range arquivos {
@@ -61,7 +68,7 @@ func (b *B3) Importar(ctx context.Context, dia rapina.Data) <-chan cotação.Res
 			progress.RunOK()
 			select {
 			case <-ctx.Done():
-				results <- cotação.Resultado{Error: ctx.Err()}
+				results <- Resultado{Error: ctx.Err()}
 				return
 			default:
 			}
@@ -86,10 +93,10 @@ func arquivoCotação(dia rapina.Data) (url, zip string, err error) {
 
 // processarSériesHistóricas lê o arquivo de séries históricas baixado da B3
 // e envia os valores do ativo para o canal "result".
-func (b *B3) processarSériesHistóricas(ctx context.Context, arquivo string, result chan<- cotação.Resultado) {
+func (b *B3) processarSériesHistóricas(ctx context.Context, arquivo string, result chan<- Resultado) {
 	fh, err := os.Open(arquivo)
 	if err != nil {
-		result <- cotação.Resultado{Error: err}
+		result <- Resultado{Error: err}
 		return
 	}
 	defer fh.Close()
@@ -104,10 +111,10 @@ func (b *B3) processarSériesHistóricas(ctx context.Context, arquivo string, re
 		}
 		select {
 		case <-ctx.Done():
-			result <- cotação.Resultado{Error: ctx.Err()}
+			result <- Resultado{Error: ctx.Err()}
 			return
 		default:
-			result <- cotação.Resultado{Ativo: atv}
+			result <- Resultado{Ativo: atv}
 		}
 	}
 }
@@ -115,27 +122,29 @@ func (b *B3) processarSériesHistóricas(ctx context.Context, arquivo string, re
 // parseB3Quote parses the line based on this layout:
 // http://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf
 //
-//   CAMPO/CONTEÚDO  TIPO E TAMANHO  POS. INIC.	 POS. FINAL
-//   TIPREG “01”     N(02)           01          02
-//   DATA “AAAAMMDD” N(08)           03          10
-//   CODBDI          X(02)           11          12
-//   CODNEG          X(12)           13          24
-//   TPMERC          N(03)           25          27
-//   PREABE          (11)V99         57          69
-//   PREMAX          (11)V99         70          82
-//   PREMIN          (11)V99         83          95
-//   PREULT          (11)V99         109         121
-//   QUATOT          N18             153         170
-//   VOLTOT          (16)V99         171         188
+//	CAMPO/CONTEÚDO  TIPO E TAMANHO  POS. INIC.	 POS. FINAL
+//	TIPREG “01”     N(02)           01          02
+//	DATA “AAAAMMDD” N(08)           03          10
+//	CODBDI          X(02)           11          12
+//	CODNEG          X(12)           13          24
+//	TPMERC          N(03)           25          27
+//	PREABE          (11)V99         57          69
+//	PREMAX          (11)V99         70          82
+//	PREMIN          (11)V99         83          95
+//	PREULT          (11)V99         109         121
+//	QUATOT          N18             153         170
+//	VOLTOT          (16)V99         171         188
 //
 // CODBDI:
-//   02 LOTE PADRÃO
-//   12 FUNDO IMOBILIÁRIO
+//
+//	02 LOTE PADRÃO
+//	12 FUNDO IMOBILIÁRIO
 //
 // TPMERC:
-//   010 VISTA
-//   020 FRACIONÁRIO
-func analisarLinha(linha string) (*cotação.Ativo, error) {
+//
+//	010 VISTA
+//	020 FRACIONÁRIO
+func analisarLinha(linha string) (*Ativo, error) {
 	if len(linha) != 245 {
 		return nil, errors.New("linha deve conter 245 bytes")
 	}
@@ -158,7 +167,7 @@ func analisarLinha(linha string) (*cotação.Ativo, error) {
 	código := strings.TrimSpace(linha[12:24])
 	data, err := rapina.NovaData(linha[2:6] + "-" + linha[6:8] + "-" + linha[8:10])
 	if err != nil {
-		return &cotação.Ativo{}, err
+		return &Ativo{}, err
 	}
 
 	numRanges := [5]struct {
@@ -174,14 +183,14 @@ func analisarLinha(linha string) (*cotação.Ativo, error) {
 	for i, r := range numRanges {
 		num, err := strconv.Atoi(linha[r.i:r.f])
 		if err != nil {
-			return &cotação.Ativo{}, err
+			return &Ativo{}, err
 		}
 		vals[i] = float64(num) / 100
 	}
 
 	const r = "R$"
 
-	return &cotação.Ativo{
+	return &Ativo{
 		Código:       código,
 		Data:         data,
 		Abertura:     rapina.Dinheiro{Valor: vals[0], Moeda: r},
