@@ -22,6 +22,7 @@ import (
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil/dominio"
+	ext "github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -48,7 +49,7 @@ func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
 
 	s.db = db
 
-	err := criarTabelas(s.db)
+	err := ext.CriarTabelas(s.db, tabelas)
 	if err != nil {
 		return nil, err
 	}
@@ -340,6 +341,8 @@ func removerEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
 	return err
 }
 
+const _ver_ = 17
+
 // tabelas
 //
 //	+------------+      +------------+
@@ -361,28 +364,23 @@ func removerEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
 //     a. INSERT INTO empresas (cnpj, nome, ano) VALUES (?,?,?);
 //     b. SELECT id FROM empresas WHERE cnpj = ? AND ano = ?;
 //     b. for range contas => INSERT INTO contas (id_empresa, ...) VALUES (?, ...)
-var tabelas = []struct {
-	nome   string
-	versão int
-	up     string
-	down   string
-}{
+var tabelas = []ext.Tabela{
 	{
-		nome:   "empresas",
-		versão: _ver_,
-		up: `CREATE TABLE IF NOT EXISTS empresas (
+		Nome:   "empresas",
+		Versão: _ver_,
+		Up: `CREATE TABLE IF NOT EXISTS empresas (
 			id             INTEGER PRIMARY KEY AUTOINCREMENT,
 			cnpj           VARCHAR NOT NULL,
 			nome           VARCHAR NOT NULL,
 			ano            INT NOT NULL,
 			UNIQUE (cnpj, ano)
 		)`,
-		down: `DROP TABLE IF EXISTS empresas`,
+		Down: `DROP TABLE IF EXISTS empresas`,
 	},
 	{
-		nome:   "contas",
-		versão: _ver_,
-		up: `CREATE TABLE IF NOT EXISTS contas (
+		Nome:   "contas",
+		Versão: _ver_,
+		Up: `CREATE TABLE IF NOT EXISTS contas (
 			id_empresa     INTEGER,
 			codigo         VARCHAR NOT NULL,
 			descr          VARCHAR NOT NULL,
@@ -396,64 +394,16 @@ var tabelas = []struct {
 			moeda          VARCHAR,
 			PRIMARY KEY (id_empresa, codigo, data_ini_exerc, data_fim_exerc)
 		)`,
-		down: `DROP TABLE IF EXISTS contas`,
+		Down: `DROP TABLE IF EXISTS contas`,
 	},
 	{
-		nome:   "hashes",
-		versão: _ver_,
-		up: `CREATE TABLE IF NOT EXISTS hashes (
+		Nome:   "hashes",
+		Versão: _ver_,
+		Up: `CREATE TABLE IF NOT EXISTS hashes (
 			id             INTEGER PRIMARY KEY AUTOINCREMENT,
 			hash           VARCHAR NOT NULL,
 			UNIQUE (hash)
 		)`,
-		down: "DROP TABLE IF EXISTS hashes",
+		Down: "DROP TABLE IF EXISTS hashes",
 	},
-}
-
-const (
-	_ver_                 = 17
-	sqlCreateTableTabelas = `CREATE TABLE IF NOT EXISTS tabelas (
-		nome   VARCHAR PRIMARY KEY,
-		versao INTEGER NOT NULL
-	)`
-)
-
-func criarTabelas(db *sqlx.DB) (err error) {
-	ins := func(n string, v int) error {
-		query := `INSERT OR REPLACE INTO tabelas (nome, versao) VALUES (?, ?)`
-		_, err := db.Exec(query, n, v)
-		return err
-	}
-
-	ver := func(tabela string) int {
-		var versão int
-		err := db.Get(&versão, `SELECT versao FROM tabelas WHERE nome=?`, tabela)
-		if err != nil {
-			progress.Debug("Erro ao buscar versão da tabela %s: %v", tabela, err)
-		}
-		return versão
-	}
-
-	_, _ = db.Exec(sqlCreateTableTabelas)
-
-	for _, t := range tabelas {
-		v := ver(t.nome)
-		if v == t.versão {
-			continue
-		}
-		progress.Status(`Apagando tabela "%s", versão %d, e recriando nova versão (v%d)`,
-			t.nome, v, t.versão)
-
-		_, _ = db.Exec(t.down)
-		_, err := db.Exec(t.up)
-		if err != nil {
-			return err
-		}
-		err = ins(t.nome, t.versão)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
