@@ -2,7 +2,6 @@ package tickers
 
 import (
 	"archive/zip"
-	"database/sql"
 	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
@@ -12,8 +11,9 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/jmoiron/sqlx"
 )
 
 type EmissorData struct {
@@ -22,18 +22,10 @@ type EmissorData struct {
 	CNPJ   string
 }
 
-func Update(db *sql.DB) error {
+func Update(db *sqlx.DB) error {
 	progress.Status("Iniciando a atualização dos tickers")
 
-	// Create table if not exists
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS isin_data (
-			key TEXT PRIMARY KEY,
-			ticker TEXT,
-			cnpj TEXT,	
-			nome TEXT
-		)
-	`)
+	err := infra.CriarTabelas(db, tabelas)
 	if err != nil {
 		return err
 	}
@@ -124,7 +116,7 @@ func extractEmissorData(zipContent []byte) ([]EmissorData, error) {
 	return emissorData, nil
 }
 
-func insertDataIntoDatabase(db *sql.DB, data []EmissorData) (err error) {
+func insertDataIntoDatabase(db *sqlx.DB, data []EmissorData) (err error) {
 	if len(data) < 1000 {
 		return fmt.Errorf("quantidade de dados insuficiente (%d)", len(data))
 	}
@@ -142,11 +134,11 @@ func insertDataIntoDatabase(db *sql.DB, data []EmissorData) (err error) {
 	}()
 
 	// Limpa tabela antes de inserir novos dados
-	if _, err = tx.Exec("DELETE FROM isin_data"); err != nil {
+	if _, err = tx.Exec("DELETE FROM isin"); err != nil {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO isin_data(key, ticker, cnpj, nome) VALUES(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT INTO isin(key, ticker, cnpj, nome) VALUES(?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
@@ -204,8 +196,51 @@ func getURL() (string, error) {
 	return downloadURL, nil
 }
 
-func GetTicker(db *sql.DB, cnpj string) (string, error) {
+func GetTicker(db *sqlx.DB, cnpj string) (string, error) {
+	return getTicket(db, onlyNums(cnpj))
+}
+
+func getTicket(db *sqlx.DB, cnpj string) (string, error) {
 	var ticker string
-	err := db.QueryRow("SELECT ticker FROM isin_data WHERE cnpj = ?", cnpj).Scan(&ticker)
-	return ticker, err
+	err := db.Get(&ticker, "SELECT ticker FROM isin WHERE cnpj = ?", cnpj)
+	if err == nil {
+		return ticker, nil
+	}
+
+	err = Update(db)
+	if err != nil {
+		return "", err
+	}
+
+	err = db.Get(&ticker, "SELECT ticker FROM isin WHERE cnpj = ?", cnpj)
+	if err != nil {
+		return "", err
+	}
+	return ticker, nil
+}
+
+func onlyNums(str string) string {
+	result := make([]rune, 0, len(str))
+	for _, r := range str {
+		if r >= '0' && r <= '9' {
+			result = append(result, r)
+		}
+	}
+	return string(result)
+}
+
+const __ver__ = 1
+
+var tabelas = []infra.Tabela{
+	{
+		Nome:   "isin",
+		Versão: __ver__,
+		Up: `CREATE TABLE IF NOT EXISTS isin (
+			key TEXT PRIMARY KEY,
+			ticker TEXT,
+			cnpj TEXT,	
+			nome TEXT
+		);`,
+		Down: `DROP TABLE IF EXISTS isin;`,
+	},
 }
