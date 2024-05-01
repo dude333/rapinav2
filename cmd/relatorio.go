@@ -76,7 +76,7 @@ func init() {
 }
 
 func menuRelatório(_ *cobra.Command, _ []string) {
-	dfp, err := contabil.NovaDemonstraçãoFinanceira(db(), flags.tempDir)
+	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
 	if err != nil {
 		progress.Fatal(err)
 	}

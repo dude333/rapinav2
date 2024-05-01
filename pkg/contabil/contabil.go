@@ -46,7 +46,7 @@ type DemonstraçãoFinanceira struct {
 	bd  *repositorio.Sqlite
 }
 
-func NovaDemonstraçãoFinanceira(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
+func NovoServiço(db *sqlx.DB, tempDir string) (*DemonstraçãoFinanceira, error) {
 	dfp := DemonstraçãoFinanceira{}
 
 	repoSqlite, err := repositorio.NovoSqlite(db)
