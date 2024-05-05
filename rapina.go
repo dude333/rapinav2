@@ -10,6 +10,8 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
+// Dados Financeiros e Contábeis ----------------------------------------------
+
 type InformeTrimestral struct {
 	Codigo  string
 	Descr   string
@@ -471,4 +473,49 @@ func ManterÚltimoTrimestre(vts []ValoresTrimestrais) []ValoresTrimestrais {
 		w[i].SetT(t, v.T(t))
 	}
 	return w
+}
+
+// Cotação --------------------------------------------------
+
+type Cotação struct {
+	Código       string
+	Data         Data
+	Abertura     Dinheiro
+	Máxima       Dinheiro
+	Mínima       Dinheiro
+	Encerramento Dinheiro
+	Volume       float64
+}
+
+// PreçoTípico é a média aritmética entre o preço máximo, o preço mínimo e o
+// preço de fechamento
+func (a *Cotação) PreçoTípico() Dinheiro {
+	return Dinheiro{
+		Moeda:  a.Encerramento.Moeda,
+		Valor:  (a.Máxima.Valor + a.Mínima.Valor + a.Encerramento.Valor) / 3,
+		Escala: a.Encerramento.Escala,
+	}
+}
+
+// VWAP é o preço ponderado médio SUM(PRECO_TÍPICO * VOLUME) / SUM(VOLUME)
+func VWAP(ativos []*Cotação) Dinheiro {
+	if len(ativos) == 0 {
+		return Dinheiro{}
+	}
+	var totalPreçoTípico float64
+	var totalVolume float64
+	for _, ativo := range ativos {
+		pt := ativo.PreçoTípico()
+		totalPreçoTípico += pt.Valor * ativo.Volume
+		totalVolume += ativo.Volume
+	}
+	var v float64
+	if totalVolume > 0 {
+		v = totalPreçoTípico / totalVolume
+	}
+	return Dinheiro{
+		Moeda:  ativos[0].Encerramento.Moeda,
+		Valor:  v,
+		Escala: ativos[0].Encerramento.Escala,
+	}
 }
