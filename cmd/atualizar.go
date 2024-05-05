@@ -68,7 +68,7 @@ func atualizar(_ *cobra.Command, _ []string) {
 	importar(false)
 	importar(true)
 
-	if err := tickers.Update(db().DB); err != nil {
+	if err := tickers.Update(db()); err != nil {
 		progress.Error(err)
 	}
 }

@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 
 	rapina "github.com/dude333/rapinav2"
+	"github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/progress"
 )
 
 type noBellStdout struct{}
@@ -123,4 +125,31 @@ func prepareFilename(path, name string) (fpath string, err error) {
 	}
 
 	return
+}
+
+func menuEmpresas() <-chan rapina.Empresa {
+	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
+	if err != nil {
+		progress.Fatal(err)
+	}
+
+	empresas, err := dfp.Empresas()
+	if err != nil {
+		progress.Fatal(err)
+	}
+
+	ch := make(chan rapina.Empresa)
+
+	go func() {
+		for {
+			empresa, ok := escolherEmpresa(empresas)
+			ch <- empresa
+			if !ok {
+				progress.Warning("Até logo!")
+				break
+			}
+		}
+		close(ch)
+	}()
+	return ch
 }
