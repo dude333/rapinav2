@@ -72,3 +72,35 @@ func NovaData(s string) (Data, error) {
 	t, err := time.Parse(layoutISO, s)
 	return Data(t), err
 }
+
+// DiaÚtil retorna true para dias úteis.
+func DiaÚtil(d Data) bool {
+	return time.Time(d).Weekday() != time.Saturday && time.Time(d).Weekday() != time.Sunday
+}
+
+// Hoje retorna o dia de hoje ou o dia útil passado mais próximo.
+func Hoje() Data {
+	p := time.Time(time.Now())
+	for !DiaÚtil(Data(p)) {
+		p = p.AddDate(0, 0, -1)
+	}
+	return Data(p)
+}
+
+// ProxDiaUtil retorna o próximo dia útil.
+func ProxDiaUtil(d Data) Data {
+	p := time.Time(d).AddDate(0, 0, 1)
+	for !DiaÚtil(Data(p)) {
+		p = p.AddDate(0, 0, 1)
+	}
+	return Data(p)
+}
+
+// DiaUtilAnterior retorna o dia útil anterior.
+func DiaUtilAnterior(d Data) Data {
+	p := time.Time(d).AddDate(0, 0, -1)
+	for !DiaÚtil(Data(p)) {
+		p = p.AddDate(0, 0, -1)
+	}
+	return Data(p)
+}
