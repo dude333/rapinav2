@@ -5,8 +5,13 @@ import (
 
 	rapina "github.com/dude333/rapinav2"
 	ext "github.com/dude333/rapinav2/pkg/infra"
+	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 )
+
+const _ver_ = 2
+
+var tabelas []ext.Tabela
 
 type Sqlite struct {
 	db *sqlx.DB
@@ -26,14 +31,16 @@ func NovoSqlite(db *sqlx.DB) (*Sqlite, error) {
 }
 
 func (s *Sqlite) LerCotações(ctx context.Context, código string, dia rapina.Data) ([]*Ativo, error) {
-	query := "SELECT codigo, data, moeda, encerramento, volume FROM cotacao WHERE codigo LIKE ? AND data=?"
+	query := "SELECT codigo, data, moeda, abertura, maxima, minima, encerramento, volume FROM cotacoes WHERE codigo LIKE ? AND data=?"
 	var rows []tabelaCotação
 	err := s.db.SelectContext(ctx, &rows, query, código+"%", dia.String())
-	if len(rows) == 0 {
-		return nil, ErrCotaçãoNãoEncontrada
-	}
 	if err != nil {
+		progress.ErrorMsg("Erro ao ler cotação do bd: %v", err)
 		return nil, err
+	}
+	if len(rows) == 0 {
+		progress.Status("Cotação não encontrada no bd")
+		return nil, ErrCotaçãoNãoEncontrada
 	}
 
 	ativos := make([]*Ativo, 0, len(rows))
@@ -55,7 +62,7 @@ func (s *Sqlite) SalvarCotações(ctx context.Context, ativos []*Ativo) error {
 	for _, ativo := range ativos {
 		row := converteParaTabela(ativo)
 		insert := "INSERT OR IGNORE INTO cotacoes (codigo, data, moeda, abertura, maxima, minima, encerramento, volume) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-		_, err := tx.Exec(insert, row.codigo, row.data, row.moeda, row.abertura, row.maxima, row.minima, row.encerramento, row.volume)
+		_, err := tx.Exec(insert, row.Codigo, row.Data, row.Moeda, row.Abertura, row.Maxima, row.Minima, row.Encerramento, row.Volume)
 		if err != nil {
 			return err
 		}
@@ -64,14 +71,14 @@ func (s *Sqlite) SalvarCotações(ctx context.Context, ativos []*Ativo) error {
 }
 
 type tabelaCotação struct {
-	codigo       string
-	data         string
-	moeda        string
-	abertura     float64
-	maxima       float64
-	minima       float64
-	encerramento float64
-	volume       float64
+	Codigo       string
+	Data         string
+	Moeda        string
+	Abertura     float64
+	Maxima       float64
+	Minima       float64
+	Encerramento float64
+	Volume       float64
 }
 
 func converteParaTabela(ativo *Ativo) *tabelaCotação {
@@ -80,37 +87,39 @@ func converteParaTabela(ativo *Ativo) *tabelaCotação {
 		m = ativo.Encerramento.Moeda
 	}
 	return &tabelaCotação{
-		codigo:       ativo.Código,
-		data:         ativo.Data.String(),
-		moeda:        m,
-		abertura:     ativo.Abertura.Total(),
-		maxima:       ativo.Máxima.Total(),
-		minima:       ativo.Mínima.Total(),
-		encerramento: ativo.Encerramento.Total(),
-		volume:       ativo.Volume,
+		Codigo:       ativo.Código,
+		Data:         ativo.Data.String(),
+		Moeda:        m,
+		Abertura:     ativo.Abertura.Total(),
+		Maxima:       ativo.Máxima.Total(),
+		Minima:       ativo.Mínima.Total(),
+		Encerramento: ativo.Encerramento.Total(),
+		Volume:       ativo.Volume,
 	}
 }
 
 func converteParaAtivo(row *tabelaCotação) (*Ativo, error) {
-	d, err := rapina.NovaData(row.data)
+	d, err := rapina.NovaData(row.Data)
 	if err != nil {
 		return nil, err
 	}
 	return &Ativo{
-		Código:       row.codigo,
+		Código:       row.Codigo,
 		Data:         d,
-		Encerramento: rapina.NovoDinheiro(row.moeda, row.encerramento, 1),
-		Volume:       row.volume,
+		Abertura:     rapina.NovoDinheiro(row.Moeda, row.Abertura, 1),
+		Máxima:       rapina.NovoDinheiro(row.Moeda, row.Maxima, 1),
+		Mínima:       rapina.NovoDinheiro(row.Moeda, row.Minima, 1),
+		Encerramento: rapina.NovoDinheiro(row.Moeda, row.Encerramento, 1),
+		Volume:       row.Volume,
 	}, nil
 }
 
-const __ver__ = 17
-
-var tabelas = []ext.Tabela{
-	{
-		Nome:   "cotacoes",
-		Versão: __ver__,
-		Up: `CREATE TABLE IF NOT EXISTS cotacoes (
+func init() {
+	tabelas = append(tabelas, []ext.Tabela{
+		{
+			Nome:   "cotacoes",
+			Versão: _ver_,
+			Up: `CREATE TABLE IF NOT EXISTS cotacoes (
       codigo         TEXT NOT NULL,
       data           TEXT NOT NULL,
       moeda          TEXT DEFAULT 'R$' NOT NULL,
@@ -121,6 +130,7 @@ var tabelas = []ext.Tabela{
       volume         REAL NOT NULL,
       PRIMARY KEY (codigo, data)
     );`,
-		Down: `DROP TABLE IF EXISTS cotacoes`,
-	},
+			Down: `DROP TABLE IF EXISTS cotacoes`,
+		},
+	}...)
 }
