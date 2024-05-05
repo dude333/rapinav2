@@ -38,9 +38,7 @@ func DownloadAndUnzip(url, zip string, filters []string) ([]string, error) {
 	return files, nil
 }
 
-//
 // downloadFile source: https://stackoverflow.com/a/33853856/276311
-//
 func downloadFile(url, filepath string, verbose bool) error {
 	// Create dir if necessary
 	basepath := path.Dir(filepath)
@@ -69,30 +67,42 @@ func downloadFile(url, filepath string, verbose bool) error {
 	}
 	client := &http.Client{Transport: tr}
 
-	// Get the data
-	resp, err := client.Get(url)
-	if err != nil {
+	for retries := 5; retries > 0; retries-- {
+		if retries < 5 {
+			fmt.Fprintln(os.Stderr, "Retrying...")
+		}
+		// Get the data
+		resp, err := client.Get(url)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "File download - error: %s (%s)\n", err, url)
+			continue
+		}
+		defer resp.Body.Close()
+
+		// Check server response
+		if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode == http.StatusNotFound {
+				return fmt.Errorf("not found, status code: %d (%s)", resp.StatusCode, url)
+			}
+			fmt.Fprintf(os.Stderr, "File download - bad status: %s (%s)\n", resp.Status, url)
+			continue
+		}
+
+		// Write the body to file
+		counter := io.Discard
+		if verbose {
+			fmt.Printf("[          ] Baixando %s", filepath)
+			counter = &WriteCounter{}
+		}
+		_, err = io.Copy(out, io.TeeReader(resp.Body, counter))
+		if err != nil {
+			return err
+		}
+
 		return err
 	}
-	defer resp.Body.Close()
 
-	// Check server response
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
-	}
-
-	// Write the body to file
-	counter := io.Discard
-	if verbose {
-		fmt.Printf("[          ] Baixando %s", filepath)
-		counter = &WriteCounter{}
-	}
-	_, err = io.Copy(out, io.TeeReader(resp.Body, counter))
-	if err != nil {
-		return err
-	}
-
-	return err
+	return nil
 }
 
 // WriteCounter counts the number of bytes written the io.Writer.
