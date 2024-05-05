@@ -45,16 +45,17 @@ func NovoServiço(db *sqlx.DB, dirDados string) (*Serviço, error) {
 	}, nil
 }
 
-// Cotação busca a cotação de um ativo em vários repositórios com base
-// no "código" de um ativo de um determinado "dia", retornando o primeiro
-// valor encontado ou o erro de todos os repositórios. Caso a cotação seja
-// encontrada via API, ela será armazenada no bando de dados para agilizar a
-// próxima leitura do mesmo código, na mesma data.
-func (svc *Serviço) Cotação(código string, diaStr string) ([]*Ativo, error) {
-	dia, err := rapina.NovaData(diaStr)
+// Cotação busca a cotação de uma empresa em vários repositórios num determinado
+// "dia", retornando o primeiro valor encontado ou o erro de todos os repositórios.
+// Caso a cotação seja encontrada via API, ela será armazenada no bando de dados
+// para agilizar a próxima leitura do mesmo código, na mesma data.
+func (svc *Serviço) Cotação(empresa rapina.Empresa, dia rapina.Data) ([]*Ativo, error) {
+	código, err := GetTickerPrefix(svc.bd.db, empresa.CNPJ)
 	if err != nil {
 		return nil, err
 	}
+
+	progress.Debug("Cotação(%s, %s)", código, dia)
 	atv, err := svc.cotaçãoBD(código, dia)
 	if err != nil {
 		return svc.cotaçãoAPI(código, dia)
@@ -63,6 +64,7 @@ func (svc *Serviço) Cotação(código string, diaStr string) ([]*Ativo, error) 
 }
 
 func (svc *Serviço) cotaçãoBD(código string, dia rapina.Data) ([]*Ativo, error) {
+	progress.Debug("Lendo cotação de %s, em %s, do bd", código, dia)
 	if svc.bd == nil {
 		return nil, ErrRepositórioInválido
 	}
@@ -71,6 +73,7 @@ func (svc *Serviço) cotaçãoBD(código string, dia rapina.Data) ([]*Ativo, err
 }
 
 func (svc *Serviço) cotaçãoAPI(código string, dia rapina.Data) ([]*Ativo, error) {
+	progress.Debug("Lendo cotação de %s, em %s, via API", código, dia)
 	if len(svc.api) < 1 {
 		return nil, ErrProvedorInválido
 	}
