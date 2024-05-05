@@ -144,7 +144,7 @@ func (b *B3) processarSériesHistóricas(ctx context.Context, arquivo string, re
 //
 //	010 VISTA
 //	020 FRACIONÁRIO
-func analisarLinha(linha string) (*Ativo, error) {
+func analisarLinha(linha string) (*rapina.Cotação, error) {
 	if len(linha) != 245 {
 		return nil, errors.New("linha deve conter 245 bytes")
 	}
@@ -167,7 +167,7 @@ func analisarLinha(linha string) (*Ativo, error) {
 	código := strings.TrimSpace(linha[12:24])
 	data, err := rapina.NovaData(linha[2:6] + "-" + linha[6:8] + "-" + linha[8:10])
 	if err != nil {
-		return &Ativo{}, err
+		return &rapina.Cotação{}, err
 	}
 
 	numRanges := [5]struct {
@@ -183,14 +183,14 @@ func analisarLinha(linha string) (*Ativo, error) {
 	for i, r := range numRanges {
 		num, err := strconv.Atoi(linha[r.i:r.f])
 		if err != nil {
-			return &Ativo{}, err
+			return &rapina.Cotação{}, err
 		}
 		vals[i] = float64(num) / 100
 	}
 
 	const r = "R$"
 
-	return &Ativo{
+	return &rapina.Cotação{
 		Código:       código,
 		Data:         data,
 		Abertura:     rapina.Dinheiro{Valor: vals[0], Moeda: r},

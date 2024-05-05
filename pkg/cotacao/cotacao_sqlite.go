@@ -30,7 +30,7 @@ func NovoSqlite(db *sqlx.DB) (*Sqlite, error) {
 	return &Sqlite{db: db}, nil
 }
 
-func (s *Sqlite) LerCotações(ctx context.Context, código string, dia rapina.Data) ([]*Ativo, error) {
+func (s *Sqlite) LerCotações(ctx context.Context, código string, dia rapina.Data) ([]*rapina.Cotação, error) {
 	query := "SELECT codigo, data, moeda, abertura, maxima, minima, encerramento, volume FROM cotacoes WHERE codigo LIKE ? AND data=?"
 	var rows []tabelaCotação
 	err := s.db.SelectContext(ctx, &rows, query, código+"%", dia.String())
@@ -43,7 +43,7 @@ func (s *Sqlite) LerCotações(ctx context.Context, código string, dia rapina.D
 		return nil, ErrCotaçãoNãoEncontrada
 	}
 
-	ativos := make([]*Ativo, 0, len(rows))
+	ativos := make([]*rapina.Cotação, 0, len(rows))
 	for _, row := range rows {
 		ativo, err := converteParaAtivo(&row)
 		if err != nil {
@@ -54,7 +54,7 @@ func (s *Sqlite) LerCotações(ctx context.Context, código string, dia rapina.D
 	return ativos, nil
 }
 
-func (s *Sqlite) SalvarCotações(ctx context.Context, ativos []*Ativo) error {
+func (s *Sqlite) SalvarCotações(ctx context.Context, ativos []*rapina.Cotação) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -81,7 +81,7 @@ type tabelaCotação struct {
 	Volume       float64
 }
 
-func converteParaTabela(ativo *Ativo) *tabelaCotação {
+func converteParaTabela(ativo *rapina.Cotação) *tabelaCotação {
 	m := "R$"
 	if len(ativo.Encerramento.Moeda) != 0 {
 		m = ativo.Encerramento.Moeda
@@ -98,12 +98,12 @@ func converteParaTabela(ativo *Ativo) *tabelaCotação {
 	}
 }
 
-func converteParaAtivo(row *tabelaCotação) (*Ativo, error) {
+func converteParaAtivo(row *tabelaCotação) (*rapina.Cotação, error) {
 	d, err := rapina.NovaData(row.Data)
 	if err != nil {
 		return nil, err
 	}
-	return &Ativo{
+	return &rapina.Cotação{
 		Código:       row.Codigo,
 		Data:         d,
 		Abertura:     rapina.NovoDinheiro(row.Moeda, row.Abertura, 1),

@@ -57,7 +57,7 @@ func cotação(_ *cobra.Command, args []string) {
 			d = rapina.DiaUtilAnterior(rapina.Hoje())
 		}
 
-		var all []*cotacao.Ativo
+		var all []*rapina.Cotação
 		for n := 0; n < 10; n++ {
 			d = rapina.DiaUtilAnterior(d)
 			ativos, err := c.Cotação(empresa, d)
@@ -70,6 +70,6 @@ func cotação(_ *cobra.Command, args []string) {
 		for _, ativo := range all {
 			progress.Status("%+v", ativo)
 		}
-		progress.Status("VWAP: %+v", cotacao.VWAP(all))
+		progress.Status("VWAP: %+v", rapina.VWAP(all))
 	}
 }
