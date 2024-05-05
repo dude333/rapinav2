@@ -66,7 +66,7 @@ func (d Data) String() string { return time.Time(d).Format(layoutISO) }
 // NovaData converte uma string no formato "AAAA-MM-DD" em Data.
 func NovaData(s string) (Data, error) {
 	// Verificar se a string está no formato AAAA-MM-DD
-	if len(s) != len("AAAA-MM-DD") && (s[4] != '-' || s[7] != '-') {
+	if len(s) != len("AAAA-MM-DD") || s[4] != '-' || s[7] != '-' {
 		return Data(time.Time{}), ErrDataInválida
 	}
 	t, err := time.Parse(layoutISO, s)
