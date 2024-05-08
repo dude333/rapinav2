@@ -1,4 +1,4 @@
-package repositorio
+package contabil
 
 import (
 	"strings"

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositorio
+package contabil
 
 import "testing"
 

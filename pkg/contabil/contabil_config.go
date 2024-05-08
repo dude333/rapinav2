@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositorio
+package contabil
 
 // cfg contém as configurações usadas nos construtores deste repositório.
 type cfg struct {
