@@ -1,4 +1,4 @@
-package repositorio
+package contabil
 
 import (
 	_ "embed"
@@ -16,11 +16,11 @@ type resultadoTrimestral struct {
 }
 
 type jsonTrimestral []struct {
-	Ano   int     `json:"ano"`
-	T1    float64 `json:"t1"`
-	T2    float64 `json:"t2"`
-	T3    float64 `json:"t3"`
-	T4    float64 `json:"t4"`
+	Ano int     `json:"ano"`
+	T1  float64 `json:"t1"`
+	T2  float64 `json:"t2"`
+	T3  float64 `json:"t3"`
+	T4  float64 `json:"t4"`
 }
 
 func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.InformeTrimestral, error) {
@@ -52,7 +52,7 @@ func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.
 	return itr, nil
 }
 
-//go:embed repositorio_sqlite_trimestral.sql
+//go:embed contabil_sqlite_trimestral.sql
 var sqlQueryTrimestral string
 
 func sqlTrimestral(ids []int, consolidado bool) string {

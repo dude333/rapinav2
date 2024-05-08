@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-package repositorio
+package contabil
 
 import (
 	"bufio"
@@ -21,8 +21,7 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
-// cvmDFP é usada para armazenar os dados (linhas) dos arquivos de DFP para
-// ser posteriormente transformada no modelo Conta, do domínio rapina.
+// cvmDFP é usada para armazenar os dados (linhas) dos arquivos de DFP.
 type cvmDFP struct {
 	CNPJ        string
 	Nome        string // Nome da empresa
