@@ -18,10 +18,14 @@ import (
 
 var ErrRepositórioInválido = errors.New("repositório inválido")
 
+type CVM interface {
+	Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado
+}
+
 // DadosContábeis é um serviço que busca os relatórios contábeis de uma empresa
 // em vários repositórios (API e BD).
 type DadosContábeis struct {
-	api *CVM
+	cvm CVM
 	bd  *Sqlite
 }
 
@@ -33,7 +37,7 @@ func NovoServiço(db *sqlx.DB, tempDir string) (*DadosContábeis, error) {
 		return &dfp, err
 	}
 
-	apiCVM, err := NovoCVM(
+	cvmDFP, err := NovoDFP(
 		CfgDirDados(tempDir),
 		CfgArquivosJáProcessados(repoSqlite.Hashes()),
 	)
@@ -41,31 +45,31 @@ func NovoServiço(db *sqlx.DB, tempDir string) (*DadosContábeis, error) {
 		return &dfp, err
 	}
 
-	return &DadosContábeis{api: apiCVM, bd: repoSqlite}, nil
+	return &DadosContábeis{cvm: cvmDFP, bd: repoSqlite}, nil
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (df *DadosContábeis) Importar(ano int, trimestral bool) error {
+func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
 	// result retorna o registro após a leitura de cada linha
 	// do arquivo importado
-	for result := range df.api.Importar(ctx, ano, trimestral) {
+	for result := range c.cvm.Importar(ctx, ano, trimestral) {
 		if result.Error != nil {
 			progress.Error(result.Error)
 			continue
 		}
-		if result.Empresa != nil {
-			err := df.bd.Salvar(ctx, result.Empresa)
+		if result.DFP != nil {
+			err := c.bd.Salvar(ctx, result.DFP)
 			if err != nil {
 				return err
 			}
 		}
 		if len(result.Hash) > 0 {
-			err := df.bd.SalvarHash(ctx, result.Hash)
+			err := c.bd.SalvarHash(ctx, result.Hash)
 			if err != nil {
 				progress.ErrorMsg("erro salvando hash: %v", err)
 			}
@@ -75,6 +79,7 @@ func (df *DadosContábeis) Importar(ano int, trimestral bool) error {
 	return nil
 }
 
+/*
 func (df *DadosContábeis) Relatório(cnpj string, ano int) (*dominio.DemonstraçãoFinanceira, error) {
 	if df.bd == nil {
 		return &dominio.DemonstraçãoFinanceira{}, ErrRepositórioInválido
@@ -83,25 +88,26 @@ func (df *DadosContábeis) Relatório(cnpj string, ano int) (*dominio.Demonstra�
 	dfp, err := df.bd.Ler(context.Background(), cnpj, ano)
 	return dfp, err
 }
+*/
 
-func (df *DadosContábeis) DadosTrimestrais(cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
-	if df.bd == nil {
+func (c *DadosContábeis) DadosTrimestrais(cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
+	if c.bd == nil {
 		return nil, ErrRepositórioInválido
 	}
-	return df.bd.Trimestral(context.Background(), cnpj, consolidado)
+	return c.bd.Trimestral(context.Background(), cnpj, consolidado)
 }
 
-func (df *DadosContábeis) Empresas() ([]rapina.Empresa, error) {
-	if df.bd == nil {
+func (c *DadosContábeis) Empresas() ([]rapina.Empresa, error) {
+	if c.bd == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
-	return df.bd.Empresas(context.Background())
+	return c.bd.Empresas(context.Background())
 }
 
-func (df *DadosContábeis) BuscaEmpresas(nome string) ([]rapina.Empresa, error) {
-	if df.bd == nil {
+func (c *DadosContábeis) BuscaEmpresas(nome string) ([]rapina.Empresa, error) {
+	if c.bd == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Empresas(%s)", nome)
-	return df.bd.BuscaEmpresas(context.Background(), nome)
+	return c.bd.BuscaEmpresas(context.Background(), nome)
 }

@@ -21,73 +21,14 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
-// cvmDFP é usada para armazenar os dados (linhas) dos arquivos de DFP.
 type cvmDFP struct {
-	CNPJ        string
-	Nome        string // Nome da empresa
-	Ano         string
-	Consolidado bool
-	Versão      string
-
-	Código       string
-	Descr        string
-	GrupoDFP     string
-	DataIniExerc string // AAAA-MM-DD
-	DataFimExerc string // AAAA-MM-DD
-	Meses        int    // Número de meses acumulados desde o início do exercício
-	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
-	Valor        float64
-	Escala       int
-	Moeda        string
-}
-
-func (c *cvmDFP) converteConta() dominio.Conta {
-	contém := func(str string) bool {
-		return strings.Contains(c.GrupoDFP, str)
-	}
-
-	grp := c.GrupoDFP
-	switch {
-	case contém("Balanço Patrimonial Passivo"):
-		grp = "BPP"
-	case contém("Balanço Patrimonial Ativo"):
-		grp = "BPA"
-	case contém("Demonstração do Fluxo de Caixa"):
-		grp = "DFC"
-	case contém("Demonstração do Resultado"):
-		grp = "DRE"
-	case contém("Demonstração de Valor Adicionado"):
-		grp = "DVA"
-	}
-
-	conta := dominio.Conta{
-		Código:       c.Código,
-		Descr:        c.Descr,
-		Consolidado:  c.Consolidado,
-		Grupo:        grp,
-		DataIniExerc: c.DataIniExerc,
-		DataFimExerc: c.DataFimExerc,
-		Meses:        c.Meses,
-		OrdemExerc:   c.OrdemExerc,
-		Total: rapina.Dinheiro{
-			Valor:  c.Valor,
-			Escala: c.Escala,
-			Moeda:  c.Moeda,
-		},
-	}
-
-	return conta
-}
-
-// CVM implementa RepositórioImportação. Busca demonstrações financeiras
-// no site da CVM.
-type CVM struct {
 	infra
 	cfg
+	// Empresa *dominio.DemonstraçãoFinanceira
 }
 
-func NovoCVM(configs ...ConfigFn) (*CVM, error) {
-	var cvm CVM
+func NovoDFP(configs ...ConfigFn) (*cvmDFP, error) {
+	var cvm cvmDFP
 	for _, cfg := range configs {
 		cfg(&cvm.cfg)
 	}
@@ -108,7 +49,7 @@ func NovoCVM(configs ...ConfigFn) (*CVM, error) {
 
 // Importar baixa o arquivo de DFPs de todas as empresas de um determinado
 // ano do site da CVM. Com trimestral == true, é baixado o arquivo de ITRs.
-func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado {
+func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado {
 	results := make(chan dominio.Resultado)
 
 	go func() {
@@ -134,7 +75,11 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dom
 				continue
 			}
 			// Processa o arquivo e envia o resultado para o canal 'results'
-			_ = processarArquivoDFP(ctx, arquivo, results)
+			err = processarArquivoDFP(ctx, arquivo, results)
+			if err != nil {
+				results <- dominio.Resultado{Hash: arquivo.hash}
+			}
+
 			progress.RunOK()
 		}
 	}()
@@ -142,7 +87,7 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) <-chan dom
 	return results
 }
 
-func (c CVM) existe(hash string) bool {
+func (c cvmDFP) existe(hash string) bool {
 	if len(hash) == 0 {
 		return false
 	}
@@ -194,19 +139,19 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 	}
 	defer fh.Close()
 
-	csv := &csv{sep: ";"}
+	csv := &csvDFP{sep: ";"}
 
 	stream := transform.NewReader(fh, charmap.ISO8859_1.NewDecoder())
 	scanner := bufio.NewScanner(stream)
 
-	empresas := make(map[string][]*cvmDFP)
+	empresas := make(map[string][]*regDFP)
 
 	for scanner.Scan() {
 		linha := scanner.Text()
 
 		dfp, err := csv.carregaDFP(linha)
 
-		if err != nil || ignorarRegistro(dfp) {
+		if err != nil || dfp.registroInválido() {
 			continue
 		}
 
@@ -214,12 +159,70 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 		empresas[k] = append(empresas[k], dfp)
 	}
 
-	enviarDFP(empresas, arquivo.hash, results)
+	enviarDFP(empresas, results)
 
 	return nil
 }
 
-func ignorarRegistro(dfp *cvmDFP) bool {
+// regDFP é usada para armazenar os dados (linhas) dos arquivos de DFP.
+type regDFP struct {
+	CNPJ        string
+	Nome        string // Nome da empresa
+	Ano         string
+	Consolidado bool
+	Versão      string
+
+	Código       string
+	Descr        string
+	GrupoDFP     string
+	DataIniExerc string // AAAA-MM-DD
+	DataFimExerc string // AAAA-MM-DD
+	Meses        int    // Número de meses acumulados desde o início do exercício
+	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
+	Valor        float64
+	Escala       int
+	Moeda        string
+}
+
+func (reg *regDFP) converteConta() dominio.Conta {
+	contém := func(str string) bool {
+		return strings.Contains(reg.GrupoDFP, str)
+	}
+
+	grp := reg.GrupoDFP
+	switch {
+	case contém("Balanço Patrimonial Passivo"):
+		grp = "BPP"
+	case contém("Balanço Patrimonial Ativo"):
+		grp = "BPA"
+	case contém("Demonstração do Fluxo de Caixa"):
+		grp = "DFC"
+	case contém("Demonstração do Resultado"):
+		grp = "DRE"
+	case contém("Demonstração de Valor Adicionado"):
+		grp = "DVA"
+	}
+
+	conta := dominio.Conta{
+		Código:       reg.Código,
+		Descr:        reg.Descr,
+		Consolidado:  reg.Consolidado,
+		Grupo:        grp,
+		DataIniExerc: reg.DataIniExerc,
+		DataFimExerc: reg.DataFimExerc,
+		Meses:        reg.Meses,
+		OrdemExerc:   reg.OrdemExerc,
+		Total: rapina.Dinheiro{
+			Valor:  reg.Valor,
+			Escala: reg.Escala,
+			Moeda:  reg.Moeda,
+		},
+	}
+
+	return conta
+}
+
+func (dfp *regDFP) registroInválido() bool {
 	if dfp.Meses%3 != 0 {
 		progress.Trace("Ignorando registro não multiplo de 3: %v", dfp)
 		return true
@@ -230,7 +233,7 @@ func ignorarRegistro(dfp *cvmDFP) bool {
 // enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*cvmDFP, hash string, results chan<- dominio.Resultado) {
+func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
@@ -259,7 +262,7 @@ func enviarDFP(empresas map[string][]*cvmDFP, hash string, results chan<- domini
 				continue
 			}
 
-			empresa := dominio.DemonstraçãoFinanceira{
+			dfpEmpresa := dominio.DemonstraçãoFinanceira{
 				Empresa: rapina.Empresa{
 					CNPJ: registros[0].CNPJ,
 					Nome: registros[0].Nome,
@@ -268,15 +271,15 @@ func enviarDFP(empresas map[string][]*cvmDFP, hash string, results chan<- domini
 				Contas: contas[ano],
 			}
 
-			if empresa.Válida() {
-				results <- dominio.Resultado{Empresa: &empresa}
+			if dfpEmpresa.Válida() {
+				results <- dominio.Resultado{DFP: &dfpEmpresa}
 			} else {
 				results <- dominio.Resultado{Error: ErrDFPInválida}
 			}
 		}
 	} // next k
 
-	results <- dominio.Resultado{Hash: hash}
+	// results <- dominio.Resultado{Hash: hash}
 	progress.Debug("Linhas processadas: %d", num)
 }
 
@@ -304,7 +307,7 @@ const (
 	numItens int = 11 // número de itens (soma dos parâmetros pos___ da struct csv)
 )
 
-type csv struct {
+type csvDFP struct {
 	sep           string // separador de campos
 	cabeçalhoLido bool
 
@@ -322,7 +325,7 @@ type csv struct {
 	posMoeda       int
 }
 
-func (c *csv) lerCabeçalho(linha string) {
+func (c *csvDFP) lerCabeçalho(linha string) {
 	c.posDtIniExerc = -1 // Este campo não aparece nos dados do balanço patrimonial
 	c.cabeçalhoLido = true
 	títulos := strings.Split(linha, c.sep)
@@ -455,7 +458,7 @@ func (c *csv) lerCabeçalho(linha string) {
 //	Tipo Dados: decimal
 //	Precisão  : 29
 //	Scale     : 10
-func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
+func (c *csvDFP) carregaDFP(linha string) (*regDFP, error) {
 	if !c.cabeçalhoLido {
 		c.lerCabeçalho(linha)
 		return nil, ErrCabeçalho
@@ -480,7 +483,7 @@ func (c *csv) carregaDFP(linha string) (*cvmDFP, error) {
 		return nil, err
 	}
 
-	return &cvmDFP{
+	return &regDFP{
 		CNPJ:         itens[c.posCnpj],
 		Nome:         itens[c.posDenomCia],
 		Ano:          itens[c.posDtFimExerc][:4],
