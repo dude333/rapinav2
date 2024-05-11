@@ -60,6 +60,7 @@ func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
 	return &s, nil
 }
 
+/*
 func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*dominio.DemonstraçãoFinanceira, error) {
 	var sd sqliteEmpresa
 	err := s.db.GetContext(ctx, &sd, `SELECT * FROM empresas WHERE cnpj=? AND ano=?`, &cnpj, &ano)
@@ -116,6 +117,7 @@ func (s *Sqlite) Ler(ctx context.Context, cnpj string, ano int) (*dominio.Demons
 
 	return &dfp, err
 }
+*/
 
 func (s *Sqlite) Trimestral(ctx context.Context, cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
 	var ids []int

@@ -48,7 +48,7 @@ func Test_cvm_Importar(t *testing.T) {
 				db = sqlx.MustConnect("sqlite3", connStr)
 			}
 
-			c, err := NovoCVM()
+			c, err := NovoDFP()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -66,11 +66,11 @@ func Test_cvm_Importar(t *testing.T) {
 				if result.Error != nil {
 					fmt.Printf("=> %+v\n", result.Error)
 				}
-				if result.Empresa != nil {
-					err = s.Salvar(tt.args.ctx, result.Empresa)
+				if result.DFP != nil {
+					err = s.Salvar(tt.args.ctx, result.DFP)
 					if (err != nil) != tt.wantErr {
 						t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para Empresa = %s | %s | %d", err, tt.wantErr,
-							result.Empresa.CNPJ, result.Empresa.Nome, result.Empresa.Ano)
+							result.DFP.CNPJ, result.DFP.Nome, result.DFP.Ano)
 					}
 				}
 			}
@@ -172,7 +172,7 @@ func Test_csv_carregaDFP(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *cvmDFP
+		want    *regDFP
 		wantErr bool
 	}{
 		{
@@ -181,13 +181,13 @@ func Test_csv_carregaDFP(t *testing.T) {
 				cabeçalho: "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA",
 				linha:     "60.840.055/0001-31;2022-06-30;1;FLEURY S.A.;021881;DF Consolidado - Demonstração do Resultado;REAL;MIL;ÚLTIMO;2022-04-01;2022-06-30;3.11;Lucro/Prejuízo Consolidado do Período;70924.0000000000;S",
 			},
-			want:    &cvmDFP{CNPJ: "60.840.055/0001-31", Nome: "FLEURY S.A.", Ano: "2022", Consolidado: true, Versão: "1", Código: "3.11", Descr: "Lucro/Prejuízo Consolidado do Período", GrupoDFP: "DF Consolidado - Demonstração do Resultado", DataIniExerc: "2022-04-01", DataFimExerc: "2022-06-30", Meses: 3, OrdemExerc: "ÚLTIMO", Valor: 70924, Escala: 1000, Moeda: "R$"},
+			want:    &regDFP{CNPJ: "60.840.055/0001-31", Nome: "FLEURY S.A.", Ano: "2022", Consolidado: true, Versão: "1", Código: "3.11", Descr: "Lucro/Prejuízo Consolidado do Período", GrupoDFP: "DF Consolidado - Demonstração do Resultado", DataIniExerc: "2022-04-01", DataFimExerc: "2022-06-30", Meses: 3, OrdemExerc: "ÚLTIMO", Valor: 70924, Escala: 1000, Moeda: "R$"},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &csv{
+			c := &csvDFP{
 				sep:           ";",
 				cabeçalhoLido: false,
 			}
@@ -207,13 +207,13 @@ func Test_csv_carregaDFP(t *testing.T) {
 
 // ==== BENCHMARKS ====
 
-func benchmarkconverteConta(c *cvmDFP, b *testing.B) {
+func benchmarkconverteConta(c *regDFP, b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		c.converteConta()
 	}
 }
 
-var cc = []cvmDFP{
+var cc = []regDFP{
 	{
 		CNPJ:         "C1",
 		Nome:         "N1",

@@ -103,9 +103,9 @@ type ConfigConta struct {
 // -- REPOSITÓRIO & SERVIÇO --
 
 type Resultado struct {
-	Error   error
-	Empresa *DemonstraçãoFinanceira
-	Hash    string
+	Error error
+	DFP   *DemonstraçãoFinanceira
+	Hash  string
 }
 
 type Serviço interface {
