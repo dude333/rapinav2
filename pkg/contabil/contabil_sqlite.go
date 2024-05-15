@@ -245,7 +245,7 @@ func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinancei
 			return err
 		}
 		if err != sql.ErrNoRows {
-			progress.Debug("Apagando empresa %s, %d (%d): ", d.Nome, d.Ano, id)
+			progress.Debug("Apagando empresa %s, %d (%d)", d.Nome, d.Ano, id)
 			if err := removerEmpresa(ctx, s.db, id); err != nil {
 				return err
 			}
@@ -265,6 +265,7 @@ func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinancei
 		return err
 	}
 
+	progress.Debug("Salvando empresa %s, %d (%d): %d contas", d.Nome, d.Ano, id, len(dfp.Contas))
 	return inserirContas(ctx, s.db, id, dfp.Contas, dfp.Nome)
 }
 

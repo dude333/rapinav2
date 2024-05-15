@@ -57,23 +57,23 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 
 		url := urlArquivo(ano, trimestral)
 
-		arquivos, err := c.DownloadAndUnzip(url, filtros())
+		arquivos, zipHash, err := c.DownloadAndUnzip(url, filtros())
 		if err != nil {
 			results <- dominio.Resultado{Error: err}
 			return
 		}
-		defer func() {
-			_ = c.Cleanup(arquivos)
-		}()
+
+		defer c.Cleanup(arquivos)
+
+		if c.existe(zipHash) {
+			progress.Warning("Arquivo já foi processado anteriormente")
+			return
+		}
+		results <- dominio.Resultado{Hash: zipHash}
 
 		for _, arquivo := range arquivos {
 			progress.Running(arquivo.path)
 
-			// Ignora arquivos já processados
-			if c.existe(arquivo.hash) {
-				progress.RunWarningMsg("já foi processado anteriormente")
-				continue
-			}
 			// Processa o arquivo e envia o resultado para o canal 'results'
 			err = processarArquivoDFP(ctx, arquivo, results)
 			if err != nil {
@@ -88,7 +88,7 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 }
 
 func (c cvmDFP) existe(hash string) bool {
-	if len(hash) == 0 {
+	if len(hash) == 0 || c.force {
 		return false
 	}
 	for i := range c.arquivosJáProcessados {

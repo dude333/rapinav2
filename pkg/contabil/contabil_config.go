@@ -8,6 +8,7 @@ package contabil
 type cfg struct {
 	dirDados              string   // Diretório de dados temporários
 	arquivosJáProcessados []string // Hashes dos arquivos já processados
+	force                 bool     // Forçar atualização, mesmo que o dado já exista
 }
 
 type ConfigFn func(*cfg)
@@ -25,5 +26,11 @@ func CfgArquivosJáProcessados(hashes []string) ConfigFn {
 		if len(hashes) > 0 {
 			c.arquivosJáProcessados = hashes
 		}
+	}
+}
+
+func CfgForce(force bool) ConfigFn {
+	return func(c *cfg) {
+		c.force = force
 	}
 }
