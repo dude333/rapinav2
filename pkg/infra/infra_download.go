@@ -30,7 +30,6 @@ func DownloadAndUnzip(url, zip string, filters []string) ([]string, error) {
 
 	// Unzip and list files
 	files, err := Unzip(zip, dataDir, filters, verbose)
-	os.Remove(zip)
 	if err != nil {
 		return []string{}, err
 	}

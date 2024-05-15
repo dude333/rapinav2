@@ -6,6 +6,7 @@ package contabil
 
 import (
 	"net/url"
+	"os"
 	"path"
 
 	ext "github.com/dude333/rapinav2/pkg/infra"
@@ -14,7 +15,7 @@ import (
 // infra define uma interface para que este respositório não fique amarrado
 // na implementação de uma única biblioteca externa.
 type infra interface {
-	DownloadAndUnzip(url string, filtros []string) ([]Arquivo, error)
+	DownloadAndUnzip(url string, filtros []string) ([]Arquivo, string, error)
 	Cleanup(files []Arquivo) []string
 }
 
@@ -27,16 +28,18 @@ type localInfra struct {
 	dirDados string // diretório de dados
 }
 
-func (l localInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arquivo, error) {
+// DownloadAndUnzip baixa e descompacta o arquivo e retorna a lista de arquivos descompactados, com
+// o hash de cada arquivo; retorna o hash do .zip e o erro, se houver.
+func (l localInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arquivo, string, error) {
 	u, err := url.Parse(urlString)
 	if err != nil {
-		return []Arquivo{}, err
+		return []Arquivo{}, "", err
 	}
 	arquivo := path.Base(u.Path)
 	zip := path.Join(l.dirDados, arquivo)
 	arqs, err := ext.DownloadAndUnzip(urlString, zip, filtros)
 	if err != nil {
-		return []Arquivo{}, err
+		return []Arquivo{}, "", err
 	}
 
 	arquivos := make([]Arquivo, len(arqs))
@@ -48,7 +51,10 @@ func (l localInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arqu
 		}
 	}
 
-	return arquivos, nil
+	zipHash, err := ext.FileHash(zip)
+	os.Remove(zip)
+
+	return arquivos, zipHash, err
 }
 
 func (l localInfra) Cleanup(arqs []Arquivo) []string {

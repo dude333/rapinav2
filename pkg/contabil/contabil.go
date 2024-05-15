@@ -29,7 +29,7 @@ type DadosContábeis struct {
 	bd  *Sqlite
 }
 
-func NovoServiço(db *sqlx.DB, tempDir string) (*DadosContábeis, error) {
+func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis, error) {
 	dfp := DadosContábeis{}
 
 	repoSqlite, err := NovoSqlite(db)
@@ -37,9 +37,15 @@ func NovoServiço(db *sqlx.DB, tempDir string) (*DadosContábeis, error) {
 		return &dfp, err
 	}
 
+	f := false
+	if len(force) > 0 {
+		f = force[0]
+	}
+
 	cvmDFP, err := NovoDFP(
 		CfgDirDados(tempDir),
 		CfgArquivosJáProcessados(repoSqlite.Hashes()),
+		CfgForce(f),
 	)
 	if err != nil {
 		return &dfp, err
