@@ -69,7 +69,6 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 			progress.Warning("Arquivo já foi processado anteriormente")
 			return
 		}
-		results <- dominio.Resultado{Hash: zipHash}
 
 		for _, arquivo := range arquivos {
 			progress.Running(arquivo.path)
@@ -82,6 +81,9 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 
 			progress.RunOK()
 		}
+
+		// Grava o hash do zip no banco de dados
+		results <- dominio.Resultado{Hash: zipHash}
 	}()
 
 	return results
@@ -166,22 +168,22 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 
 // regDFP é usada para armazenar os dados (linhas) dos arquivos de DFP.
 type regDFP struct {
-	CNPJ        string
-	Nome        string // Nome da empresa
-	Ano         string
-	Consolidado bool
-	Versão      string
+	CNPJ   string
+	Nome   string // Nome da empresa
+	Ano    string
+	Versão string
 
 	Código       string
 	Descr        string
 	GrupoDFP     string
 	DataIniExerc string // AAAA-MM-DD
 	DataFimExerc string // AAAA-MM-DD
-	Meses        int    // Número de meses acumulados desde o início do exercício
 	OrdemExerc   string // ÚLTIMO ou PENÚLTIMO
+	Moeda        string
+	Meses        int // Número de meses acumulados desde o início do exercício
 	Valor        float64
 	Escala       int
-	Moeda        string
+	Consolidado  bool
 }
 
 func (reg *regDFP) converteConta() dominio.Conta {
@@ -246,7 +248,7 @@ func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) 
 			continue
 		}
 
-		contas := make(map[string][]dominio.Conta)
+		contas := make(map[string][]dominio.Conta, len(registros))
 
 		for _, reg := range registros {
 			c := reg.converteConta()
