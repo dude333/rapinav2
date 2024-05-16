@@ -16,6 +16,19 @@ type Tabela struct {
 	Versão int
 }
 
+var tabelasInfra = []Tabela{
+	{
+		Nome:   "hashes",
+		Versão: 1,
+		Up: `CREATE TABLE IF NOT EXISTS hashes (
+        hash VARCHAR PRIMARY KEY
+      )`,
+		Down: "DROP TABLE IF EXISTS hashes",
+	},
+}
+
+// CriarTabelas cria as tabelas em tabelasInfra, além das tabelas passadas
+// como parâmetro.
 func CriarTabelas(db *sqlx.DB, tabelas []Tabela) (err error) {
 	ins := func(n string, v int) error {
 		query := `INSERT OR REPLACE INTO tabelas (nome, versao) VALUES (?, ?)`
@@ -38,7 +51,7 @@ func CriarTabelas(db *sqlx.DB, tabelas []Tabela) (err error) {
   )`
 	_, _ = db.Exec(sqlCreateTableTabelas)
 
-	for _, t := range tabelas {
+	for _, t := range append(tabelas, tabelasInfra...) {
 		v := ver(t.Nome)
 		if v == t.Versão {
 			continue
@@ -58,4 +71,21 @@ func CriarTabelas(db *sqlx.DB, tabelas []Tabela) (err error) {
 	}
 
 	return nil
+}
+
+func Hashes(db *sqlx.DB) ([]string, error) {
+	var hashes []string
+	err := db.Select(&hashes, `SELECT hash FROM hashes`)
+	return hashes, err
+}
+
+func HasHash(db *sqlx.DB, hash string) (bool, error) {
+	var count int
+	err := db.Get(&count, `SELECT COUNT(*) FROM hashes WHERE hash = ?`, hash)
+	return count > 0, err
+}
+
+func SaveHash(db *sqlx.DB, hash string) error {
+	_, err := db.Exec(`INSERT OR REPLACE INTO hashes (hash) VALUES (?)`, hash)
+	return err
 }

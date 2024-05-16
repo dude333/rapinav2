@@ -13,6 +13,7 @@ import (
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil/dominio"
+	ext "github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -26,7 +27,7 @@ type CVM interface {
 // em vários repositórios (API e BD).
 type DadosContábeis struct {
 	cvm CVM
-	bd  *Sqlite
+	db  *Sqlite
 }
 
 func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis, error) {
@@ -42,16 +43,18 @@ func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis,
 		f = force[0]
 	}
 
+	hashes, _ := ext.Hashes(db)
+
 	cvmDFP, err := NovoDFP(
 		CfgDirDados(tempDir),
-		CfgArquivosJáProcessados(repoSqlite.Hashes()),
+		CfgArquivosJáProcessados(hashes),
 		CfgForce(f),
 	)
 	if err != nil {
 		return &dfp, err
 	}
 
-	return &DadosContábeis{cvm: cvmDFP, bd: repoSqlite}, nil
+	return &DadosContábeis{cvm: cvmDFP, db: repoSqlite}, nil
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
@@ -69,13 +72,13 @@ func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
 			continue
 		}
 		if result.DFP != nil {
-			err := c.bd.Salvar(ctx, result.DFP)
+			err := c.db.Salvar(ctx, result.DFP)
 			if err != nil {
 				return err
 			}
 		}
 		if len(result.Hash) > 0 {
-			err := c.bd.SalvarHash(ctx, result.Hash)
+			err := ext.SaveHash(c.db.db, result.Hash)
 			if err != nil {
 				progress.ErrorMsg("erro salvando hash: %v", err)
 			}
@@ -97,23 +100,23 @@ func (df *DadosContábeis) Relatório(cnpj string, ano int) (*dominio.Demonstra�
 */
 
 func (c *DadosContábeis) DadosTrimestrais(cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
-	if c.bd == nil {
+	if c.db == nil {
 		return nil, ErrRepositórioInválido
 	}
-	return c.bd.Trimestral(context.Background(), cnpj, consolidado)
+	return c.db.Trimestral(context.Background(), cnpj, consolidado)
 }
 
 func (c *DadosContábeis) Empresas() ([]rapina.Empresa, error) {
-	if c.bd == nil {
+	if c.db == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
-	return c.bd.Empresas(context.Background())
+	return c.db.Empresas(context.Background())
 }
 
 func (c *DadosContábeis) BuscaEmpresas(nome string) ([]rapina.Empresa, error) {
-	if c.bd == nil {
+	if c.db == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
 	progress.Debug("Empresas(%s)", nome)
-	return c.bd.BuscaEmpresas(context.Background(), nome)
+	return c.db.BuscaEmpresas(context.Background(), nome)
 }

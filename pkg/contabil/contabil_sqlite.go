@@ -189,17 +189,6 @@ func (s *Sqlite) BuscaEmpresas(ctx context.Context, nome string) ([]rapina.Empre
 	return ret, nil
 }
 
-func (s *Sqlite) Hashes() []string {
-	var hashes []string
-	_ = s.db.Select(&hashes, `SELECT DISTINCT(hash) FROM hashes`)
-	return hashes
-}
-
-func (s *Sqlite) SalvarHash(ctx context.Context, hash string) error {
-	_, err := s.db.ExecContext(ctx, `INSERT OR REPLACE INTO hashes (hash) VALUES ($1)`, hash)
-	return err
-}
-
 type sqliteEmpresa struct {
 	ID   int    `db:"id"`
 	CNPJ string `db:"cnpj"`
@@ -398,15 +387,5 @@ var tabelas = []ext.Tabela{
 			PRIMARY KEY (id_empresa, codigo, data_ini_exerc, data_fim_exerc)
 		)`,
 		Down: `DROP TABLE IF EXISTS contas`,
-	},
-	{
-		Nome:   "hashes",
-		Versão: _ver_,
-		Up: `CREATE TABLE IF NOT EXISTS hashes (
-			id             INTEGER PRIMARY KEY AUTOINCREMENT,
-			hash           VARCHAR NOT NULL,
-			UNIQUE (hash)
-		)`,
-		Down: "DROP TABLE IF EXISTS hashes",
 	},
 }
