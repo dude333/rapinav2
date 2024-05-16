@@ -255,14 +255,14 @@ func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinancei
 	}
 
 	progress.Debug("Salvando empresa %s, %d (%d): %d contas", d.Nome, d.Ano, id, len(dfp.Contas))
-	return inserirContas(ctx, s.db, id, dfp.Contas, dfp.Nome)
+	return inserirContas(ctx, s.db, id, dfp)
 }
 
 // inserirContas insere os registro das contas, sendo que deve ter sido garantido
 // previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Conta, nome string) error {
-	if len(contas) == 0 {
+func inserirContas(ctx context.Context, db *sqlx.DB, id int, dfp *dominio.DemonstraçãoFinanceira) error {
+	if len(dfp.Contas) == 0 {
 		return nil
 	}
 
@@ -286,19 +286,19 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Co
 		return 0
 	}
 
-	for i := range contas {
+	for _, conta := range dfp.Contas {
 		c := sqliteConta{
 			ID:           id,
-			Código:       contas[i].Código,
-			Descr:        contas[i].Descr,
-			Grupo:        contas[i].Grupo,
-			Consolidado:  boolToInt(contas[i].Consolidado),
-			DataIniExerc: contas[i].DataIniExerc,
-			DataFimExerc: contas[i].DataFimExerc,
-			Meses:        contas[i].Meses,
-			Valor:        contas[i].Total.Valor,
-			Escala:       contas[i].Total.Escala,
-			Moeda:        contas[i].Total.Moeda,
+			Código:       conta.Código,
+			Descr:        conta.Descr,
+			Grupo:        conta.Grupo,
+			Consolidado:  boolToInt(conta.Consolidado),
+			DataIniExerc: conta.DataIniExerc,
+			DataFimExerc: conta.DataFimExerc,
+			Meses:        conta.Meses,
+			Valor:        conta.Total.Valor,
+			Escala:       conta.Total.Escala,
+			Moeda:        conta.Total.Moeda,
 		}
 
 		_, err = stmt.ExecContext(ctx, c)
@@ -310,7 +310,7 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, contas []dominio.Co
 				_ = tx.Rollback()
 				return err
 			}
-			progress.ErrorMsg("%s: %d, %s, %#v", err, id, nome, contas[i])
+			progress.ErrorMsg("%s: %d, %s, %#v", err, id, dfp.Nome, conta)
 
 		}
 	}
