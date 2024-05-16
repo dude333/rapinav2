@@ -7,7 +7,7 @@ package main
 // import "github.com/pkg/profile"
 
 func main() {
-	// defer profile.Start().Stop()
+	// defer profile.Start(profile.MemProfileRate(2048)).Stop()
 	defer func() {
 		if _db != nil {
 			_db.Close()
