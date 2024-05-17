@@ -22,7 +22,7 @@ type EmissorData struct {
 	CNPJ   string
 }
 
-func Update(db *sqlx.DB) error {
+func AtualizarTickers(db *sqlx.DB) error {
 	progress.Status("Iniciando a atualização dos tickers")
 
 	err := ext.CriarTabelas(db, tabelas)
@@ -40,8 +40,17 @@ func Update(db *sqlx.DB) error {
 		return err
 	}
 
+	h := ext.Hash(&payload)
+	ok, _ := ext.HasHash(db, h)
+	progress.Debug("hash: %s, ok: %t", h, ok)
+	if ok {
+		progress.Warning("Este arquivo de 'tickers' já foi processado anteriormente")
+		return nil
+	}
+	_ = ext.SaveHash(db, h)
+
 	// Extrai o EMISSOR.TXT do zip
-	emissorData, err := extractEmissorData(payload)
+	emissorData, err := extractEmissorData(&payload)
 	if err != nil {
 		return err
 	}
@@ -74,8 +83,8 @@ func downloadBinaryPayload(url string) ([]byte, error) {
 	return body, nil
 }
 
-func extractEmissorData(zipContent []byte) ([]EmissorData, error) {
-	reader, err := zip.NewReader(strings.NewReader(string(zipContent)), int64(len(zipContent)))
+func extractEmissorData(zipContent *[]byte) ([]EmissorData, error) {
+	reader, err := zip.NewReader(strings.NewReader(string(*zipContent)), int64(len(*zipContent)))
 	if err != nil {
 		return nil, err
 	}
@@ -208,10 +217,10 @@ func getTickerPrefix(db *sqlx.DB, cnpj string) (string, error) {
 		return ticker, nil
 	}
 
-	err = Update(db)
-	if err != nil {
-		return "", err
-	}
+	// err = Update(db)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	err = db.Get(&ticker, "SELECT ticker FROM isin WHERE cnpj = ?", cnpj)
 	if err != nil {

@@ -66,7 +66,7 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 		defer c.Cleanup(arquivos)
 
 		if c.existe(zipHash) {
-			progress.Warning("Arquivo já foi processado anteriormente")
+			progress.Warning("Este arquivo 'dfp/itr' já foi processado anteriormente")
 			return
 		}
 

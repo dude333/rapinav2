@@ -27,3 +27,9 @@ func FileHash(filename string) (string, error) {
 	}
 	return fmt.Sprintf("%x", fnvHash.Sum64()), nil
 }
+
+func Hash(data *[]byte) string {
+	fnvHash.Reset()
+	fnvHash.Write([]byte(*data))
+	return fmt.Sprintf("%x", fnvHash.Sum64())
+}
