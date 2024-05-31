@@ -48,7 +48,7 @@ func Test_cvm_Importar(t *testing.T) {
 				db = sqlx.MustConnect("sqlite3", connStr)
 			}
 
-			c, err := NovoDFP()
+			c, err := NovaDFP()
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,11 +4,29 @@
 
 package contabil
 
+import "os"
+
 // cfg contém as configurações usadas nos construtores deste repositório.
 type cfg struct {
 	dirDados              string   // Diretório de dados temporários
 	arquivosJáProcessados []string // Hashes dos arquivos já processados
 	force                 bool     // Forçar atualização, mesmo que o dado já exista
+}
+
+func (c *cfg) loadConfigs(configs ...ConfigFn) error {
+	for _, config := range configs {
+		config(c)
+	}
+
+	if c.dirDados == "" {
+		c.dirDados = os.TempDir()
+	} else {
+		err := os.MkdirAll(c.dirDados, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type ConfigFn func(*cfg)

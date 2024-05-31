@@ -45,7 +45,7 @@ func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis,
 
 	hashes, _ := ext.Hashes(db)
 
-	cvmDFP, err := NovoDFP(
+	cvmDFP, err := NovaDFP(
 		CfgDirDados(tempDir),
 		CfgArquivosJáProcessados(hashes),
 		CfgForce(f),
