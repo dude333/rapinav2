@@ -5,9 +5,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/cotacao"
 	"github.com/dude333/rapinav2/pkg/progress"
@@ -26,7 +28,7 @@ var atualizarCmd = &cobra.Command{
 	Aliases: []string{"update"},
 	Short:   "Atualizar os dados do banco de dados",
 	Long:    `Atualizar o banco de dados com as informações coletadas dos arquivos da CVM e B3`,
-	Run:     atualizar,
+	Run:     atualizar2,
 }
 
 func init() {
@@ -72,5 +74,16 @@ func atualizar(_ *cobra.Command, _ []string) {
 
 	if err := cotacao.AtualizarTickers(db()); err != nil {
 		progress.Error(err)
+	}
+}
+
+func atualizar2(_ *cobra.Command, _ []string) {
+	cvm, err := rapina.NovaCVM(db(), flags.tempDir, flags.atualizar.force)
+	if err != nil {
+		progress.Fatal(err)
+	}
+	err = cvm.Importar(context.Background(), flags.atualizar.ano, false)
+	if err != nil {
+		progress.Fatal(err)
 	}
 }
