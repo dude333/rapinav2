@@ -22,27 +22,14 @@ import (
 )
 
 type cvmDFP struct {
-	infra
-	cfg
-	// Empresa *dominio.DemonstraçãoFinanceira
+	infra infra
+	cfg   *cfg
 }
 
-func NovoDFP(configs ...ConfigFn) (*cvmDFP, error) {
+func NovaDFP(configs ...ConfigFn) (*cvmDFP, error) {
 	var cvm cvmDFP
-	for _, cfg := range configs {
-		cfg(&cvm.cfg)
-	}
-
-	if cvm.dirDados == "" {
-		cvm.dirDados = os.TempDir()
-	} else {
-		err := os.MkdirAll(cvm.dirDados, os.ModePerm)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	cvm.infra = &localInfra{dirDados: cvm.dirDados}
+	cvm.cfg.loadConfigs(configs...)
+	cvm.infra = &localInfra{dirDados: cvm.cfg.dirDados}
 
 	return &cvm, nil
 }
@@ -57,13 +44,13 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 
 		url := urlArquivo(ano, trimestral)
 
-		arquivos, zipHash, err := c.DownloadAndUnzip(url, filtros())
+		arquivos, zipHash, err := c.infra.DownloadAndUnzip(url, filtros())
 		if err != nil {
 			results <- dominio.Resultado{Error: err}
 			return
 		}
 
-		defer c.Cleanup(arquivos)
+		defer c.infra.Cleanup(arquivos)
 
 		if c.existe(zipHash) {
 			progress.Warning("Este arquivo 'dfp/itr' já foi processado anteriormente")
@@ -90,11 +77,11 @@ func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan 
 }
 
 func (c cvmDFP) existe(hash string) bool {
-	if len(hash) == 0 || c.force {
+	if len(hash) == 0 || c.cfg.force {
 		return false
 	}
-	for i := range c.arquivosJáProcessados {
-		if c.arquivosJáProcessados[i] == hash {
+	for i := range c.cfg.arquivosJáProcessados {
+		if c.cfg.arquivosJáProcessados[i] == hash {
 			return true
 		}
 	}
