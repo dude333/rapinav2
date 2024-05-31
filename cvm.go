@@ -27,9 +27,12 @@ package rapina
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"path"
 	"time"
 
+	"github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
 )
@@ -62,6 +65,7 @@ type CvmType int
 
 const (
 	CvmDfp CvmType = iota
+	CvmItr
 	CvmFre
 )
 
@@ -70,14 +74,14 @@ type CvmDataSource interface {
 }
 
 // ImportarCVMimporta dados da CVM para a base de dados local
-func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) error {
-	for _, tipo := range []CvmType{CvmDfp, CvmFre} {
-		chDados, err := c.importarTipo(ctx, tipo, ano, trimestral)
+func (c *CVM) Importar(ctx context.Context, ano int) error {
+	for _, tipo := range []CvmType{CvmDfp, CvmItr, CvmFre} {
+		chDados, err := c.importarTipo(ctx, tipo, ano)
 		if err != nil {
 			return err
 		}
 		for dado := range chDados {
-			err := dado.(CvmDataSource).Salvar(ctx, c.db)
+			err := dado.Salvar(ctx, c.db)
 			if err != nil {
 				progress.Error(err)
 			}
@@ -87,25 +91,81 @@ func (c *CVM) Importar(ctx context.Context, ano int, trimestral bool) error {
 }
 
 // importarTipo prepara os dados e os carrega na struct correspondente
-func (c *CVM) importarTipo(ctx context.Context, tipo CvmType, ano int, trimestral bool) (<-chan interface{}, error) {
+func (c *CVM) importarTipo(ctx context.Context, tipo CvmType, ano int) (<-chan CvmDataSource, error) {
 	switch tipo {
 	case CvmDfp:
-		return c.importarDFP(ctx, ano, trimestral)
+		return c.importarDFP(ctx, ano, false)
+	case CvmItr:
+		return c.importarDFP(ctx, ano, true)
 	case CvmFre:
-		return c.importarFRE(ctx, ano, trimestral)
+		return c.importarFRE(ctx, ano)
 	}
 	return nil, fmt.Errorf("tipo %d inválido", tipo)
 }
 
+func (c CVM) existe(hash string) bool {
+	if len(hash) == 0 || c.force {
+		return false
+	}
+	for i := range c.hashes {
+		if c.hashes[i] == hash {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *CVM) addHash(hash string) {
+	for i := range c.hashes {
+		if c.hashes[i] == hash {
+			return
+		}
+	}
+	c.hashes = append(c.hashes, hash)
+}
+
 // DFP ------------------------------------------------------------------------
 
-func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (<-chan interface{}, error) {
-	ch := make(chan interface{})
+func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (<-chan CvmDataSource, error) {
+	// url := urlArquivo(CvmDfp, ano, trimestre)
+	// arquivos, zipHash, err := DownloadAndUnzip(url, c.dirDados, filtros())
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if c.existe(zipHash) {
+	// 	return nil, fmt.Errorf("este arquivo 'dfp/itr' já foi processado anteriormente")
+	// }
+
+	arquivos := []Arquivo{
+		{
+			path: path.Join(c.dirDados, "dfp.zip"),
+			hash: "dfp",
+		},
+		{
+			path: path.Join(c.dirDados, "itr.zip"),
+			hash: "itr",
+		},
+	}
+
+	ch := make(chan CvmDataSource)
 	go func() {
-		defer close(ch)
-		for i := 1; i <= 10; i++ {
-			ch <- &DFP{DataDFP: fmt.Sprintf("DFP %d", i)}
-			time.Sleep(time.Second)
+		defer func() {
+			Cleanup(arquivos)
+			close(ch)
+		}()
+
+		for _, arq := range arquivos {
+			if ctx.Err() != nil {
+				return
+			}
+			progress.Running(arq.path)
+			err := ProcessarArquivoDFP(ctx, arq, ch)
+			if err != nil {
+				progress.RunFailMsg(err.Error())
+				continue
+			}
+			c.addHash(arq.hash)
+			progress.RunOK()
 		}
 	}()
 	return ch, nil
@@ -122,13 +182,33 @@ func (dfp *DFP) Salvar(ctx context.Context, db *sqlx.DB) error {
 	return nil
 }
 
+func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, ch chan<- CvmDataSource) error {
+	// fh, err := os.Open(arq.path)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer fh.Close()
+
+	for i := 1; i <= 4; i++ {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		ch <- &DFP{DataDFP: fmt.Sprintf("DFP %s", arq.path)}
+		time.Sleep(time.Second)
+	}
+	return nil
+}
+
 // FRE ------------------------------------------------------------------------
 
-func (c *CVM) importarFRE(ctx context.Context, ano int, trimestre bool) (<-chan interface{}, error) {
-	ch := make(chan interface{})
+func (c *CVM) importarFRE(ctx context.Context, ano int) (<-chan CvmDataSource, error) {
+	ch := make(chan CvmDataSource)
 	go func() {
 		defer close(ch)
 		for i := 1; i <= 10; i++ {
+			if ctx.Err() != nil {
+				return
+			}
 			ch <- &FRE{}
 			time.Sleep(time.Second)
 		}
@@ -142,4 +222,92 @@ func (fre *FRE) Salvar(ctx context.Context, db *sqlx.DB) error {
 	// Salvar FRE no bando de dados
 	progress.Status("FRE")
 	return nil
+}
+
+// --------------------------------------------------------------------------A-
+
+func filtros() []string {
+	var filtros []string // Parte do nome dos arquivos que serão usados
+
+	tipo := []string{
+		"BPA",
+		"BPP",
+		"DFC_MD",
+		"DFC_MI",
+		"DRE",
+		"DVA",
+	}
+
+	for _, t := range tipo {
+		filtros = append(filtros,
+			"dfp_cia_aberta_"+t+"_con",
+			"dfp_cia_aberta_"+t+"_ind",
+			"itr_cia_aberta_"+t+"_con",
+			"itr_cia_aberta_"+t+"_ind",
+		)
+	}
+
+	return filtros
+}
+
+func urlArquivo(tipoDado CvmType, ano int, trimestral bool) string {
+	var tipo string
+	switch tipoDado {
+	case CvmDfp:
+		tipo = "DFP"
+		if trimestral {
+			tipo = "ITR"
+		}
+	case CvmFre:
+		tipo = "FRE"
+	}
+
+	zip := fmt.Sprintf(`%s_cia_aberta_%d.zip`, tipo, ano)
+	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/` + tipo + `/DADOS/` + zip
+}
+
+// --------------------------------------------------------------------------A-
+
+type Arquivo struct {
+	path string
+	hash string
+}
+
+// DownloadAndUnzip baixa e descompacta o arquivo e retorna a lista de arquivos
+// descompactados, com o hash de cada arquivo; retorna também o hash do .zip e
+// o erro, se houver.
+func DownloadAndUnzip(urlString string, tempDir string, filtros []string) ([]Arquivo, string, error) {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return []Arquivo{}, "", err
+	}
+	arquivo := path.Base(u.Path)
+	zip := path.Join(tempDir, arquivo)
+	arqs, err := infra.DownloadAndUnzip(urlString, zip, filtros)
+	if err != nil {
+		return []Arquivo{}, "", err
+	}
+
+	arquivos := make([]Arquivo, len(arqs))
+	for i := range arqs {
+		h, _ := infra.FileHash(arqs[i])
+		arquivos[i] = Arquivo{
+			path: arqs[i],
+			hash: h,
+		}
+	}
+
+	zipHash, err := infra.FileHash(zip)
+	os.Remove(zip)
+
+	return arquivos, zipHash, err
+}
+
+// Cleanup remove os arquivos
+func Cleanup(arqs []Arquivo) []string {
+	files := make([]string, len(arqs))
+	for i := range arqs {
+		files[i] = arqs[i].path
+	}
+	return infra.Cleanup(files)
 }

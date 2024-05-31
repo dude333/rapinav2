@@ -77,12 +77,14 @@ func atualizar(_ *cobra.Command, _ []string) {
 	}
 }
 
-func atualizar2(_ *cobra.Command, _ []string) {
+func atualizar2(cmd *cobra.Command, _ []string) {
 	cvm, err := rapina.NovaCVM(db(), flags.tempDir, flags.atualizar.force)
 	if err != nil {
 		progress.Fatal(err)
 	}
-	err = cvm.Importar(context.Background(), flags.atualizar.ano, false)
+	ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Minute)
+	err = cvm.Importar(ctx, flags.atualizar.ano)
+	cancel()
 	if err != nil {
 		progress.Fatal(err)
 	}
