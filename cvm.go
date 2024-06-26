@@ -30,6 +30,8 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dude333/rapinav2/pkg/infra"
@@ -44,7 +46,7 @@ type CVM struct {
 	force    bool     // Forçar atualização, mesmo que o dado já exista
 }
 
-func NovaCVM(db *sqlx.DB, tempDir string, force bool) (*CVM, error) {
+func NewCVM(db *sqlx.DB, tempDir string, force bool) (*CVM, error) {
 	c := &CVM{
 		db:       db,
 		dirDados: tempDir,
@@ -75,30 +77,29 @@ type CvmDataSource interface {
 
 // ImportarCVMimporta dados da CVM para a base de dados local
 func (c *CVM) Importar(ctx context.Context, ano int) error {
-	for _, tipo := range []CvmType{CvmDfp, CvmItr, CvmFre} {
-		chDados, err := c.importarTipo(ctx, tipo, ano)
+	for _, tipo := range []CvmType{CvmDfp} {
+		dados, err := c.importarTipo(ctx, tipo, ano)
 		if err != nil {
 			return err
 		}
-		for dado := range chDados {
-			err := dado.Salvar(ctx, c.db)
-			if err != nil {
-				progress.Error(err)
-			}
+		err = dados.Salvar(ctx, c.db)
+		if err != nil {
+			progress.Error(err)
 		}
 	}
 	return nil
 }
 
-// importarTipo prepara os dados e os carrega na struct correspondente
-func (c *CVM) importarTipo(ctx context.Context, tipo CvmType, ano int) (<-chan CvmDataSource, error) {
+// importarTipo prepara os dados e os carrega na struct correspondente.
+func (c *CVM) importarTipo(ctx context.Context, tipo CvmType, ano int) (CvmDataSource, error) {
 	switch tipo {
 	case CvmDfp:
-		return c.importarDFP(ctx, ano, false)
+		dfp, err := c.importarDFP(ctx, ano, false)
+		return dfp, err
 	case CvmItr:
 		return c.importarDFP(ctx, ano, true)
-	case CvmFre:
-		return c.importarFRE(ctx, ano)
+		// case CvmFre:
+		// 	return c.importarFRE(ctx, ano)
 	}
 	return nil, fmt.Errorf("tipo %d inválido", tipo)
 }
@@ -124,9 +125,8 @@ func (c *CVM) addHash(hash string) {
 	c.hashes = append(c.hashes, hash)
 }
 
-// DFP ------------------------------------------------------------------------
-
-func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (<-chan CvmDataSource, error) {
+// importarDFP prepara os dados e os carrega na struct DFP
+func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (*DFP, error) {
 	// url := urlArquivo(CvmDfp, ano, trimestre)
 	// arquivos, zipHash, err := DownloadAndUnzip(url, c.dirDados, filtros())
 	// if err != nil {
@@ -147,42 +147,26 @@ func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (<-chan 
 		},
 	}
 
-	ch := make(chan CvmDataSource)
-	go func() {
-		defer func() {
-			Cleanup(arquivos)
-			close(ch)
-		}()
+	defer Cleanup(arquivos)
 
-		for _, arq := range arquivos {
-			if ctx.Err() != nil {
-				return
-			}
-			progress.Running(arq.path)
-			err := ProcessarArquivoDFP(ctx, arq, ch)
-			if err != nil {
-				progress.RunFailMsg(err.Error())
-				continue
-			}
-			c.addHash(arq.hash)
-			progress.RunOK()
+	dfp := NewDFP()
+	for _, arq := range arquivos {
+		if ctx.Err() != nil {
+			return dfp, ctx.Err()
 		}
-	}()
-	return ch, nil
+		progress.Running(arq.path)
+		err := ProcessarArquivoDFP(ctx, arq, dfp)
+		if err != nil {
+			progress.RunFailMsg(err.Error())
+			continue
+		}
+		c.addHash(arq.hash)
+		progress.RunOK()
+	}
+	return dfp, nil
 }
 
-type DFP struct {
-	err error
-
-	DataDFP string
-}
-
-func (dfp *DFP) Salvar(ctx context.Context, db *sqlx.DB) error {
-	progress.Status("DFP: %s", dfp.DataDFP)
-	return nil
-}
-
-func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, ch chan<- CvmDataSource) error {
+func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, dfp *DFP) error {
 	// fh, err := os.Open(arq.path)
 	// if err != nil {
 	// 	return err
@@ -193,8 +177,118 @@ func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, ch chan<- CvmDataSour
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		ch <- &DFP{DataDFP: fmt.Sprintf("DFP %s", arq.path)}
-		time.Sleep(time.Second)
+		e := DFPEmpresa{
+			Empresa: Empresa{
+				Nome: "Empresa Teste",
+				CNPJ: "12345678901234",
+			},
+			Ano:          "2009",
+			DataIniExerc: "2009-01-01",
+			Versão:       strconv.Itoa(i),
+			Contas: []Conta{
+				{
+					Descr:        fmt.Sprintf("Conta %d", i),
+					Código:       "1",
+					Consolidado:  true,
+					DataFimExerc: "2009-12-31",
+					OrdemExerc:   "ÚLTIMO",
+				},
+			},
+		}
+		dfp.AppendConta(e)
+	}
+	return nil
+}
+
+// DFP ------------------------------------------------------------------------
+
+type DFP map[string]*DFPEmpresa
+
+type DFPEmpresa struct {
+	Empresa
+	Ano          string
+	DataIniExerc string
+	Versão       string
+	Contas       []Conta
+}
+
+// Conta com os dados das Demonstrações Financeiras Padronizadas (DFP) ou
+// com as Informações Trimestrais (ITR).
+type Conta struct {
+	Código       string   // 1, 1.01, 1.02...
+	Descr        string   // Descrição
+	Grupo        string   // BPA, BPP, DRE, DFC...
+	DataIniExerc string   // AAAA-MM-DD
+	DataFimExerc string   // AAAA-MM-DD
+	OrdemExerc   string   // ÚLTIMO ou PENÚLTIMO
+	Total        Dinheiro // $
+	Meses        int      // Meses acumulados desde o início do período
+	Consolidado  bool     // Individual ou Consolidado
+}
+
+func (c *Conta) Válida() bool {
+	return len(c.Código) > 0 &&
+		len(c.Descr) > 0 &&
+		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
+		(c.OrdemExerc == "ÚLTIMO" ||
+			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
+}
+
+func NewDFP() *DFP {
+	dfp := make(DFP, 200)
+	return &dfp
+}
+
+func keyDFP(empresa DFPEmpresa) (string, error) {
+	key := empresa.CNPJ + empresa.Ano + ";" + empresa.Versão
+	if len(key) < (14 + 4 + 1 + 1) {
+		return "", fmt.Errorf("keyDFP: empresa inválida")
+	}
+	return key, nil
+}
+
+// AppendConta adiciona uma conta ao DFP
+func (dfp *DFP) AppendConta(e DFPEmpresa) bool {
+	progress.Debug("AppendConta: %#v", e)
+	if len(e.Contas) != 1 {
+		return false
+	}
+	conta := e.Contas[0]
+	if !conta.Válida() {
+		progress.Debug("Conta inválida: %#v", conta)
+		return false
+	}
+	key, err := keyDFP(e)
+	if err != nil {
+		return false
+	}
+
+	progress.Debug("Adicionando conta: %s", key)
+
+	_, exists := (*dfp)[key]
+	if !exists {
+		(*dfp)[key] = &DFPEmpresa{
+			Empresa:      e.Empresa,
+			Ano:          e.Ano,
+			DataIniExerc: e.DataIniExerc,
+			Versão:       e.Versão,
+			Contas:       make([]Conta, 0, 50),
+		}
+	}
+
+	(*dfp)[key].Contas = append((*dfp)[key].Contas, conta)
+
+	return true
+}
+
+// Salvar salva o DFP no banco de dados
+func (dfp *DFP) Salvar(ctx context.Context, db *sqlx.DB) error {
+	progress.Status("Salvar: %v", (*dfp))
+	for i := range *dfp {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		progress.Status("DFP: %#v", (*dfp)[i].Contas)
 	}
 	return nil
 }
