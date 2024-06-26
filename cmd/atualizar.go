@@ -78,7 +78,7 @@ func atualizar(_ *cobra.Command, _ []string) {
 }
 
 func atualizar2(cmd *cobra.Command, _ []string) {
-	cvm, err := rapina.NovaCVM(db(), flags.tempDir, flags.atualizar.force)
+	cvm, err := rapina.NewCVM(db(), flags.tempDir, flags.atualizar.force)
 	if err != nil {
 		progress.Fatal(err)
 	}
