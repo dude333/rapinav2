@@ -25,18 +25,19 @@
 package rapina
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"net/url"
 	"os"
 	"path"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/transform"
 )
 
 type CVM struct {
@@ -167,129 +168,32 @@ func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (*DFP, e
 }
 
 func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, dfp *DFP) error {
-	// fh, err := os.Open(arq.path)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer fh.Close()
-
-	for i := 1; i <= 4; i++ {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		e := DFPEmpresa{
-			Empresa: Empresa{
-				Nome: "Empresa Teste",
-				CNPJ: "12345678901234",
-			},
-			Ano:          "2009",
-			DataIniExerc: "2009-01-01",
-			Versão:       strconv.Itoa(i),
-			Contas: []Conta{
-				{
-					Descr:        fmt.Sprintf("Conta %d", i),
-					Código:       "1",
-					Consolidado:  true,
-					DataFimExerc: "2009-12-31",
-					OrdemExerc:   "ÚLTIMO",
-				},
-			},
-		}
-		dfp.AppendConta(e)
-	}
-	return nil
-}
-
-// DFP ------------------------------------------------------------------------
-
-type DFP map[string]*DFPEmpresa
-
-type DFPEmpresa struct {
-	Empresa
-	Ano          string
-	DataIniExerc string
-	Versão       string
-	Contas       []Conta
-}
-
-// Conta com os dados das Demonstrações Financeiras Padronizadas (DFP) ou
-// com as Informações Trimestrais (ITR).
-type Conta struct {
-	Código       string   // 1, 1.01, 1.02...
-	Descr        string   // Descrição
-	Grupo        string   // BPA, BPP, DRE, DFC...
-	DataIniExerc string   // AAAA-MM-DD
-	DataFimExerc string   // AAAA-MM-DD
-	OrdemExerc   string   // ÚLTIMO ou PENÚLTIMO
-	Total        Dinheiro // $
-	Meses        int      // Meses acumulados desde o início do período
-	Consolidado  bool     // Individual ou Consolidado
-}
-
-func (c *Conta) Válida() bool {
-	return len(c.Código) > 0 &&
-		len(c.Descr) > 0 &&
-		len(c.DataFimExerc) == len("AAAA-MM-DD") &&
-		(c.OrdemExerc == "ÚLTIMO" ||
-			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
-}
-
-func NewDFP() *DFP {
-	dfp := make(DFP, 200)
-	return &dfp
-}
-
-func keyDFP(empresa DFPEmpresa) (string, error) {
-	key := empresa.CNPJ + empresa.Ano + ";" + empresa.Versão
-	if len(key) < (14 + 4 + 1 + 1) {
-		return "", fmt.Errorf("keyDFP: empresa inválida")
-	}
-	return key, nil
-}
-
-// AppendConta adiciona uma conta ao DFP
-func (dfp *DFP) AppendConta(e DFPEmpresa) bool {
-	progress.Debug("AppendConta: %#v", e)
-	if len(e.Contas) != 1 {
-		return false
-	}
-	conta := e.Contas[0]
-	if !conta.Válida() {
-		progress.Debug("Conta inválida: %#v", conta)
-		return false
-	}
-	key, err := keyDFP(e)
+	fh, err := os.Open(arq.path)
 	if err != nil {
-		return false
+		return err
 	}
+	defer fh.Close()
 
-	progress.Debug("Adicionando conta: %s", key)
+	csv := &csvDFP{sep: ";"}
 
-	_, exists := (*dfp)[key]
-	if !exists {
-		(*dfp)[key] = &DFPEmpresa{
-			Empresa:      e.Empresa,
-			Ano:          e.Ano,
-			DataIniExerc: e.DataIniExerc,
-			Versão:       e.Versão,
-			Contas:       make([]Conta, 0, 50),
-		}
-	}
+	stream := transform.NewReader(fh, charmap.ISO8859_1.NewDecoder())
+	scanner := bufio.NewScanner(stream)
 
-	(*dfp)[key].Contas = append((*dfp)[key].Contas, conta)
-
-	return true
-}
-
-// Salvar salva o DFP no banco de dados
-func (dfp *DFP) Salvar(ctx context.Context, db *sqlx.DB) error {
-	progress.Status("Salvar: %v", (*dfp))
-	for i := range *dfp {
+	for scanner.Scan() {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		progress.Status("DFP: %#v", (*dfp)[i].Contas)
+
+		linha := scanner.Text()
+
+		conta, err := csv.carregaDFP(linha)
+		if err != nil {
+			continue
+		}
+
+		dfp.AppendConta(conta)
 	}
+
 	return nil
 }
 
