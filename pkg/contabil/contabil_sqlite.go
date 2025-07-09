@@ -14,6 +14,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"golang.org/x/text/runes"
@@ -388,4 +389,83 @@ var tabelas = []ext.Tabela{
 		)`,
 		Down: `DROP TABLE IF EXISTS contas`,
 	},
+	{
+		Nome:   "fre",
+		Versão: _ver_,
+		Up: `CREATE TABLE IF NOT EXISTS fre (
+			id_empresa                   INTEGER,
+			data_ref                     VARCHAR NOT NULL,
+			data_ultima_assembleia       VARCHAR,
+			id_doc                       INTEGER,
+			pct_acoes_ord_circulacao     REAL,
+			pct_acoes_pref_circulacao    REAL,
+			pct_total_acoes_circulacao   REAL,
+			qtd_acionistas_inst          INTEGER,
+			qtd_acionistas_pf            INTEGER,
+			qtd_acionistas_pj            INTEGER,
+			qtd_acoes_ord_circulacao     INTEGER,
+			qtd_acoes_pref_circulacao    INTEGER,
+			qtd_total_acoes_circulacao   INTEGER,
+			PRIMARY KEY (id_empresa, data_ref, id_doc)
+		)`,
+		Down: `DROP TABLE IF EXISTS fre`,
+	},
+}
+
+func (s *Sqlite) SalvarFRE(ctx context.Context, fre *dominio.FreDistribCapital) error {
+	if fre == nil {
+		return nil
+	}
+
+	// Busca ou cria empresa
+	d := sqliteEmpresa{
+		CNPJ: fre.Empresa.CNPJ,
+		Nome: fre.Empresa.Nome,
+		Ano:  0, // FRE não tem ano explícito, pode ser extraído de DataRef se necessário
+	}
+
+	idEmpresa := 0
+	err := s.db.GetContext(ctx, &idEmpresa, `SELECT id FROM empresas WHERE cnpj=?`, d.CNPJ)
+	if err == sql.ErrNoRows {
+		// Cria empresa se não existir
+		query := `INSERT INTO empresas (cnpj, nome, ano) VALUES (?, ?, ?)`
+		_, err = s.db.ExecContext(ctx, query, d.CNPJ, d.Nome, d.Ano)
+		if err != nil {
+			return err
+		}
+		err = s.db.GetContext(ctx, &idEmpresa, `SELECT id FROM empresas WHERE cnpj=?`, d.CNPJ)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+
+	// Insere FRE
+	query := `INSERT OR REPLACE INTO fre (
+		id_empresa, data_ref, data_ultima_assembleia, id_doc,
+		pct_acoes_ord_circulacao, pct_acoes_pref_circulacao, pct_total_acoes_circulacao,
+		qtd_acionistas_inst, qtd_acionistas_pf, qtd_acionistas_pj,
+		qtd_acoes_ord_circulacao, qtd_acoes_pref_circulacao, qtd_total_acoes_circulacao
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err = s.db.ExecContext(ctx, query,
+		idEmpresa,
+		fre.DataRef,
+		fre.DataUltimaAssembleia,
+		fre.IDDoc,
+		fre.PctAcoesOrdCirculacao,
+		fre.PctAcoesPrefCirculacao,
+		fre.PctTotalAcoesCirculacao,
+		fre.QtdAcionistasInst,
+		fre.QtdAcionistasPF,
+		fre.QtdAcionistasPJ,
+		fre.QtdAcoesOrdCirculacao,
+		fre.QtdAcoesPrefCirculacao,
+		fre.QtdTotalAcoesCirculacao,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

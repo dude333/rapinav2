@@ -17,7 +17,7 @@ LDFLAGS      := -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD
 .DEFAULT_GOAL:= $(BINARY)
 
 $(BINARY): $(SOURCES)
-	go build $(LDFLAGS) -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
+	CC="zig cc" CXX="zig c++" go build $(LDFLAGS) -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
 
 win: $(SOURCES)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc-win32 CXX=x86_64-w64-mingw32-cpp-win32 CGO_LDFLAGS="-lssp -w" go build $(LDFLAGS) -o $(BINARYDIR)/$(WINBINARY) $(BUILDDIR)
