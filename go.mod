@@ -17,12 +17,6 @@ require (
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/dude333/rslp-go v0.0.3
-	github.com/pkg/profile v1.7.0
-)
-
-require (
-	github.com/felixge/fgprof v0.9.3 // indirect
-	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 )
 
 require (

@@ -23,11 +23,10 @@ type CVM interface {
 	Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado
 }
 
-// DadosContábeis é um serviço que busca os relatórios contábeis de uma empresa
-// em vários repositórios (API e BD).
 type DadosContábeis struct {
-	cvm CVM
-	db  *Sqlite
+	cvmDFP CVM
+	cvmFRE CVM
+	db     *Sqlite
 }
 
 func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis, error) {
@@ -54,7 +53,16 @@ func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis,
 		return &dfp, err
 	}
 
-	return &DadosContábeis{cvm: cvmDFP, db: repoSqlite}, nil
+	cvmFRE, err := NovaFRE(
+		CfgDirDados(tempDir),
+		CfgArquivosJáProcessados(hashes),
+		CfgForce(f),
+	)
+	if err != nil {
+		return &dfp, err
+	}
+
+	return &DadosContábeis{cvmDFP: cvmDFP, cvmFRE: cvmFRE, db: repoSqlite}, nil
 }
 
 // Importar importa os relatórios contábeis no ano especificado e os salva
@@ -64,15 +72,34 @@ func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
-	// result retorna o registro após a leitura de cada linha
-	// do arquivo importado
-	for result := range c.cvm.Importar(ctx, ano, trimestral) {
+	// Importa DFP/ITR
+	for result := range c.cvmDFP.Importar(ctx, ano, trimestral) {
 		if result.Error != nil {
 			progress.Error(result.Error)
 			continue
 		}
 		if result.DFP != nil {
 			err := c.db.Salvar(ctx, result.DFP)
+			if err != nil {
+				return err
+			}
+		}
+		if len(result.Hash) > 0 {
+			err := ext.SaveHash(c.db.db, result.Hash)
+			if err != nil {
+				progress.ErrorMsg("erro salvando hash: %v", err)
+			}
+		}
+	}
+
+	// Importa FRE
+	for result := range c.cvmFRE.Importar(ctx, ano, false) {
+		if result.Error != nil {
+			progress.Error(result.Error)
+			continue
+		}
+		if result.FRE != nil {
+			err := c.db.SalvarFRE(ctx, result.FRE)
 			if err != nil {
 				return err
 			}

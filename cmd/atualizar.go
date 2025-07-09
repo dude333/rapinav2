@@ -54,14 +54,14 @@ func atualizar(_ *cobra.Command, _ []string) {
 		return
 	}
 
-	dfp, err := contabil.NovoServiço(db(), flags.tempDir, flags.atualizar.force)
+	svcContabil, err := contabil.NovoServiço(db(), flags.tempDir, flags.atualizar.force)
 	if err != nil {
 		progress.Fatal(err)
 	}
 
 	importar := func(trimestral bool) {
 		for ano := anof; ano >= anoi; ano-- {
-			err := dfp.Importar(ano, trimestral)
+			err := svcContabil.Importar(ano, trimestral)
 			if err != nil {
 				progress.Error(err)
 				continue

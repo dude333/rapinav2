@@ -105,6 +105,7 @@ type ConfigConta struct {
 type Resultado struct {
 	Error error
 	DFP   *DemonstraçãoFinanceira
+	FRE   *FreDistribCapital
 	Hash  string
 }
 
@@ -112,4 +113,26 @@ type Serviço interface {
 	// Importar(ano int, trimestral bool) error
 	Relatório(cnpj string, ano int) (*DemonstraçãoFinanceira, error)
 	Empresas(nome string) []rapina.Empresa
+}
+
+type FreDistribCapital struct {
+	Empresa                 rapina.Empresa
+	DataRef                 string
+	DataUltimaAssembleia    string
+	IDDoc                   int
+	PctAcoesOrdCirculacao   float64
+	PctAcoesPrefCirculacao  float64
+	PctTotalAcoesCirculacao float64
+	QtdAcionistasInst       int
+	QtdAcionistasPF         int
+	QtdAcionistasPJ         int
+	QtdAcoesOrdCirculacao   int64
+	QtdAcoesPrefCirculacao  int64
+	QtdTotalAcoesCirculacao int64
+}
+
+func (f *FreDistribCapital) Válida() bool {
+	return len(f.Empresa.CNPJ) == len("17.836.901/0001-10") &&
+		len(f.Empresa.Nome) > 0 &&
+		len(f.DataRef) == len("AAAA-MM-DD")
 }

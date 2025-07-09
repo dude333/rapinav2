@@ -128,25 +128,25 @@ func (c *CVM) addHash(hash string) {
 
 // importarDFP prepara os dados e os carrega na struct DFP
 func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (*DFP, error) {
-	// url := urlArquivo(CvmDfp, ano, trimestre)
-	// arquivos, zipHash, err := DownloadAndUnzip(url, c.dirDados, filtros())
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if c.existe(zipHash) {
-	// 	return nil, fmt.Errorf("este arquivo 'dfp/itr' já foi processado anteriormente")
-	// }
-
-	arquivos := []Arquivo{
-		{
-			path: path.Join(c.dirDados, "dfp.zip"),
-			hash: "dfp",
-		},
-		{
-			path: path.Join(c.dirDados, "itr.zip"),
-			hash: "itr",
-		},
+	url := urlArquivo(CvmDfp, ano, trimestre)
+	arquivos, zipHash, err := DownloadAndUnzip(url, c.dirDados, filtros())
+	if err != nil {
+		return nil, err
 	}
+	if c.existe(zipHash) {
+		return nil, fmt.Errorf("este arquivo 'dfp/itr' já foi processado anteriormente")
+	}
+
+	// arquivos := []Arquivo{
+	// 	{
+	// 		path: path.Join(c.dirDados, "dfp.zip"),
+	// 		hash: "dfp",
+	// 	},
+	// 	{
+	// 		path: path.Join(c.dirDados, "itr.zip"),
+	// 		hash: "itr",
+	// 	},
+	// }
 
 	defer Cleanup(arquivos)
 
