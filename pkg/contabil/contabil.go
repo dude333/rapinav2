@@ -72,7 +72,7 @@ func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
-	// Importa DFP/ITR
+	// importa dfp/itr
 	for result := range c.cvmDFP.Importar(ctx, ano, trimestral) {
 		if result.Error != nil {
 			progress.Error(result.Error)
@@ -92,7 +92,7 @@ func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
 		}
 	}
 
-	// Importa FRE
+	// importa fre
 	for result := range c.cvmFRE.Importar(ctx, ano, false) {
 		if result.Error != nil {
 			progress.Error(result.Error)
