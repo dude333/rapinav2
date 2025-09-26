@@ -5,10 +5,11 @@
 package contabil
 
 import (
-	"bufio"
 	"context"
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -21,74 +22,21 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
-type cvmDFP struct {
-	infra infra
-	cfg   *cfg
-}
-
-func NovaDFP(configs ...ConfigFn) (*cvmDFP, error) {
-	var cvm cvmDFP
+func NovaDFP(configs ...ConfigFn) (CVM, error) {
+	var cvm cvmImporter
+	cvm.cfg = &cfg{}
 	cvm.cfg.loadConfigs(configs...)
+	cvm.nome = "dfp/itr"
 	cvm.infra = &localInfra{dirDados: cvm.cfg.dirDados}
+	cvm.url = urlArquivoDFP
+	cvm.filtros = filtrosDFP
+	cvm.processar = processarArquivoDFP
+	cvm.reportarAviso = true
 
 	return &cvm, nil
 }
 
-// Importar baixa o arquivo de DFPs de todas as empresas de um determinado
-// ano do site da CVM. Com trimestral == true, é baixado o arquivo de ITRs.
-func (c *cvmDFP) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado {
-	results := make(chan dominio.Resultado)
-
-	go func() {
-		defer close(results)
-
-		url := urlArquivo(ano, trimestral)
-
-		arquivos, zipHash, err := c.infra.DownloadAndUnzip(url, filtros())
-		if err != nil {
-			results <- dominio.Resultado{Error: err}
-			return
-		}
-
-		defer c.infra.Cleanup(arquivos)
-
-		if c.existe(zipHash) {
-			progress.Warning("Este arquivo 'dfp/itr' já foi processado anteriormente")
-			return
-		}
-
-		for _, arquivo := range arquivos {
-			progress.Running(arquivo.path)
-
-			// Processa o arquivo e envia o resultado para o canal 'results'
-			err = processarArquivoDFP(ctx, arquivo, results)
-			if err != nil {
-				results <- dominio.Resultado{Hash: arquivo.hash}
-			}
-
-			progress.RunOK()
-		}
-
-		// Grava o hash do zip no banco de dados
-		results <- dominio.Resultado{Hash: zipHash}
-	}()
-
-	return results
-}
-
-func (c cvmDFP) existe(hash string) bool {
-	if len(hash) == 0 || c.cfg.force {
-		return false
-	}
-	for i := range c.cfg.arquivosJáProcessados {
-		if c.cfg.arquivosJáProcessados[i] == hash {
-			return true
-		}
-	}
-	return false
-}
-
-func filtros() []string {
+func filtrosDFP() []string {
 	var filtros []string // Parte do nome dos arquivos que serão usados
 
 	tipo := []string{
@@ -112,7 +60,7 @@ func filtros() []string {
 	return filtros
 }
 
-func urlArquivo(ano int, trimestral bool) string {
+func urlArquivoDFP(ano int, trimestral bool) string {
 	tipo := "DFP"
 	if trimestral {
 		tipo = "ITR"
@@ -128,17 +76,30 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 	}
 	defer fh.Close()
 
-	csv := &csvDFP{sep: ";"}
+	leitorCSV := csv.NewReader(transform.NewReader(fh, charmap.ISO8859_1.NewDecoder()))
+	leitorCSV.Comma = ';'
+	leitorCSV.LazyQuotes = true
 
-	stream := transform.NewReader(fh, charmap.ISO8859_1.NewDecoder())
-	scanner := bufio.NewScanner(stream)
+	// Pula o cabeçalho
+	header, err := leitorCSV.Read()
+	if err != nil {
+		return err
+	}
+
+	parser := novoParserDFP(header)
 
 	empresas := make(map[string][]*regDFP)
 
-	for scanner.Scan() {
-		linha := scanner.Text()
+	for {
+		linha, err := leitorCSV.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
 
-		dfp, err := csv.carregaDFP(linha)
+		dfp, err := parser.carregaDFP(linha)
 
 		if err != nil || dfp.registroInválido() {
 			continue
@@ -287,7 +248,6 @@ func próxChave(k string) string {
 }
 
 var (
-	ErrCabeçalho    = errors.New("cabeçalho")
 	ErrFaltaItem    = errors.New("itens faltando")
 	ErrDataInválida = errors.New("data inválida")
 )
@@ -296,10 +256,7 @@ const (
 	numItens int = 11 // número de itens (soma dos parâmetros pos___ da struct csv)
 )
 
-type csvDFP struct {
-	sep           string // separador de campos
-	cabeçalhoLido bool
-
+type parserDFP struct {
 	posCnpj        int
 	posDenomCia    int
 	posDtIniExerc  int
@@ -314,180 +271,78 @@ type csvDFP struct {
 	posMoeda       int
 }
 
-func (c *csvDFP) lerCabeçalho(linha string) {
-	c.posDtIniExerc = -1 // Este campo não aparece nos dados do balanço patrimonial
-	c.cabeçalhoLido = true
-	títulos := strings.Split(linha, c.sep)
-	for i, t := range títulos {
+func novoParserDFP(cabeçalho []string) *parserDFP {
+	p := &parserDFP{
+		posDtIniExerc: -1, // Este campo não aparece nos dados do balanço patrimonial
+	}
+
+	for i, t := range cabeçalho {
 		switch t {
 		case "CNPJ_CIA":
-			c.posCnpj = i
+			p.posCnpj = i
 		case "DENOM_CIA":
-			c.posDenomCia = i
+			p.posDenomCia = i
 		case "DT_INI_EXERC":
-			c.posDtIniExerc = i
+			p.posDtIniExerc = i
 		case "DT_FIM_EXERC":
-			c.posDtFimExerc = i
+			p.posDtFimExerc = i
 		case "VERSAO":
-			c.posVersao = i
+			p.posVersao = i
 		case "CD_CONTA":
-			c.posCdConta = i
+			p.posCdConta = i
 		case "DS_CONTA":
-			c.posDsConta = i
+			p.posDsConta = i
 		case "GRUPO_DFP":
-			c.posGrupoDFP = i
+			p.posGrupoDFP = i
 		case "ORDEM_EXERC":
-			c.posOrdemExerc = i
+			p.posOrdemExerc = i
 		case "VL_CONTA":
-			c.posVlConta = i
+			p.posVlConta = i
 		case "ESCALA_MOEDA":
-			c.posEscalaMoeda = i
+			p.posEscalaMoeda = i
 		case "MOEDA":
-			c.posMoeda = i
+			p.posMoeda = i
 		}
 	}
+
+	return p
 }
 
-// carregaDFP transforma uma linha do arquivo DFP em uma estrutura DFP.
-//
-//	-----------------------
-//	Campo: CD_CONTA
-//	-----------------------
-//	Descrição : Código da conta
-//	Domínio   : Numérico
-//	Tipo Dados: varchar
-//	Tamanho   : 18
-//
-//	-----------------------
-//	Campo: CNPJ_CIA
-//	-----------------------
-//	Descrição : CNPJ da companhia
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 20
-//
-//	-----------------------
-//	Campo: DENOM_CIA
-//	-----------------------
-//	Descrição : Nome empresarial da companhia
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 100
-//
-//	-----------------------
-//	Campo: DS_CONTA
-//	-----------------------
-//	Descrição : Descrição da conta
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 100
-//
-//	-----------------------
-//	Campo: DT_INI_EXERC
-//	-----------------------
-//	Descrição : Data início do exercício social
-//	Domínio   : AAAA-MM-DD
-//	Tipo Dados: date
-//	Tamanho   : 10
-//
-//	-----------------------
-//	Campo: DT_FIM_EXERC
-//	-----------------------
-//	Descrição : Data fim do exercício social
-//	Domínio   : AAAA-MM-DD
-//	Tipo Dados: date
-//	Tamanho   : 10
-//
-//	-----------------------
-//	Campo: ESCALA_MOEDA
-//	-----------------------
-//	Descrição : Escala monetária
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 100
-//
-//	-----------------------
-//	Campo: GRUPO_DFP
-//	-----------------------
-//	Descrição : Nome e nível de agregação da demonstração
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 206
-//
-//	-----------------------
-//	Campo: MOEDA
-//	-----------------------
-//	Descrição : Moeda
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 100
-//
-//	-----------------------
-//	Campo: ORDEM_EXERC
-//	-----------------------
-//	Descrição : Ordem do exercício social
-//	Domínio   : Alfanumérico
-//	Tipo Dados: varchar
-//	Tamanho   : 9
-//
-//	-----------------------
-//	Campo: VERSAO
-//	-----------------------
-//	Descrição : Versão do documento
-//	Domínio   : Numérico
-//	Tipo Dados: smallint
-//	Precisão  : 5
-//	Scale     : 0
-//
-//	-----------------------
-//	Campo: VL_CONTA
-//	-----------------------
-//	Descrição : Valor da conta
-//	Domínio   : Numérico
-//	Tipo Dados: decimal
-//	Precisão  : 29
-//	Scale     : 10
-func (c *csvDFP) carregaDFP(linha string) (*regDFP, error) {
-	if !c.cabeçalhoLido {
-		c.lerCabeçalho(linha)
-		return nil, ErrCabeçalho
-	}
-
-	itens := strings.Split(linha, c.sep)
+func (p *parserDFP) carregaDFP(itens []string) (*regDFP, error) {
 	if len(itens) < numItens {
 		return nil, ErrFaltaItem
 	}
 
 	dtIni := "" // dado não aparece no BP
-	if c.posDtIniExerc >= 0 {
-		dtIni = itens[c.posDtIniExerc]
+	if p.posDtIniExerc >= 0 {
+		dtIni = itens[p.posDtIniExerc]
 	}
-	m, err := meses(dtIni, itens[c.posDtFimExerc])
+	m, err := meses(dtIni, itens[p.posDtFimExerc])
 	if err != nil {
 		return nil, err
 	}
 
-	vl, err := strconv.ParseFloat(itens[c.posVlConta], 64)
+	vl, err := strconv.ParseFloat(itens[p.posVlConta], 64)
 	if err != nil {
 		return nil, err
 	}
 
 	return &regDFP{
-		CNPJ:         itens[c.posCnpj],
-		Nome:         itens[c.posDenomCia],
-		Ano:          itens[c.posDtFimExerc][:4],
-		Consolidado:  strings.Contains(itens[c.posGrupoDFP], "onsolidado"),
-		Versão:       itens[c.posVersao],
-		Código:       itens[c.posCdConta],
-		Descr:        itens[c.posDsConta],
-		GrupoDFP:     itens[c.posGrupoDFP],
+		CNPJ:         itens[p.posCnpj],
+		Nome:         itens[p.posDenomCia],
+		Ano:          itens[p.posDtFimExerc][:4],
+		Consolidado:  strings.Contains(itens[p.posGrupoDFP], "onsolidado"),
+		Versão:       itens[p.posVersao],
+		Código:       itens[p.posCdConta],
+		Descr:        itens[p.posDsConta],
+		GrupoDFP:     itens[p.posGrupoDFP],
 		DataIniExerc: dtIni,
-		DataFimExerc: itens[c.posDtFimExerc],
+		DataFimExerc: itens[p.posDtFimExerc],
 		Meses:        m,
-		OrdemExerc:   itens[c.posOrdemExerc],
+		OrdemExerc:   itens[p.posOrdemExerc],
 		Valor:        vl,
-		Escala:       escala(itens[c.posEscalaMoeda]),
-		Moeda:        moeda(itens[c.posMoeda]),
+		Escala:       escala(itens[p.posEscalaMoeda]),
+		Moeda:        moeda(itens[p.posMoeda]),
 	}, nil
 }
 

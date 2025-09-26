@@ -14,7 +14,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/mattn/go-sqlite3"
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 	"golang.org/x/text/runes"
@@ -39,14 +38,13 @@ type Sqlite struct {
 	limpo map[string]bool
 
 	cacheEmpresas []rapina.Empresa
-	cfg
+	cfg           *cfg
 }
 
 func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
 	var s Sqlite
-	for _, cfg := range configs {
-		cfg(&s.cfg)
-	}
+	s.cfg = &cfg{}
+	s.cfg.loadConfigs(configs...)
 
 	s.db = db
 
@@ -220,39 +218,31 @@ func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinancei
 		Ano:  dfp.Ano,
 	}
 
-	idRegistro := func() (int, error) {
-		var id int
-		err := s.db.GetContext(ctx, &id, `SELECT id FROM empresas WHERE cnpj=? AND ano=?`, d.CNPJ, d.Ano)
-		return id, err
+	// Garante que a empresa existe no banco de dados
+	query := `INSERT OR IGNORE INTO empresas (cnpj, nome, ano) VALUES (:cnpj, :nome, :ano)`
+	_, err := s.db.NamedExecContext(ctx, query, &d)
+	if err != nil {
+		progress.Debug("Falha ao inserir %v", d)
+		return err
 	}
 
-	k := d.CNPJ + strconv.Itoa(d.Ano)
-	if _, ok := s.limpo[k]; !ok {
-		// Verificar o id do registro e apagá-lo caso exista
-		id, err := idRegistro()
-
-		if err != nil && err != sql.ErrNoRows {
-			return err
-		}
-		if err != sql.ErrNoRows {
-			progress.Debug("Apagando empresa %s, %d (%d)", d.Nome, d.Ano, id)
-			if err := removerEmpresa(ctx, s.db, id); err != nil {
-				return err
-			}
-		}
-		s.limpo[k] = true
-		// Criar novo registro
-		query := `INSERT INTO empresas (cnpj, nome, ano) VALUES (:cnpj, :nome, :ano)`
-		_, err = s.db.NamedExecContext(ctx, query, &d)
-		if err != nil {
-			progress.Debug("Falha ao inserir %v", d)
-			return err
-		}
-	}
-
-	id, err := idRegistro()
+	// Pega o ID da empresa
+	var id int
+	err = s.db.GetContext(ctx, &id, `SELECT id FROM empresas WHERE cnpj=? AND ano=?`, d.CNPJ, d.Ano)
 	if err != nil {
 		return err
+	}
+
+	// Limpa os dados antigos apenas uma vez por execução
+	k := d.CNPJ + strconv.Itoa(d.Ano)
+	if _, ok := s.limpo[k]; !ok {
+		progress.Debug("Apagando contas de %s, %d (%d)", d.Nome, d.Ano, id)
+		query := `DELETE FROM contas WHERE id_empresa=?`
+		_, err := s.db.ExecContext(ctx, query, id)
+		if err != nil {
+			return err
+		}
+		s.limpo[k] = true
 	}
 
 	progress.Debug("Salvando empresa %s, %d (%d): %d contas", d.Nome, d.Ano, id, len(dfp.Contas))

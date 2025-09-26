@@ -1,9 +1,14 @@
+// SPDX-FileCopyrightText: 2021 Adriano Prado <dev@dude333.com>
+//
+// SPDX-License-Identifier: MIT
+
 package contabil
 
 import (
-	"bufio"
 	"context"
-	"errors"
+	"encoding/csv"
+	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -15,227 +20,26 @@ import (
 	"golang.org/x/text/transform"
 )
 
-type cvmFRE struct {
-	infra infra
-	cfg   *cfg
-}
-
-func NovaFRE(configs ...ConfigFn) (*cvmFRE, error) {
-	var cvm cvmFRE
+func NovaFRE(configs ...ConfigFn) (CVM, error) {
+	var cvm cvmImporter
+	cvm.cfg = &cfg{}
 	cvm.cfg.loadConfigs(configs...)
+	cvm.nome = "fre"
 	cvm.infra = &localInfra{dirDados: cvm.cfg.dirDados}
+	cvm.url = urlArquivoFRE
+	cvm.filtros = filtrosFRE
+	cvm.processar = processarArquivoFRE
 
 	return &cvm, nil
 }
 
-// Importar baixa o arquivo de FREs de todas as empresas de um determinado
-// ano do site da CVM.
-//
-// Dentro do arquivo zip, extrair o arquivo com o formato fre_cia_capital_aberto_YYYY.csv
-// que contém as colunas listadas abaixo:
-/*
-Campo: CNPJ_Companhia
------------------------
-   Descrição : CNPJ da companhia
-   Domínio   : Alfanumérico
-   Tipo Dados: varchar
-   Tamanho   : 20
-
------------------------
-Campo: Data_Referencia
------------------------
-   Descrição : Data de referência do documento
-   Domínio   : AAAA-MM-DD
-   Tipo Dados: date
-   Tamanho   : 10
-
------------------------
-Campo: Data_Ultima_Assembleia
------------------------
-   Descrição : Data da última assembléia geral de acionistas
-   Domínio   : AAAA-MM-DD
-   Tipo Dados: date
-   Tamanho   : 10
-
------------------------
-Campo: ID_Documento
------------------------
-   Descrição : Identificador do documento
-   Domínio   : Numérico
-   Tipo Dados: int
-   Precisão  : 10
-   Scale     : 0
-
------------------------
-Campo: Nome_Companhia
------------------------
-   Descrição : Nome da Companhia
-   Domínio   : Alfanumérico
-   Tipo Dados: varchar
-   Tamanho   : 100
-
------------------------
-Campo: Percentual_Acoes_Ordinarias_Circulacao
------------------------
-   Descrição : Percentual de ações ordinárias em circulação
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 6
-
------------------------
-Campo: Percentual_Acoes_Preferenciais_Circulacao
------------------------
-   Descrição : Percentual de ações preferenciais em circulação
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 6
-
------------------------
-Campo: Percentual_Total_Acoes_Circulacao
------------------------
-   Descrição : Percentual total de ações em circulação
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 6
-
------------------------
-Campo: Quantidade_Acionistas_Investidores_Institucionais
------------------------
-   Descrição : Quantidade de investidores institucionais
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 0
-
------------------------
-Campo: Quantidade_Acionistas_PF
------------------------
-   Descrição : Quantidade de acionistas pessoas físicas
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 0
-
------------------------
-Campo: Quantidade_Acionistas_PJ
------------------------
-   Descrição : Quantidade de acionistas pessoas jurídicas
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 0
-
------------------------
-Campo: Quantidade_Acoes_Ordinarias_Circulacao
------------------------
-   Descrição : Quantidade de ações ordinárias em circulação
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 0
-
------------------------
-Campo: Quantidade_Acoes_Preferenciais_Circulacao
------------------------
-   Descrição : Quantidade de ações preferenciais em circulação
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 0
-
------------------------
-Campo: Quantidade_Total_Acoes_Circulacao
------------------------
-   Descrição : Quantidade total de ações em circulação
-   Domínio   : Numérico
-   Tipo Dados: numeric
-   Precisão  : 18
-   Scale     : 0
-
------------------------
-Campo: Versao
------------------------
-   Descrição : Versão do documento
-   Domínio   : Numérico
-   Tipo Dados: smallint
-   Precisão  : 5
-   Scale     : 0
-*/
-
-func (c cvmFRE) existe(hash string) bool {
-	if len(hash) == 0 || c.cfg.force {
-		return false
-	}
-	for i := range c.cfg.arquivosJáProcessados {
-		if c.cfg.arquivosJáProcessados[i] == hash {
-			return true
-		}
-	}
-	return false
+func filtrosFRE() []string {
+	return []string{"fre_cia_aberta_distribuicao_capital_social"}
 }
 
-func (c *cvmFRE) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado {
-	results := make(chan dominio.Resultado)
-
-	go func() {
-		defer close(results)
-
-		url := urlArquivo(ano, trimestral)
-
-		arquivos, zipHash, err := c.infra.DownloadAndUnzip(url, filtros())
-		if err != nil {
-			results <- dominio.Resultado{Error: err}
-			return
-		}
-
-		defer c.infra.Cleanup(arquivos)
-
-		if c.existe(zipHash) {
-			progress.Warning("Este arquivo 'fre' já foi processado anteriormente")
-			return
-		}
-
-		for _, arquivo := range arquivos {
-			progress.Running(arquivo.path)
-
-			// Processa o arquivo e envia o resultado para o canal 'results'
-			err = processarArquivoFRE(ctx, arquivo, results)
-			if err != nil {
-				results <- dominio.Resultado{Hash: arquivo.hash}
-			}
-
-			progress.RunOK()
-		}
-
-		// Grava o hash do zip no banco de dados
-		results <- dominio.Resultado{Hash: zipHash}
-	}()
-
-	return results
-}
-
-type csvFRE struct {
-	sep           string // separador de campos
-	cabeçalhoLido bool
-
-	posCnpj                        int
-	posNome                        int
-	posDataRef                     int
-	posDataUltimaAssembleia        int
-	posIDDoc                       int
-	posPctAcoesOrdCirculacao       int
-	posPctAcoesPrefCirculacao      int
-	posPctTotalAcoesCirculacao     int
-	posQtdAcionistasInstitucionais int
-	posQtdAcionistasPF             int
-	posQtdAcionistasPJ             int
-	posQtdAcoesOrdCirculacao       int
-	posQtdAcoesPrefCirculacao      int
-	posQtdTotalAcoesCirculacao     int
-	posVersao                      int
+func urlArquivoFRE(ano int, _ bool) string {
+	zip := fmt.Sprintf(`fre_cia_aberta_%d.zip`, ano)
+	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/` + zip
 }
 
 // regFRE é usada para armazenar os dados (linhas) dos arquivos de FRE.
@@ -264,17 +68,28 @@ func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- domi
 	}
 	defer fh.Close()
 
-	csv := &csvFRE{sep: ";"}
+	leitorCSV := csv.NewReader(transform.NewReader(fh, charmap.ISO8859_1.NewDecoder()))
+	leitorCSV.Comma = ';'
+	leitorCSV.LazyQuotes = true
 
-	stream := transform.NewReader(fh, charmap.ISO8859_1.NewDecoder())
-	scanner := bufio.NewScanner(stream)
+	cabeçalho, err := leitorCSV.Read()
+	if err != nil {
+		return err
+	}
 
+	parser := novoParserFRE(cabeçalho)
 	empresas := make(map[string][]*regFRE)
 
-	for scanner.Scan() {
-		linha := scanner.Text()
+	for {
+		linha, err := leitorCSV.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			continue
+		}
 
-		fre, err := csv.carregaFRE(linha)
+		fre, err := parser.carregaFRE(linha)
 		if err != nil {
 			continue
 		}
@@ -288,73 +103,116 @@ func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- domi
 	return nil
 }
 
-func (c *csvFRE) lerCabeçalho(linha string) {
-	c.cabeçalhoLido = true
-	títulos := strings.Split(linha, c.sep)
-	for i, t := range títulos {
-		switch t {
-		case "CNPJ_Companhia":
-			c.posCnpj = i
-		case "Nome_Companhia":
-			c.posNome = i
-		case "Data_Referencia":
-			c.posDataRef = i
-		case "Data_Ultima_Assembleia":
-			c.posDataUltimaAssembleia = i
-		case "ID_Documento":
-			c.posIDDoc = i
-		case "Percentual_Acoes_Ordinarias_Circulacao":
-			c.posPctAcoesOrdCirculacao = i
-		case "Percentual_Acoes_Preferenciais_Circulacao":
-			c.posPctAcoesPrefCirculacao = i
-		case "Percentual_Total_Acoes_Circulacao":
-			c.posPctTotalAcoesCirculacao = i
-		case "Quantidade_Acionistas_Investidores_Institucionais":
-			c.posQtdAcionistasInstitucionais = i
-		case "Quantidade_Acionistas_PF":
-			c.posQtdAcionistasPF = i
-		case "Quantidade_Acionistas_PJ":
-			c.posQtdAcionistasPJ = i
-		case "Quantidade_Acoes_Ordinarias_Circulacao":
-			c.posQtdAcoesOrdCirculacao = i
-		case "Quantidade_Acoes_Preferenciais_Circulacao":
-			c.posQtdAcoesPrefCirculacao = i
-		case "Quantidade_Total_Acoes_Circulacao":
-			c.posQtdTotalAcoesCirculacao = i
-		case "Versao":
-			c.posVersao = i
-		}
-	}
+type parserFRE struct {
+	posCnpj                        int
+	posNome                        int
+	posDataRef                     int
+	posDataUltimaAssembleia        int
+	posIDDoc                       int
+	posPctAcoesOrdCirculacao       int
+	posPctAcoesPrefCirculacao      int
+	posPctTotalAcoesCirculacao     int
+	posQtdAcionistasInstitucionais int
+	posQtdAcionistasPF             int
+	posQtdAcionistasPJ             int
+	posQtdAcoesOrdCirculacao       int
+	posQtdAcoesPrefCirculacao      int
+	posQtdTotalAcoesCirculacao     int
+	posVersao                      int
 }
 
-func (c *csvFRE) carregaFRE(linha string) (*regFRE, error) {
-	if !c.cabeçalhoLido {
-		c.lerCabeçalho(linha)
-		return nil, errors.New("cabeçalho")
+func novoParserFRE(cabeçalho []string) *parserFRE {
+	p := &parserFRE{}
+	for i, t := range cabeçalho {
+		switch t {
+		case "CNPJ_Companhia":
+			p.posCnpj = i
+		case "Nome_Companhia":
+			p.posNome = i
+		case "Data_Referencia":
+			p.posDataRef = i
+		case "Data_Ultima_Assembleia":
+			p.posDataUltimaAssembleia = i
+		case "ID_Documento":
+			p.posIDDoc = i
+		case "Percentual_Acoes_Ordinarias_Circulacao":
+			p.posPctAcoesOrdCirculacao = i
+		case "Percentual_Acoes_Preferenciais_Circulacao":
+			p.posPctAcoesPrefCirculacao = i
+		case "Percentual_Total_Acoes_Circulacao":
+			p.posPctTotalAcoesCirculacao = i
+		case "Quantidade_Acionistas_Investidores_Institucionais":
+			p.posQtdAcionistasInstitucionais = i
+		case "Quantidade_Acionistas_PF":
+			p.posQtdAcionistasPF = i
+		case "Quantidade_Acionistas_PJ":
+			p.posQtdAcionistasPJ = i
+		case "Quantidade_Acoes_Ordinarias_Circulacao":
+			p.posQtdAcoesOrdCirculacao = i
+		case "Quantidade_Acoes_Preferenciais_Circulacao":
+			p.posQtdAcoesPrefCirculacao = i
+		case "Quantidade_Total_Acoes_Circulacao":
+			p.posQtdTotalAcoesCirculacao = i
+		case "Versao":
+			p.posVersao = i
+		}
 	}
+	return p
+}
 
-	items := strings.Split(linha, c.sep)
-
+func (p *parserFRE) carregaFRE(itens []string) (*regFRE, error) {
+	var err error
 	fre := &regFRE{}
 
-	// Converte os campos numéricos, ignorando erros
-	fre.CNPJ = items[c.posCnpj]
-	fre.Nome = items[c.posNome]
-	fre.DataRef = items[c.posDataRef]
-	fre.DataUltimaAssembleia = items[c.posDataUltimaAssembleia]
+	fre.CNPJ = itens[p.posCnpj]
+	fre.Nome = itens[p.posNome]
+	fre.DataRef = itens[p.posDataRef]
+	fre.DataUltimaAssembleia = itens[p.posDataUltimaAssembleia]
 
-	// Converte campos numéricos, ignorando erros
-	fre.IDDoc, _ = strconv.Atoi(items[c.posIDDoc])
-	fre.PctAcoesOrdCirculacao, _ = strconv.ParseFloat(items[c.posPctAcoesOrdCirculacao], 64)
-	fre.PctAcoesPrefCirculacao, _ = strconv.ParseFloat(items[c.posPctAcoesPrefCirculacao], 64)
-	fre.PctTotalAcoesCirculacao, _ = strconv.ParseFloat(items[c.posPctTotalAcoesCirculacao], 64)
-	fre.QtdAcionistasInstitucionais, _ = strconv.Atoi(items[c.posQtdAcionistasInstitucionais])
-	fre.QtdAcionistasPF, _ = strconv.Atoi(items[c.posQtdAcionistasPF])
-	fre.QtdAcionistasPJ, _ = strconv.Atoi(items[c.posQtdAcionistasPJ])
-	fre.QtdAcoesOrdCirculacao, _ = strconv.ParseInt(items[c.posQtdAcoesOrdCirculacao], 10, 64)
-	fre.QtdAcoesPrefCirculacao, _ = strconv.ParseInt(items[c.posQtdAcoesPrefCirculacao], 10, 64)
-	fre.QtdTotalAcoesCirculacao, _ = strconv.ParseInt(items[c.posQtdTotalAcoesCirculacao], 10, 64)
-	fre.Versao, _ = strconv.Atoi(items[c.posVersao])
+	fre.IDDoc, err = strconv.Atoi(itens[p.posIDDoc])
+	if err != nil {
+		progress.ErrorMsg("erro ao converter IDDoc: %v", err)
+	}
+	fre.PctAcoesOrdCirculacao, err = strconv.ParseFloat(itens[p.posPctAcoesOrdCirculacao], 64)
+	if err != nil {
+		progress.ErrorMsg("erro ao converter PctAcoesOrdCirculacao: %v", err)
+	}
+	fre.PctAcoesPrefCirculacao, err = strconv.ParseFloat(itens[p.posPctAcoesPrefCirculacao], 64)
+	if err != nil {
+		progress.ErrorMsg("erro ao converter PctAcoesPrefCirculacao: %v", err)
+	}
+	fre.PctTotalAcoesCirculacao, err = strconv.ParseFloat(itens[p.posPctTotalAcoesCirculacao], 64)
+	if err != nil {
+		progress.ErrorMsg("erro ao converter PctTotalAcoesCirculacao: %v", err)
+	}
+	fre.QtdAcionistasInstitucionais, err = strconv.Atoi(itens[p.posQtdAcionistasInstitucionais])
+	if err != nil {
+		progress.ErrorMsg("erro ao converter QtdAcionistasInstitucionais: %v", err)
+	}
+	fre.QtdAcionistasPF, err = strconv.Atoi(itens[p.posQtdAcionistasPF])
+	if err != nil {
+		progress.ErrorMsg("erro ao converter QtdAcionistasPF: %v", err)
+	}
+	fre.QtdAcionistasPJ, err = strconv.Atoi(itens[p.posQtdAcionistasPJ])
+	if err != nil {
+		progress.ErrorMsg("erro ao converter QtdAcionistasPJ: %v", err)
+	}
+	fre.QtdAcoesOrdCirculacao, err = strconv.ParseInt(itens[p.posQtdAcoesOrdCirculacao], 10, 64)
+	if err != nil {
+		progress.ErrorMsg("erro ao converter QtdAcoesOrdCirculacao: %v", err)
+	}
+	fre.QtdAcoesPrefCirculacao, err = strconv.ParseInt(itens[p.posQtdAcoesPrefCirculacao], 10, 64)
+	if err != nil {
+		progress.ErrorMsg("erro ao converter QtdAcoesPrefCirculacao: %v", err)
+	}
+	fre.QtdTotalAcoesCirculacao, err = strconv.ParseInt(itens[p.posQtdTotalAcoesCirculacao], 10, 64)
+	if err != nil {
+		progress.ErrorMsg("erro ao converter QtdTotalAcoesCirculacao: %v", err)
+	}
+	fre.Versao, err = strconv.Atoi(itens[p.posVersao])
+	if err != nil {
+		progress.ErrorMsg("erro ao converter Versao: %v", err)
+	}
 
 	return fre, nil
 }
