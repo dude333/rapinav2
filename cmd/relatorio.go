@@ -76,7 +76,7 @@ func init() {
 }
 
 func menuRelatório(_ *cobra.Command, _ []string) {
-	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
+	dfp, err := contabil.NewService(db(), flags.tempDir)
 	if err != nil {
 		progress.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func menuRelatório(_ *cobra.Command, _ []string) {
 
 // criarRelatórios gera e salva relatórios da empresa em planilhas Excel.
 // Os relatórios podem ser consolidados ou, caso não existam, individuais.
-func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DadosContábeis) {
+func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
 	filename, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
 	if err != nil {
 		progress.Fatal(err)
@@ -132,7 +132,7 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.DadosContábeis) {
 }
 
 // criarPlanilhas gera e salva relatório consolidado/individual em Excel.
-func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.DadosContábeis, consolidado bool) bool {
+func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.ContabilServices, consolidado bool) bool {
 	titulo := "consolid"
 	if !consolidado {
 		titulo = "individ"

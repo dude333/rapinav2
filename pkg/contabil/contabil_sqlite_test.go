@@ -27,7 +27,7 @@ func Test_inserirDFP(t *testing.T) {
 		db = sqlx.MustConnect("sqlite3", connStr)
 	}
 
-	s, err := NovoSqlite(db)
+	s, err := NewSqlite(db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func Test_inserirDFP(t *testing.T) {
 			contas = append(contas, c)
 		}
 
-		dfp := dominio.DemonstraçãoFinanceira{
+		dfp := dominio.DemonstracaoFinanceira{
 			Empresa: rapina.Empresa{
 				CNPJ: "123",
 				Nome: "N1",
@@ -59,7 +59,7 @@ func Test_inserirDFP(t *testing.T) {
 			Contas: contas,
 		}
 
-		err := s.Salvar(context.Background(), &dfp)
+		err := s.Save(context.Background(), &dfp)
 		if err != nil {
 			t.Logf("%v", err)
 		}

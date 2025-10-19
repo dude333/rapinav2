@@ -20,19 +20,21 @@ import (
 var ErrRepositórioInválido = errors.New("repositório inválido")
 
 type CVM interface {
-	Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado
+	Import(ctx context.Context, ano int, trimestral bool) <-chan dominio.ImportResult
 }
 
-type DadosContábeis struct {
+// ContabilServices contém os serviços que implementam a interface CVM de
+// importação de dados da CVM.
+type ContabilServices struct {
 	cvmDFP CVM
 	cvmFRE CVM
 	db     *Sqlite
 }
 
-func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis, error) {
-	dfp := DadosContábeis{}
+func NewService(db *sqlx.DB, tempDir string, force ...bool) (*ContabilServices, error) {
+	dfp := ContabilServices{}
 
-	repoSqlite, err := NovoSqlite(db)
+	repoSqlite, err := NewSqlite(db)
 	if err != nil {
 		return &dfp, err
 	}
@@ -44,42 +46,42 @@ func NovoServiço(db *sqlx.DB, tempDir string, force ...bool) (*DadosContábeis,
 
 	hashes, _ := ext.Hashes(db)
 
-	cvmDFP, err := NovaDFP(
-		CfgDirDados(tempDir),
-		CfgArquivosJáProcessados(hashes),
-		CfgForce(f),
+	cvmDFP, err := NewDFPImporter(
+		WithDataDir(tempDir),
+		WithProcessedHashes(hashes),
+		WithForce(f),
 	)
 	if err != nil {
 		return &dfp, err
 	}
 
 	cvmFRE, err := NovaFRE(
-		CfgDirDados(tempDir),
-		CfgArquivosJáProcessados(hashes),
-		CfgForce(f),
+		WithDataDir(tempDir),
+		WithProcessedHashes(hashes),
+		WithForce(f),
 	)
 	if err != nil {
 		return &dfp, err
 	}
 
-	return &DadosContábeis{cvmDFP: cvmDFP, cvmFRE: cvmFRE, db: repoSqlite}, nil
+	return &ContabilServices{cvmDFP: cvmDFP, cvmFRE: cvmFRE, db: repoSqlite}, nil
 }
 
-// Importar importa os relatórios contábeis no ano especificado e os salva
+// Import importa os relatórios contábeis no ano especificado e os salva
 // no banco de dados.
-func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
+func (c *ContabilServices) Import(ano int, trimestral bool) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 
 	// importa dfp/itr
-	for result := range c.cvmDFP.Importar(ctx, ano, trimestral) {
+	for result := range c.cvmDFP.Import(ctx, ano, trimestral) {
 		if result.Error != nil {
 			progress.Error(result.Error)
 			continue
 		}
 		if result.DFP != nil {
-			err := c.db.Salvar(ctx, result.DFP)
+			err := c.db.Save(ctx, result.DFP)
 			if err != nil {
 				return err
 			}
@@ -93,13 +95,13 @@ func (c *DadosContábeis) Importar(ano int, trimestral bool) error {
 	}
 
 	// importa fre
-	for result := range c.cvmFRE.Importar(ctx, ano, false) {
+	for result := range c.cvmFRE.Import(ctx, ano, false) {
 		if result.Error != nil {
 			progress.Error(result.Error)
 			continue
 		}
 		if result.FRE != nil {
-			err := c.db.SalvarFRE(ctx, result.FRE)
+			err := c.db.SaveFRE(ctx, result.FRE)
 			if err != nil {
 				return err
 			}
@@ -126,21 +128,21 @@ func (df *DadosContábeis) Relatório(cnpj string, ano int) (*dominio.Demonstra�
 }
 */
 
-func (c *DadosContábeis) DadosTrimestrais(cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
+func (c *ContabilServices) DadosTrimestrais(cnpj string, consolidado bool) ([]rapina.InformeTrimestral, error) {
 	if c.db == nil {
 		return nil, ErrRepositórioInválido
 	}
 	return c.db.Trimestral(context.Background(), cnpj, consolidado)
 }
 
-func (c *DadosContábeis) Empresas() ([]rapina.Empresa, error) {
+func (c *ContabilServices) Empresas() ([]rapina.Empresa, error) {
 	if c.db == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}
 	return c.db.Empresas(context.Background())
 }
 
-func (c *DadosContábeis) BuscaEmpresas(nome string) ([]rapina.Empresa, error) {
+func (c *ContabilServices) BuscaEmpresas(nome string) ([]rapina.Empresa, error) {
 	if c.db == nil {
 		return []rapina.Empresa{}, ErrRepositórioInválido
 	}

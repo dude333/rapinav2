@@ -62,7 +62,7 @@ func webserver(_ *cobra.Command, _ []string) {
 }
 
 func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
-	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
+	dfp, err := contabil.NewService(db(), flags.tempDir)
 	if err != nil {
 		progress.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func handleSelection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	progress.SetOutput(w)
-	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
+	dfp, err := contabil.NewService(db(), flags.tempDir)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		progress.Fatal(err)
@@ -138,7 +138,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	progress.SetOutput(sseWriter{w: w, w2: os.Stdout})
 
-	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
+	dfp, err := contabil.NewService(db(), flags.tempDir)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		panic(err)
@@ -162,7 +162,7 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	importar := func(trimestral bool) {
 		for ano := anof; ano >= anoi; ano-- {
-			err := dfp.Importar(ano, trimestral)
+			err := dfp.Import(ano, trimestral)
 			if err != nil {
 				progress.Error(err)
 				continue

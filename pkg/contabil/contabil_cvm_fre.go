@@ -20,12 +20,12 @@ import (
 	"golang.org/x/text/transform"
 )
 
-func NovaFRE(configs ...ConfigFn) (CVM, error) {
-	var cvm cvmImporter
+func NovaFRE(configs ...Option) (CVM, error) {
+	var cvm CVMImporter
 	cvm.cfg = &cfg{}
-	cvm.cfg.loadConfigs(configs...)
+	cvm.cfg.apply(configs...)
 	cvm.nome = "fre"
-	cvm.infra = &localInfra{dirDados: cvm.cfg.dirDados}
+	cvm.infra = &LocalInfra{dirDados: cvm.cfg.tempDir}
 	cvm.url = urlArquivoFRE
 	cvm.filtros = filtrosFRE
 	cvm.processar = processarArquivoFRE
@@ -42,8 +42,8 @@ func urlArquivoFRE(ano int, _ bool) string {
 	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FRE/DADOS/` + zip
 }
 
-// regFRE é usada para armazenar os dados (linhas) dos arquivos de FRE.
-type regFRE struct {
+// FRERecord é usada para armazenar os dados (linhas) dos arquivos de FRE.
+type FRERecord struct {
 	CNPJ                        string
 	Nome                        string // Nome da empresa
 	DataRef                     string
@@ -61,7 +61,7 @@ type regFRE struct {
 	Versao                      int
 }
 
-func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- dominio.Resultado) error {
+func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- dominio.ImportResult) error {
 	fh, err := os.Open(arquivo.path)
 	if err != nil {
 		return err
@@ -77,8 +77,8 @@ func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- domi
 		return err
 	}
 
-	parser := novoParserFRE(cabeçalho)
-	empresas := make(map[string][]*regFRE)
+	parser := NewFREParser(cabeçalho)
+	empresas := make(map[string][]*FRERecord)
 
 	for {
 		linha, err := leitorCSV.Read()
@@ -89,7 +89,7 @@ func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- domi
 			continue
 		}
 
-		fre, err := parser.carregaFRE(linha)
+		fre, err := parser.parseFRE(linha)
 		if err != nil {
 			continue
 		}
@@ -98,7 +98,7 @@ func processarArquivoFRE(_ context.Context, arquivo Arquivo, results chan<- domi
 		empresas[k] = append(empresas[k], fre)
 	}
 
-	enviarFRE(empresas, results)
+	sendFRE(empresas, results)
 
 	return nil
 }
@@ -121,7 +121,7 @@ type parserFRE struct {
 	posVersao                      int
 }
 
-func novoParserFRE(cabeçalho []string) *parserFRE {
+func NewFREParser(cabeçalho []string) *parserFRE {
 	p := &parserFRE{}
 	for i, t := range cabeçalho {
 		switch t {
@@ -160,9 +160,9 @@ func novoParserFRE(cabeçalho []string) *parserFRE {
 	return p
 }
 
-func (p *parserFRE) carregaFRE(itens []string) (*regFRE, error) {
+func (p *parserFRE) parseFRE(itens []string) (*FRERecord, error) {
 	var err error
-	fre := &regFRE{}
+	fre := &FRERecord{}
 
 	fre.CNPJ = itens[p.posCnpj]
 	fre.Nome = itens[p.posNome]
@@ -217,12 +217,12 @@ func (p *parserFRE) carregaFRE(itens []string) (*regFRE, error) {
 	return fre, nil
 }
 
-// enviarFRE envia os dados de todas as empresas para o canal criado pelo método Importar.
-func enviarFRE(empresas map[string][]*regFRE, results chan<- dominio.Resultado) {
+// sendFRE envia os dados de todas as empresas para o canal criado pelo método Importar.
+func sendFRE(empresas map[string][]*FRERecord, results chan<- dominio.ImportResult) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
-		if _, ok := empresas[próxChaveFRE(k)]; ok {
+		if _, ok := empresas[nextFREkey(k)]; ok {
 			continue
 		}
 
@@ -252,7 +252,7 @@ func enviarFRE(empresas map[string][]*regFRE, results chan<- dominio.Resultado) 
 			}
 
 			if freEmpresa.Válida() {
-				results <- dominio.Resultado{FRE: &freEmpresa}
+				results <- dominio.ImportResult{FRE: &freEmpresa}
 				num++
 			}
 		}
@@ -261,9 +261,9 @@ func enviarFRE(empresas map[string][]*regFRE, results chan<- dominio.Resultado) 
 	progress.Debug("Registros processados: %d", num)
 }
 
-// próxChaveFRE retora a chave com a próxima versão:
+// nextFREkey retora a chave com a próxima versão:
 // "CNPJ;DATA;1" => "CNPJ;DATA;2"
-func próxChaveFRE(k string) string {
+func nextFREkey(k string) string {
 	ks := strings.Split(k, ";")
 	if len(ks) != 3 {
 		return k

@@ -11,16 +11,16 @@ import (
 	rapina "github.com/dude333/rapinav2"
 )
 
-// DemonstraçãoFinanceira contém a demonstração financeira de uma empresa
+// DemonstracaoFinanceira contém a demonstração financeira de uma empresa
 // num dado ano (contém dados acumulados desde DataIniExerc).
-type DemonstraçãoFinanceira struct {
+type DemonstracaoFinanceira struct {
 	rapina.Empresa
 	Ano          int
 	DataIniExerc string
 	Contas       []Conta
 }
 
-func (df *DemonstraçãoFinanceira) Válida() bool {
+func (df *DemonstracaoFinanceira) Válida() bool {
 	return len(df.CNPJ) == len("17.836.901/0001-10") &&
 		len(df.Nome) > 0 &&
 		df.Ano >= 2000 && df.Ano < 2221 && // 2 séculos de rapina :)
@@ -52,7 +52,7 @@ func (c *Conta) Válida() bool {
 			(c.OrdemExerc == "PENÚLTIMO" && strings.HasPrefix(c.DataFimExerc, "2009")))
 }
 
-func (df *DemonstraçãoFinanceira) String() string {
+func (df *DemonstracaoFinanceira) String() string {
 	var contasStr []string
 	for i := range df.Contas {
 		conta := &df.Contas[i]
@@ -68,7 +68,7 @@ func (df *DemonstraçãoFinanceira) String() string {
 		df.CNPJ, df.Nome, df.Ano, df.DataIniExerc, strings.Join(contasStr, "\n"))
 }
 
-type ConfigConta struct {
+type ContaConfig struct {
 	AtivoTotal        []string
 	AtivoCirc         []string
 	AtivoNCirc        []string
@@ -102,16 +102,16 @@ type ConfigConta struct {
 
 // -- REPOSITÓRIO & SERVIÇO --
 
-type Resultado struct {
+type ImportResult struct {
 	Error error
-	DFP   *DemonstraçãoFinanceira
+	DFP   *DemonstracaoFinanceira
 	FRE   *FreDistribCapital
 	Hash  string
 }
 
-type Serviço interface {
+type Service interface {
 	// Importar(ano int, trimestral bool) error
-	Relatório(cnpj string, ano int) (*DemonstraçãoFinanceira, error)
+	Relatório(cnpj string, ano int) (*DemonstracaoFinanceira, error)
 	Empresas(nome string) []rapina.Empresa
 }
 

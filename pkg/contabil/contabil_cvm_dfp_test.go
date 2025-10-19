@@ -22,7 +22,7 @@ func Test_cvm_Importar(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    <-chan dominio.Resultado
+		want    <-chan dominio.ImportResult
 		wantErr bool
 	}{
 		{
@@ -32,7 +32,7 @@ func Test_cvm_Importar(t *testing.T) {
 				ano:        2019,
 				trimestral: false,
 			},
-			want:    make(<-chan dominio.Resultado),
+			want:    make(<-chan dominio.ImportResult),
 			wantErr: false,
 		},
 	}
@@ -47,17 +47,17 @@ func Test_cvm_Importar(t *testing.T) {
 				db = sqlx.MustConnect("sqlite3", connStr)
 			}
 
-			c, err := NovaDFP()
+			c, err := NewDFPImporter()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			s, err := NovoSqlite(db)
+			s, err := NewSqlite(db)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			for result := range c.Importar(tt.args.ctx, tt.args.ano, tt.args.trimestral) {
+			for result := range c.Import(tt.args.ctx, tt.args.ano, tt.args.trimestral) {
 				if (result.Error != nil) != tt.wantErr {
 					t.Errorf("RepositórioImportaçãoDFP.Importar() error = %v, wantErr %v", result.Error, tt.wantErr)
 					return
@@ -66,7 +66,7 @@ func Test_cvm_Importar(t *testing.T) {
 					fmt.Printf("=> %+v\n", result.Error)
 				}
 				if result.DFP != nil {
-					err = s.Salvar(tt.args.ctx, result.DFP)
+					err = s.Save(tt.args.ctx, result.DFP)
 					if (err != nil) != tt.wantErr {
 						t.Errorf("RepositórioEscritaDFP.Salvar() error = %v, wantErr %v, para Empresa = %s | %s | %d", err, tt.wantErr,
 							result.DFP.CNPJ, result.DFP.Nome, result.DFP.Ano)
@@ -151,7 +151,7 @@ func Test_meses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := meses(tt.args.ini, tt.args.fim)
+			got, err := monthsDiff(tt.args.ini, tt.args.fim)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("meses() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -208,13 +208,13 @@ func Test_csv_carregaDFP(t *testing.T) {
 
 // ==== BENCHMARKS ====
 
-func benchmarkconverteConta(c *regDFP, b *testing.B) {
+func benchmarkconverteConta(c *DFPRecord, b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		c.converteConta()
+		c.toConta()
 	}
 }
 
-var cc = []regDFP{
+var cc = []DFPRecord{
 	{
 		CNPJ:         "C1",
 		Nome:         "N1",
@@ -252,7 +252,7 @@ func BenchmarkConverteConta1(b *testing.B) { benchmarkconverteConta(&cc[1], b) }
 
 func benchmarkMeses(dataI, dataF string, b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		_, _ = meses(dataI, dataF)
+		_, _ = monthsDiff(dataI, dataF)
 	}
 }
 

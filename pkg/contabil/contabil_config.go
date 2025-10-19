@@ -8,20 +8,20 @@ import "os"
 
 // cfg contém as configurações usadas nos construtores deste repositório.
 type cfg struct {
-	dirDados              string   // Diretório de dados temporários
-	arquivosJáProcessados []string // Hashes dos arquivos já processados
-	force                 bool     // Forçar atualização, mesmo que o dado já exista
+	tempDir         string   // Diretório de dados temporários
+	processedHashes []string // Hashes dos arquivos já processados
+	force           bool     // Forçar atualização, mesmo que o dado já exista
 }
 
-func (c *cfg) loadConfigs(configs ...ConfigFn) error {
-	for _, config := range configs {
-		config(c)
+func (c *cfg) apply(options ...Option) error {
+	for _, option := range options {
+		option(c)
 	}
 
-	if c.dirDados == "" {
-		c.dirDados = os.TempDir()
+	if c.tempDir == "" {
+		c.tempDir = os.TempDir()
 	} else {
-		err := os.MkdirAll(c.dirDados, os.ModePerm)
+		err := os.MkdirAll(c.tempDir, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -29,26 +29,27 @@ func (c *cfg) loadConfigs(configs ...ConfigFn) error {
 	return nil
 }
 
-type ConfigFn func(*cfg)
+type Option func(*cfg)
 
-func CfgDirDados(dir string) ConfigFn {
+func WithDataDir(dir string) Option {
 	return func(c *cfg) {
 		if len(dir) > 0 {
-			c.dirDados = dir
+			c.tempDir = dir
 		}
 	}
 }
 
-func CfgArquivosJáProcessados(hashes []string) ConfigFn {
+func WithProcessedHashes(hashes []string) Option {
 	return func(c *cfg) {
 		if len(hashes) > 0 {
-			c.arquivosJáProcessados = hashes
+			c.processedHashes = hashes
 		}
 	}
 }
 
-func CfgForce(force bool) ConfigFn {
+func WithForce(force bool) Option {
 	return func(c *cfg) {
 		c.force = force
 	}
 }
+

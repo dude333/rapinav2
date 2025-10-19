@@ -28,7 +28,7 @@ var atualizarCmd = &cobra.Command{
 	Aliases: []string{"update"},
 	Short:   "Atualizar os dados do banco de dados",
 	Long:    `Atualizar o banco de dados com as informações coletadas dos arquivos da CVM e B3`,
-	Run:     atualizar2,
+	Run:     atualizar,
 }
 
 func init() {
@@ -54,14 +54,14 @@ func atualizar(_ *cobra.Command, _ []string) {
 		return
 	}
 
-	svcContabil, err := contabil.NovoServiço(db(), flags.tempDir, flags.atualizar.force)
+	svcContabil, err := contabil.NewService(db(), flags.tempDir, flags.atualizar.force)
 	if err != nil {
 		progress.Fatal(err)
 	}
 
 	importar := func(trimestral bool) {
 		for ano := anof; ano >= anoi; ano-- {
-			err := svcContabil.Importar(ano, trimestral)
+			err := svcContabil.Import(ano, trimestral)
 			if err != nil {
 				progress.Error(err)
 				continue

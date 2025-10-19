@@ -41,10 +41,10 @@ type Sqlite struct {
 	cfg           *cfg
 }
 
-func NovoSqlite(db *sqlx.DB, configs ...ConfigFn) (*Sqlite, error) {
+func NewSqlite(db *sqlx.DB, configs ...Option) (*Sqlite, error) {
 	var s Sqlite
 	s.cfg = &cfg{}
-	s.cfg.loadConfigs(configs...)
+	s.cfg.apply(configs...)
 
 	s.db = db
 
@@ -209,7 +209,7 @@ type sqliteConta struct {
 	Moeda        string  `db:"moeda"`
 }
 
-func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinanceira) error {
+func (s *Sqlite) Save(ctx context.Context, dfp *dominio.DemonstracaoFinanceira) error {
 	progress.Trace("%-60s %4d\n", dfp.Nome, len(dfp.Contas))
 
 	d := sqliteEmpresa{
@@ -246,13 +246,13 @@ func (s *Sqlite) Salvar(ctx context.Context, dfp *dominio.DemonstraçãoFinancei
 	}
 
 	progress.Debug("Salvando empresa %s, %d (%d): %d contas", d.Nome, d.Ano, id, len(dfp.Contas))
-	return inserirContas(ctx, s.db, id, dfp)
+	return insertContas(ctx, s.db, id, dfp)
 }
 
-// inserirContas insere os registro das contas, sendo que deve ter sido garantido
+// insertContas insere os registro das contas, sendo que deve ter sido garantido
 // previamente que não exista nenhum registro com o id_empresa das contas a serem
 // inseridas.
-func inserirContas(ctx context.Context, db *sqlx.DB, id int, dfp *dominio.DemonstraçãoFinanceira) error {
+func insertContas(ctx context.Context, db *sqlx.DB, id int, dfp *dominio.DemonstracaoFinanceira) error {
 	if len(dfp.Contas) == 0 {
 		return nil
 	}
@@ -311,7 +311,7 @@ func inserirContas(ctx context.Context, db *sqlx.DB, id int, dfp *dominio.Demons
 	return tx.Commit()
 }
 
-func removerEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
+func deleteEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
 	query := `DELETE FROM contas WHERE id_empresa=?`
 	_, err := db.ExecContext(ctx, query, &id)
 	if err != nil && err != sql.ErrNoRows {
@@ -402,7 +402,7 @@ var tabelas = []ext.Tabela{
 	},
 }
 
-func (s *Sqlite) SalvarFRE(ctx context.Context, fre *dominio.FreDistribCapital) error {
+func (s *Sqlite) SaveFRE(ctx context.Context, fre *dominio.FreDistribCapital) error {
 	if fre == nil {
 		return nil
 	}

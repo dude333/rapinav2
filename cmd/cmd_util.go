@@ -107,13 +107,13 @@ func prepareFilename(path, name string) (fpath string, err error) {
 			break
 		} else {
 			err = fmt.Errorf("file %s stat error: %v", fpath, err)
-			return
+			return fpath, err
 		}
 	}
 
 	if x > max {
 		err = fmt.Errorf("remova o arquivo %s/%s.xlsx antes de continuar", path, name)
-		return
+		return fpath, err
 	}
 
 	// Create directory
@@ -124,11 +124,11 @@ func prepareFilename(path, name string) (fpath string, err error) {
 		return "", errors.Wrap(err, "diretório não pode ser criado")
 	}
 
-	return
+	return fpath, err
 }
 
 func menuEmpresas() <-chan rapina.Empresa {
-	dfp, err := contabil.NovoServiço(db(), flags.tempDir)
+	dfp, err := contabil.NewService(db(), flags.tempDir)
 	if err != nil {
 		progress.Fatal(err)
 	}

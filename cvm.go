@@ -31,6 +31,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"slices"
 	"time"
 
 	"github.com/dude333/rapinav2/pkg/infra"
@@ -76,7 +77,7 @@ type CvmDataSource interface {
 	Salvar(ctx context.Context, db *sqlx.DB) error
 }
 
-// ImportarCVMimporta dados da CVM para a base de dados local
+// Importar importa dados da CVM para a base de dados local
 func (c *CVM) Importar(ctx context.Context, ano int) error {
 	for _, tipo := range []CvmType{CvmDfp} {
 		dados, err := c.importarTipo(ctx, tipo, ano)
@@ -109,19 +110,12 @@ func (c CVM) existe(hash string) bool {
 	if len(hash) == 0 || c.force {
 		return false
 	}
-	for i := range c.hashes {
-		if c.hashes[i] == hash {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.hashes, hash)
 }
 
 func (c *CVM) addHash(hash string) {
-	for i := range c.hashes {
-		if c.hashes[i] == hash {
-			return
-		}
+	if slices.Contains(c.hashes, hash) {
+		return
 	}
 	c.hashes = append(c.hashes, hash)
 }
@@ -136,17 +130,6 @@ func (c *CVM) importarDFP(ctx context.Context, ano int, trimestre bool) (*DFP, e
 	if c.existe(zipHash) {
 		return nil, fmt.Errorf("este arquivo 'dfp/itr' já foi processado anteriormente")
 	}
-
-	// arquivos := []Arquivo{
-	// 	{
-	// 		path: path.Join(c.dirDados, "dfp.zip"),
-	// 		hash: "dfp",
-	// 	},
-	// 	{
-	// 		path: path.Join(c.dirDados, "itr.zip"),
-	// 		hash: "itr",
-	// 	},
-	// }
 
 	defer Cleanup(arquivos)
 

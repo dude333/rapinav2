@@ -27,13 +27,13 @@ type Arquivo struct {
 	hash string
 }
 
-type localInfra struct {
+type LocalInfra struct {
 	dirDados string // diretório de dados
 }
 
 // DownloadAndUnzip baixa e descompacta o arquivo e retorna a lista de arquivos descompactados, com
 // o hash de cada arquivo; retorna o hash do .zip e o erro, se houver.
-func (l localInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arquivo, string, error) {
+func (l LocalInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arquivo, string, error) {
 	u, err := url.Parse(urlString)
 	if err != nil {
 		return []Arquivo{}, "", err
@@ -60,7 +60,7 @@ func (l localInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arqu
 	return arquivos, zipHash, err
 }
 
-func (l localInfra) Cleanup(arqs []Arquivo) []string {
+func (l LocalInfra) Cleanup(arqs []Arquivo) []string {
 	files := make([]string, len(arqs))
 	for i := range arqs {
 		files[i] = arqs[i].path
@@ -68,21 +68,21 @@ func (l localInfra) Cleanup(arqs []Arquivo) []string {
 	return ext.Cleanup(files)
 }
 
-// cvmImporter é um importador genérico de dados da CVM.
-type cvmImporter struct {
+// CVMImporter é um importador genérico de dados da CVM.
+type CVMImporter struct {
 	nome          string
 	cfg           *cfg
 	infra         infra
 	url           func(ano int, trimestral bool) string
 	filtros       func() []string
-	processar     func(ctx context.Context, arq Arquivo, results chan<- dominio.Resultado) error
+	processar     func(ctx context.Context, arq Arquivo, results chan<- dominio.ImportResult) error
 	reportarAviso bool
 }
 
-// Importar baixa o arquivo de dados de todas as empresas de um determinado
+// Import baixa o arquivo de dados de todas as empresas de um determinado
 // ano do site da CVM.
-func (c *cvmImporter) Importar(ctx context.Context, ano int, trimestral bool) <-chan dominio.Resultado {
-	results := make(chan dominio.Resultado)
+func (c *CVMImporter) Import(ctx context.Context, ano int, trimestral bool) <-chan dominio.ImportResult {
+	results := make(chan dominio.ImportResult)
 
 	go func() {
 		defer close(results)
@@ -91,7 +91,7 @@ func (c *cvmImporter) Importar(ctx context.Context, ano int, trimestral bool) <-
 
 		arquivos, zipHash, err := c.infra.DownloadAndUnzip(url, c.filtros())
 		if err != nil {
-			results <- dominio.Resultado{Error: err}
+			results <- dominio.ImportResult{Error: err}
 			return
 		}
 
@@ -110,25 +110,25 @@ func (c *cvmImporter) Importar(ctx context.Context, ano int, trimestral bool) <-
 			// Processa o arquivo e envia o resultado para o canal 'results'
 			err = c.processar(ctx, arquivo, results)
 			if err != nil {
-				results <- dominio.Resultado{Hash: arquivo.hash}
+				results <- dominio.ImportResult{Hash: arquivo.hash}
 			}
 
 			progress.RunOK()
 		}
 
 		// Grava o hash do zip no banco de dados
-		results <- dominio.Resultado{Hash: zipHash}
+		results <- dominio.ImportResult{Hash: zipHash}
 	}()
 
 	return results
 }
 
-func (c cvmImporter) existe(hash string) bool {
+func (c CVMImporter) existe(hash string) bool {
 	if len(hash) == 0 || c.cfg.force {
 		return false
 	}
-	for i := range c.cfg.arquivosJáProcessados {
-		if c.cfg.arquivosJáProcessados[i] == hash {
+	for i := range c.cfg.processedHashes {
+		if c.cfg.processedHashes[i] == hash {
 			return true
 		}
 	}

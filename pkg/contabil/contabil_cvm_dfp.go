@@ -22,12 +22,12 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
-func NovaDFP(configs ...ConfigFn) (CVM, error) {
-	var cvm cvmImporter
+func NewDFPImporter(configs ...Option) (CVM, error) {
+	var cvm CVMImporter
 	cvm.cfg = &cfg{}
-	cvm.cfg.loadConfigs(configs...)
+	cvm.cfg.apply(configs...)
 	cvm.nome = "dfp/itr"
-	cvm.infra = &localInfra{dirDados: cvm.cfg.dirDados}
+	cvm.infra = &LocalInfra{dirDados: cvm.cfg.tempDir}
 	cvm.url = urlArquivoDFP
 	cvm.filtros = filtrosDFP
 	cvm.processar = processarArquivoDFP
@@ -69,7 +69,7 @@ func urlArquivoDFP(ano int, trimestral bool) string {
 	return `http://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/` + tipo + `/DADOS/` + zip
 }
 
-func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- dominio.Resultado) error {
+func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- dominio.ImportResult) error {
 	fh, err := os.Open(arquivo.path)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 
 	parser := novoParserDFP(header)
 
-	empresas := make(map[string][]*regDFP)
+	empresas := make(map[string][]*DFPRecord)
 
 	for {
 		linha, err := leitorCSV.Read()
@@ -99,7 +99,7 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 			continue
 		}
 
-		dfp, err := parser.carregaDFP(linha)
+		dfp, err := parser.parseDFP(linha)
 
 		if err != nil || dfp.registroInválido() {
 			continue
@@ -109,13 +109,13 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 		empresas[k] = append(empresas[k], dfp)
 	}
 
-	enviarDFP(empresas, results)
+	sendDFP(empresas, results)
 
 	return nil
 }
 
-// regDFP é usada para armazenar os dados (linhas) dos arquivos de DFP.
-type regDFP struct {
+// DFPRecord é usada para armazenar os dados (linhas) dos arquivos de DFP.
+type DFPRecord struct {
 	CNPJ   string
 	Nome   string // Nome da empresa
 	Ano    string
@@ -134,12 +134,12 @@ type regDFP struct {
 	Consolidado  bool
 }
 
-func (reg *regDFP) converteConta() dominio.Conta {
+func (dfp *DFPRecord) toConta() dominio.Conta {
 	contém := func(str string) bool {
-		return strings.Contains(reg.GrupoDFP, str)
+		return strings.Contains(dfp.GrupoDFP, str)
 	}
 
-	grp := reg.GrupoDFP
+	grp := dfp.GrupoDFP
 	switch {
 	case contém("Balanço Patrimonial Passivo"):
 		grp = "BPP"
@@ -154,25 +154,25 @@ func (reg *regDFP) converteConta() dominio.Conta {
 	}
 
 	conta := dominio.Conta{
-		Código:       reg.Código,
-		Descr:        reg.Descr,
-		Consolidado:  reg.Consolidado,
+		Código:       dfp.Código,
+		Descr:        dfp.Descr,
+		Consolidado:  dfp.Consolidado,
 		Grupo:        grp,
-		DataIniExerc: reg.DataIniExerc,
-		DataFimExerc: reg.DataFimExerc,
-		Meses:        reg.Meses,
-		OrdemExerc:   reg.OrdemExerc,
+		DataIniExerc: dfp.DataIniExerc,
+		DataFimExerc: dfp.DataFimExerc,
+		Meses:        dfp.Meses,
+		OrdemExerc:   dfp.OrdemExerc,
 		Total: rapina.Dinheiro{
-			Valor:  reg.Valor,
-			Escala: reg.Escala,
-			Moeda:  reg.Moeda,
+			Valor:  dfp.Valor,
+			Escala: dfp.Escala,
+			Moeda:  dfp.Moeda,
 		},
 	}
 
 	return conta
 }
 
-func (dfp *regDFP) registroInválido() bool {
+func (dfp *DFPRecord) registroInválido() bool {
 	if dfp.Meses%3 != 0 {
 		progress.Trace("Ignorando registro não multiplo de 3: %v", dfp)
 		return true
@@ -180,14 +180,14 @@ func (dfp *regDFP) registroInválido() bool {
 	return false
 }
 
-// enviarDFP envia os dados de todas as empresas de todos os anos do arquivo
+// sendDFP envia os dados de todas as empresas de todos os anos do arquivo
 // lido, com base no o mapa empresas[ano]*cvmDFP. Os dados são enviados pelo
 // canal criado pelo método Importar.
-func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) {
+func sendDFP(empresas map[string][]*DFPRecord, results chan<- dominio.ImportResult) {
 	num := 0
 	for k := range empresas {
 		// Ignora se existir uma versão mais nova
-		if _, ok := empresas[próxChave(k)]; ok {
+		if _, ok := empresas[nextDFPKey(k)]; ok {
 			continue
 		}
 
@@ -199,7 +199,7 @@ func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) 
 		contas := make(map[string][]dominio.Conta, len(registros))
 
 		for _, reg := range registros {
-			c := reg.converteConta()
+			c := reg.toConta()
 			if c.Válida() {
 				contas[reg.Ano] = append(contas[reg.Ano], c)
 				num++
@@ -212,7 +212,7 @@ func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) 
 				continue
 			}
 
-			dfpEmpresa := dominio.DemonstraçãoFinanceira{
+			dfpEmpresa := dominio.DemonstracaoFinanceira{
 				Empresa: rapina.Empresa{
 					CNPJ: registros[0].CNPJ,
 					Nome: registros[0].Nome,
@@ -222,9 +222,9 @@ func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) 
 			}
 
 			if dfpEmpresa.Válida() {
-				results <- dominio.Resultado{DFP: &dfpEmpresa}
+				results <- dominio.ImportResult{DFP: &dfpEmpresa}
 			} else {
-				results <- dominio.Resultado{Error: ErrDFPInválida}
+				results <- dominio.ImportResult{Error: ErrDFPInválida}
 			}
 		}
 	} // next k
@@ -233,9 +233,9 @@ func enviarDFP(empresas map[string][]*regDFP, results chan<- dominio.Resultado) 
 	progress.Debug("Linhas processadas: %d", num)
 }
 
-// próxChave retora a chave com a próxima chave:
+// nextDFPKey retora a chave com a próxima chave:
 // "CNPJANO;1" => "CNPJANO;2"
-func próxChave(k string) string {
+func nextDFPKey(k string) string {
 	ks := strings.Split(k, ";")
 	if len(ks) != 2 {
 		return k
@@ -256,7 +256,7 @@ const (
 	numItens int = 11 // número de itens (soma dos parâmetros pos___ da struct csv)
 )
 
-type parserDFP struct {
+type DFPParser struct {
 	posCnpj        int
 	posDenomCia    int
 	posDtIniExerc  int
@@ -271,8 +271,8 @@ type parserDFP struct {
 	posMoeda       int
 }
 
-func novoParserDFP(cabeçalho []string) *parserDFP {
-	p := &parserDFP{
+func novoParserDFP(cabeçalho []string) *DFPParser {
+	p := &DFPParser{
 		posDtIniExerc: -1, // Este campo não aparece nos dados do balanço patrimonial
 	}
 
@@ -308,7 +308,7 @@ func novoParserDFP(cabeçalho []string) *parserDFP {
 	return p
 }
 
-func (p *parserDFP) carregaDFP(itens []string) (*regDFP, error) {
+func (p *DFPParser) parseDFP(itens []string) (*DFPRecord, error) {
 	if len(itens) < numItens {
 		return nil, ErrFaltaItem
 	}
@@ -317,7 +317,7 @@ func (p *parserDFP) carregaDFP(itens []string) (*regDFP, error) {
 	if p.posDtIniExerc >= 0 {
 		dtIni = itens[p.posDtIniExerc]
 	}
-	m, err := meses(dtIni, itens[p.posDtFimExerc])
+	m, err := monthsDiff(dtIni, itens[p.posDtFimExerc])
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func (p *parserDFP) carregaDFP(itens []string) (*regDFP, error) {
 		return nil, err
 	}
 
-	return &regDFP{
+	return &DFPRecord{
 		CNPJ:         itens[p.posCnpj],
 		Nome:         itens[p.posDenomCia],
 		Ano:          itens[p.posDtFimExerc][:4],
@@ -346,9 +346,9 @@ func (p *parserDFP) carregaDFP(itens []string) (*regDFP, error) {
 	}, nil
 }
 
-// meses retorna a diferença em meses entre ini e fim, com a data no formato
+// monthsDiff retorna a diferença em meses entre ini e fim, com a data no formato
 // AAAA-MM-DD.
-func meses(ini, fim string) (int, error) {
+func monthsDiff(ini, fim string) (int, error) {
 	if len(fim) != 10 || (ini != "" && len(ini) != 10) {
 		return 0, ErrDataInválida
 	}
