@@ -26,7 +26,7 @@ type ValoresTrimestrais struct {
 	T4  float64
 }
 
-// T retorna o valor do trimestre pelo índice (0 <= n < 4)
+// T retorna o valor do trimestre pelo índice (1 <= n <= 4)
 func (v *ValoresTrimestrais) T(n int) float64 {
 	switch n {
 	case 1:
@@ -41,7 +41,7 @@ func (v *ValoresTrimestrais) T(n int) float64 {
 	return 0.0
 }
 
-// SetT salva o valor do trimestre pelo índice (0 <= n < 4)
+// SetT salva o valor do trimestre pelo índice (1 <= n <= 4)
 func (v *ValoresTrimestrais) SetT(n int, val float64) {
 	switch n {
 	case 1:
@@ -390,7 +390,7 @@ func RangeAnosVTs(v1, v2 []ValoresTrimestrais) []int {
 	return RangeAnos(itr, false)
 }
 
-// ÚÚltimoTrimestre retorna o último trimestre com valor não nulo
+// ÚltimoTrimestre retorna o último trimestre com valor não nulo
 func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
 	for _, valor := range valores {
 		if valor.Ano != ano {
@@ -407,32 +407,37 @@ func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
 	return 1
 }
 
+// FIX #2: Simplified TTM logic and removed problematic invalidPeriod check
 // TTM armazena a soma dos últimos 4 trimestres em cada um dos trimestres; usado em métricas
 // que comparam como valores do balanço patrimonial.
 // Exemplo: ROE = Lucro Líq. dos últimos 12 meses / Patrim.Líq.
 func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
-	min, max := MinMax([]InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
-	t := ÚltimoTrimestre(max, acct)
-
-	valores := make([]float64, (max-min+1)*4)
-
-	for ano := min; ano <= max; ano++ {
-		for _, valor := range acct {
-			if valor.Ano != ano {
-				continue
-			}
-			idx := 4 * (ano - min)
-			valores[idx+0] = valor.T1
-			valores[idx+1] = valor.T2
-			valores[idx+2] = valor.T3
-			valores[idx+3] = valor.T4
-		}
+	if len(acct) == 0 {
+		return []ValoresTrimestrais{}
 	}
 
+	min, max := MinMax([]InformeTrimestral{{Codigo: "", Descr: "", Valores: acct}})
+	if min == 0 && max == 0 {
+		return []ValoresTrimestrais{}
+	}
+
+	// Create a flat array of all quarterly values for easier access
+	valores := make([]float64, (max-min+1)*4)
+
+	for _, valor := range acct {
+		if valor.Ano < min || valor.Ano > max {
+			continue
+		}
+		idx := 4 * (valor.Ano - min)
+		valores[idx+0] = valor.T1
+		valores[idx+1] = valor.T2
+		valores[idx+2] = valor.T3
+		valores[idx+3] = valor.T4
+	}
+
+	// Helper to sum values from index 'from' to 'to' (inclusive)
 	somaValores := func(from, to int) float64 {
-		invalidParm := from < 0 || to >= len(valores) || from > to
-		invalidPeriod := to >= (len(valores) - (4 - t))
-		if invalidParm || invalidPeriod {
+		if from < 0 || to >= len(valores) || from > to {
 			return 0.0
 		}
 
@@ -443,22 +448,26 @@ func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 		return total
 	}
 
-	valoresAcum := make([]ValoresTrimestrais, (max-min+1)*4)
+	// Calculate TTM for each quarter
+	valoresAcum := make([]ValoresTrimestrais, 0, max-min+1)
 
 	for ano := min; ano <= max; ano++ {
-		for _, valor := range acct {
-			if valor.Ano != ano {
-				continue
-			}
-			idx := 4 * (ano - min)
-			valoresAcum[ano-min] = ValoresTrimestrais{
-				Ano: ano,
-				T1:  somaValores(idx-3, idx+0),
-				T2:  somaValores(idx-2, idx+1),
-				T3:  somaValores(idx-1, idx+2),
-				T4:  somaValores(idx-0, idx+3),
-			}
+		idx := 4 * (ano - min)
+
+		// For each quarter, calculate the sum of the last 4 quarters
+		// T1: sum of quarters from (idx-3) to (idx+0)
+		// T2: sum of quarters from (idx-2) to (idx+1)
+		// T3: sum of quarters from (idx-1) to (idx+2)
+		// T4: sum of quarters from (idx+0) to (idx+3)
+		vt := ValoresTrimestrais{
+			Ano: ano,
+			T1:  somaValores(idx-3, idx+0),
+			T2:  somaValores(idx-2, idx+1),
+			T3:  somaValores(idx-1, idx+2),
+			T4:  somaValores(idx+0, idx+3),
 		}
+
+		valoresAcum = append(valoresAcum, vt)
 	}
 
 	return valoresAcum

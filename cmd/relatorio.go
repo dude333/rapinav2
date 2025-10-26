@@ -113,15 +113,20 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
 	}()
 
 	// DADOS CONSOLIDADOS
-	criarPlanilhas(x, empresa, dfp, true)
-	//
+	hasConsolidated := criarPlanilhas(x, empresa, dfp, true)
+
 	// DADOS INDIVIDUAIS
-	criarPlanilhas(x, empresa, dfp, false)
+	hasIndividual := criarPlanilhas(x, empresa, dfp, false)
+
+	if !hasConsolidated && !hasIndividual {
+		progress.Warning(fmt.Sprintf("Nenhum dado disponível para %s", empresa.Nome))
+		return
+	}
 
 	// Salva planilha
 	if err := x.SaveAs(filename); err != nil {
-		progress.Fatal(err)
-		os.Exit(1)
+		progress.Error(fmt.Errorf("erro ao salvar relatório: %w", err))
+		return
 	}
 
 	status := fmt.Sprintf("Relatório salvo como: %s", filename)
