@@ -322,24 +322,19 @@ func TrimestresComDados(itr []InformeTrimestral) []bool {
 	colunas := make([]bool, 4*(1+maxAno-minAno))
 
 	for _, informe := range itr {
-		for ano := minAno; ano <= maxAno; ano++ {
-			for _, v := range informe.Valores {
-				if v.Ano != ano {
-					continue
-				}
-				i := (v.Ano - minAno) * 4
-				if !colunas[i+0] && v.T1 != 0.0 {
-					colunas[i+0] = true
-				}
-				if v.T2 != 0.0 {
-					colunas[i+1] = true
-				}
-				if v.T3 != 0.0 {
-					colunas[i+2] = true
-				}
-				if v.T4 != 0.0 {
-					colunas[i+3] = true
-				}
+		for _, v := range informe.Valores {
+			i := (v.Ano - minAno) * 4
+			if !colunas[i+0] && v.T1 != 0.0 {
+				colunas[i+0] = true
+			}
+			if v.T2 != 0.0 {
+				colunas[i+1] = true
+			}
+			if v.T3 != 0.0 {
+				colunas[i+2] = true
+			}
+			if v.T4 != 0.0 {
+				colunas[i+3] = true
 			}
 		}
 	}
@@ -393,6 +388,23 @@ func RangeAnosVTs(v1, v2 []ValoresTrimestrais) []int {
 	return RangeAnos(itr, false)
 }
 
+// ÚltimoTrimestreReal retorna o último trimestre com valor não nulo
+// usando o valor do Ativo Total como base.
+func ÚltimoTrimestreReal(itrs []InformeTrimestral) int {
+	for _, itr := range itrs {
+		if itr.Codigo == "1" {
+			max := 0
+			for _, valor := range itr.Valores {
+				if valor.Ano > max {
+					max = valor.Ano
+				}
+			}
+			return ÚltimoTrimestre(max, itr.Valores)
+		}
+	}
+	return 1
+}
+
 // ÚltimoTrimestre retorna o último trimestre com valor não nulo
 func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
 	for _, valor := range valores {
@@ -410,9 +422,8 @@ func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
 	return 1
 }
 
-// FIX #2: Simplified TTM logic and removed problematic invalidPeriod check
-// TTM armazena a soma dos últimos 4 trimestres em cada um dos trimestres; usado em métricas
-// que comparam como valores do balanço patrimonial.
+// TTM armazena a soma dos últimos 4 trimestres em cada um dos trimestres;
+// usado em métricas que comparam como valores do balanço patrimonial.
 // Exemplo: ROE = Lucro Líq. dos últimos 12 meses / Patrim.Líq.
 func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 	if len(acct) == 0 {

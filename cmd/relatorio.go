@@ -204,6 +204,8 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 
 	// ===== Relatório - início =====
 	anos := rapina.RangeAnos(itr, opts.decrescente)
+	últimoAno := ifElse(opts.decrescente, anos[0], anos[len(anos)-1])
+	últimoTrimestre := rapina.ÚltimoTrimestreReal(itr)
 	seq4 := func(n int) int {
 		return seq(4, n, opts.decrescente)
 	}
@@ -254,7 +256,12 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 				total := valor.T1 + valor.T2 + valor.T3 + valor.T4
 				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
 					progress.Trace("informe.Valores[0]: %+v", informe.Valores[0])
-					total = valor.T(4) // TODO: ajustar período para TTM para o último ano
+					total = valor.T(ifElse(valor.Ano == últimoAno, últimoTrimestre, 4))
+				} else {
+					if valor.Ano == últimoAno {
+						ttm := rapina.TTM(informe.Valores)
+						total = ttm[len(ttm)-2].T(últimoTrimestre)
+					}
 				}
 				x.PrintCell(row, col, number, total)
 			} else {
@@ -279,22 +286,24 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 	_ = x.FreezePane("C2")
 
 	// Trim empty columns
-	hasData := rapina.TrimestresComDados(itr)
-	if opts.decrescente {
-		reverseb(hasData)
-	}
-	for i := len(hasData) - 1; i >= 0; i-- {
-		if hasData[i] {
-			break
+	if !opts.anual {
+		hasData := rapina.TrimestresComDados(itr)
+		if opts.decrescente {
+			reverseb(hasData)
 		}
-		_ = x.RemoveCol(initCol + i)
-	}
-	for i := 0; i < len(hasData); i++ {
-		if hasData[i] {
-			break
+		for i := len(hasData) - 1; i >= 0; i-- {
+			if hasData[i] {
+				break
+			}
+			_ = x.RemoveCol(initCol + i)
 		}
-		_ = x.RemoveCol(initCol)
+		for i := 0; i < len(hasData); i++ {
+			if hasData[i] {
+				break
+			}
+			_ = x.RemoveCol(initCol)
 
+		}
 	}
 } // excelReport =====
 
@@ -531,6 +540,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 				col := initCol + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
 				row := initRow
 				if opts.anual {
+					// TODO: ajustar período para TTM para o último ano
 					x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
 					sumCols[col-colB] += valor.T1 + valor.T2 + valor.T3 + valor.T4
 					continue
@@ -548,6 +558,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 				col := initCol
 				row := initRow + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
 				if opts.anual {
+					// TODO: ajustar período para TTM para o último ano
 					x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
 					sumRows[row-row2] += valor.T1 + valor.T2 + valor.T3 + valor.T4
 					continue
