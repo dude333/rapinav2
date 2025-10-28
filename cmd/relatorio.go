@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -247,27 +248,21 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 		spc := space(informe.Codigo)
 		x.PrintCell(row, 1, font, spc+informe.Codigo)
 		x.PrintCell(row, 2, font, spc+informe.Descr)
-		col = initCol
-		for _, ano := range anos {
-			for _, valor := range informe.Valores {
-				if valor.Ano != ano {
-					continue
+		for _, valor := range informe.Valores {
+			col = initCol + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
+			if opts.anual {
+				total := valor.T1 + valor.T2 + valor.T3 + valor.T4
+				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
+					progress.Trace("informe.Valores[0]: %+v", informe.Valores[0])
+					total = valor.T(4) // TODO: ajustar período para TTM para o último ano
 				}
-				if opts.anual {
-					total := valor.T1 + valor.T2 + valor.T3 + valor.T4
-					if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
-						progress.Trace("informe.Valores[0]: %+v", informe.Valores[0])
-						total = valor.T(4) // TODO: ajustar período para TTM para o último ano
-					}
-					x.PrintCell(row, col, number, total)
-					continue
-				}
+				x.PrintCell(row, col, number, total)
+			} else {
 				x.PrintCell(row, col+seq4(0), number, valor.T1)
 				x.PrintCell(row, col+seq4(1), number, valor.T2)
 				x.PrintCell(row, col+seq4(2), number, valor.T3)
 				x.PrintCell(row, col+seq4(3), number, valor.T4)
 			}
-			col += ifElse(opts.anual, 1, 4)
 		}
 		row++
 	}
@@ -530,48 +525,42 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 	const colB = 2
 	sumRows := make([]float64, len(anos)*4)
 	sumCols := make([]float64, len(anos)*4)
-	imprimirTrimestres := func(row, col int, estilo int, valores []rapina.ValoresTrimestrais) {
-		for _, ano := range anos {
-			for _, valor := range valores {
-				if valor.Ano != ano {
+	imprimirTrimestres := func(initRow, initCol int, estilo int, valores []rapina.ValoresTrimestrais) {
+		for _, valor := range valores {
+			if !opts.vertical {
+				col := initCol + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
+				row := initRow
+				if opts.anual {
+					x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
+					sumCols[col-colB] += valor.T1 + valor.T2 + valor.T3 + valor.T4
 					continue
 				}
-				if !opts.vertical {
-					if opts.anual {
-						x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
-						sumCols[col-colB] += valor.T1 + valor.T2 + valor.T3 + valor.T4
-						continue
-					}
-					x.PrintCell(row, col+seq4(0), estilo, valor.T1)
-					x.PrintCell(row, col+seq4(1), estilo, valor.T2)
-					x.PrintCell(row, col+seq4(2), estilo, valor.T3)
-					x.PrintCell(row, col+seq4(3), estilo, valor.T4)
+				x.PrintCell(row, col+seq4(0), estilo, valor.T1)
+				x.PrintCell(row, col+seq4(1), estilo, valor.T2)
+				x.PrintCell(row, col+seq4(2), estilo, valor.T3)
+				x.PrintCell(row, col+seq4(3), estilo, valor.T4)
 
-					sumCols[col+seq4(0)-colB] += valor.T1
-					sumCols[col+seq4(1)-colB] += valor.T2
-					sumCols[col+seq4(2)-colB] += valor.T3
-					sumCols[col+seq4(3)-colB] += valor.T4
-				} else {
-					if opts.anual {
-						x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
-						sumRows[row-row2] += valor.T1 + valor.T2 + valor.T3 + valor.T4
-						continue
-					}
-					x.PrintCell(row+seq4(0), col, estilo, valor.T1)
-					x.PrintCell(row+seq4(1), col, estilo, valor.T2)
-					x.PrintCell(row+seq4(2), col, estilo, valor.T3)
-					x.PrintCell(row+seq4(3), col, estilo, valor.T4)
-
-					sumRows[row+seq4(0)-row2] += valor.T1
-					sumRows[row+seq4(1)-row2] += valor.T2
-					sumRows[row+seq4(2)-row2] += valor.T3
-					sumRows[row+seq4(3)-row2] += valor.T4
-				}
-			}
-			if !opts.vertical {
-				col += ifElse(opts.anual, 1, 4)
+				sumCols[col+seq4(0)-colB] += valor.T1
+				sumCols[col+seq4(1)-colB] += valor.T2
+				sumCols[col+seq4(2)-colB] += valor.T3
+				sumCols[col+seq4(3)-colB] += valor.T4
 			} else {
-				row += ifElse(opts.anual, 1, 4)
+				col := initCol
+				row := initRow + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
+				if opts.anual {
+					x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
+					sumRows[row-row2] += valor.T1 + valor.T2 + valor.T3 + valor.T4
+					continue
+				}
+				x.PrintCell(row+seq4(0), col, estilo, valor.T1)
+				x.PrintCell(row+seq4(1), col, estilo, valor.T2)
+				x.PrintCell(row+seq4(2), col, estilo, valor.T3)
+				x.PrintCell(row+seq4(3), col, estilo, valor.T4)
+
+				sumRows[row+seq4(0)-row2] += valor.T1
+				sumRows[row+seq4(1)-row2] += valor.T2
+				sumRows[row+seq4(2)-row2] += valor.T3
+				sumRows[row+seq4(3)-row2] += valor.T4
 			}
 		}
 	}

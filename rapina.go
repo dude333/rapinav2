@@ -365,6 +365,9 @@ func MinMax(itr []InformeTrimestral) (int, int) {
 	return minAno, maxAno
 }
 
+// RangeAnos retorna a sequência de anos entre o mínimo e o máximo de anos
+// presentes nos InformeTrimestral. Crescente se reverse for false, senão
+// decrescente.
 func RangeAnos(itr []InformeTrimestral, reverse bool) []int {
 	min, max := MinMax(itr)
 	seq := make([]int, max-min+1)
