@@ -41,13 +41,14 @@ agrupado AS (
 	    descr,
 	    '[' || GROUP_CONCAT(
 	        '{"ano":' || ano ||
-	        ',"t1":' || COALESCE(t1, 0) ||
-	        ',"t2":' || COALESCE(t2, 0) ||
-	        ',"t3":' || COALESCE(t3, 0) ||
-	        ',"t4":' || COALESCE(t4, 0) || '}'
+          CASE WHEN t1 IS NOT NULL THEN ',"t1":' || t1 ELSE '' END ||
+          CASE WHEN t2 IS NOT NULL THEN ',"t2":' || t2 ELSE '' END ||
+          CASE WHEN t3 IS NOT NULL THEN ',"t3":' || t3 ELSE '' END ||
+          CASE WHEN t4 IS NOT NULL THEN ',"t4":' || t4 ELSE '' END ||
+	        '}'
 	    ) || ']' AS valores
 	FROM calculado
-	WHERE t1 <> 0 OR t2 <> 0 OR t3 <> 0 OR t4 <> 0 -- FILTRA LINHAS VAZIAS
+  WHERE t1 IS NOT NULL OR t2 IS NOT NULL OR t3 IS NOT NULL OR t4 IS NOT NULL -- FILTRA LINHAS VAZIAS
 	GROUP BY codigo, descr
 )
 SELECT * from agrupado

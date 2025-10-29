@@ -260,7 +260,8 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 				} else {
 					if valor.Ano == últimoAno {
 						ttm := rapina.TTM(informe.Valores)
-						total = ttm[len(ttm)-2].T(últimoTrimestre)
+						idx := max(0, len(ttm)-1)
+						total = ttm[idx].T(últimoTrimestre)
 					}
 				}
 				x.PrintCell(row, col, number, total)

@@ -5,6 +5,7 @@
 package rapina
 
 import (
+	"math"
 	"strings"
 
 	"github.com/dude333/rapinav2/pkg/progress"
@@ -18,6 +19,8 @@ type InformeTrimestral struct {
 	Valores []ValoresTrimestrais
 }
 
+// ValoresTrimestrais armazena os valores ValoresTrimestrais de um determinado ano.
+// Considera-se nulo o valor do trimestre se o valor for NaN.
 type ValoresTrimestrais struct {
 	Ano int
 	T1  float64
@@ -411,11 +414,11 @@ func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
 		if valor.Ano != ano {
 			continue
 		}
-		if valor.T4 != 0.0 {
+		if math.IsNaN(valor.T4) {
 			return 4
-		} else if valor.T3 != 0.0 {
+		} else if math.IsNaN(valor.T3) {
 			return 3
-		} else if valor.T2 != 0.0 {
+		} else if math.IsNaN(valor.T2) {
 			return 2
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	rapina "github.com/dude333/rapinav2"
@@ -15,31 +16,34 @@ type resultadoTrimestral struct {
 	Valores string `db:"valores"`
 }
 
-type jsonTrimestral []struct {
-	Ano int     `json:"ano"`
-	T1  float64 `json:"t1"`
-	T2  float64 `json:"t2"`
-	T3  float64 `json:"t3"`
-	T4  float64 `json:"t4"`
+type TrimestralItem struct {
+	Ano int      `json:"ano"`
+	T1  *float64 `json:"t1,omitempty"`
+	T2  *float64 `json:"t2,omitempty"`
+	T3  *float64 `json:"t3,omitempty"`
+	T4  *float64 `json:"t4,omitempty"`
 }
+
+type JSONTrimestral []TrimestralItem
 
 func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.InformeTrimestral, error) {
 	itr := make([]rapina.InformeTrimestral, len(resultados))
 
 	for i, resultado := range resultados {
-		var valoresJSON jsonTrimestral
+		var valoresJSON JSONTrimestral
 		err := json.Unmarshal([]byte(resultado.Valores), &valoresJSON)
 		if err != nil {
+			fmt.Printf("Error parsing JSON: %s\n- %v\n", err, valoresJSON)
 			return nil, err
 		}
 
 		valoresTrimestrais := make([]rapina.ValoresTrimestrais, len(valoresJSON))
 		for j, valorJSON := range valoresJSON {
 			valoresTrimestrais[j].Ano = valorJSON.Ano
-			valoresTrimestrais[j].T1 = valorJSON.T1
-			valoresTrimestrais[j].T2 = valorJSON.T2
-			valoresTrimestrais[j].T3 = valorJSON.T3
-			valoresTrimestrais[j].T4 = valorJSON.T4
+			valoresTrimestrais[j].T1 = getValue(valorJSON.T1)
+			valoresTrimestrais[j].T2 = getValue(valorJSON.T2)
+			valoresTrimestrais[j].T3 = getValue(valorJSON.T3)
+			valoresTrimestrais[j].T4 = getValue(valorJSON.T4)
 		}
 
 		itr[i] = rapina.InformeTrimestral{
@@ -50,6 +54,13 @@ func converterResultadosTrimestrais(resultados []resultadoTrimestral) ([]rapina.
 	}
 
 	return itr, nil
+}
+
+func getValue(val *float64) float64 {
+	if val != nil {
+		return *val
+	}
+	return math.NaN()
 }
 
 //go:embed contabil_sqlite_trimestral.sql
