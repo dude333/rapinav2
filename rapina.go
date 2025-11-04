@@ -41,7 +41,7 @@ func (v *ValoresTrimestrais) T(n int) float64 {
 	case 4:
 		return v.T4
 	}
-	return 0.0
+	return math.NaN()
 }
 
 // SetT salva o valor do trimestre pelo índice (1 <= n <= 4)
@@ -58,16 +58,46 @@ func (v *ValoresTrimestrais) SetT(n int, val float64) {
 	}
 }
 
+// add soma dois números de ponto flutuante tratando NaN como zero. Se ambos
+// forem NaN, o resultado será NaN.
+func add(a, b float64) float64 {
+	if math.IsNaN(a) {
+		if math.IsNaN(b) {
+			return math.NaN()
+		}
+		return b
+	}
+	if math.IsNaN(b) {
+		return a
+	}
+	return a + b
+}
+
+// sub subtrai dois números de ponto flutuante tratando NaN como zero. Se ambos
+// forem NaN, o resultado será NaN.
+func sub(a, b float64) float64 {
+	if math.IsNaN(a) {
+		if math.IsNaN(b) {
+			return math.NaN()
+		}
+		return -b
+	}
+	if math.IsNaN(b) {
+		return a
+	}
+	return a - b
+}
+
 func (v ValoresTrimestrais) Add(other ValoresTrimestrais) ValoresTrimestrais {
 	if v.Ano != other.Ano {
 		return v
 	}
 	return ValoresTrimestrais{
 		Ano: v.Ano,
-		T1:  v.T1 + other.T1,
-		T2:  v.T2 + other.T2,
-		T3:  v.T3 + other.T3,
-		T4:  v.T4 + other.T4,
+		T1:  add(v.T1, other.T1),
+		T2:  add(v.T2, other.T2),
+		T3:  add(v.T3, other.T3),
+		T4:  add(v.T4, other.T4),
 	}
 }
 
@@ -77,10 +107,10 @@ func (v ValoresTrimestrais) Sub(other ValoresTrimestrais) ValoresTrimestrais {
 	}
 	return ValoresTrimestrais{
 		Ano: v.Ano,
-		T1:  v.T1 - other.T1,
-		T2:  v.T2 - other.T2,
-		T3:  v.T3 - other.T3,
-		T4:  v.T4 - other.T4,
+		T1:  sub(v.T1, other.T1),
+		T2:  sub(v.T2, other.T2),
+		T3:  sub(v.T3, other.T3),
+		T4:  sub(v.T4, other.T4),
 	}
 }
 
@@ -99,8 +129,8 @@ func (v ValoresTrimestrais) Mult(other ValoresTrimestrais) ValoresTrimestrais {
 
 func (v ValoresTrimestrais) Div(other ValoresTrimestrais) ValoresTrimestrais {
 	safeDiv := func(num, divisor float64) float64 {
-		if divisor == 0 {
-			return 0.0
+		if divisor == 0 || math.IsNaN(divisor) || math.IsNaN(num) {
+			return math.NaN()
 		}
 		return num / divisor
 	}
@@ -285,16 +315,30 @@ func equalizarValores(ano int, v1, v2 ValoresTrimestrais) (ValoresTrimestrais, b
 	ok := true
 
 	check := func(v1Tn, v2Tn float64) (float64, bool) {
-		if !ok || (v1Tn != 0.0 && v2Tn != 0.0) {
-			return 0.0, false
-		}
-		if math.IsNaN(v1Tn) && math.IsNaN(v2Tn) {
+		if !ok {
 			return math.NaN(), false
 		}
-		if v1Tn != 0.0 && (v2Tn == 0.0 || math.IsNaN(v2Tn)) {
+
+		v1TemValor := !math.IsNaN(v1Tn) && v1Tn != 0.0
+		v2TemValor := !math.IsNaN(v2Tn) && v2Tn != 0.0
+
+		if v1TemValor && v2TemValor {
+			return math.NaN(), false // Conflito: ambos têm valores
+		}
+
+		if v1TemValor {
 			return v1Tn, true
 		}
-		return v2Tn, true
+		if v2TemValor {
+			return v2Tn, true
+		}
+
+		// Se um for NaN e o outro não, o resultado será NaN (ausente)
+		if math.IsNaN(v1Tn) || math.IsNaN(v2Tn) {
+			return math.NaN(), true
+		}
+
+		return 0.0, true // Ambos são 0
 	}
 
 	v.T1, ok = check(v1.T1, v2.T1)
@@ -316,7 +360,10 @@ func valorAno(ano int, valores []ValoresTrimestrais) (ValoresTrimestrais, bool) 
 
 func Zerado(valores []ValoresTrimestrais) bool {
 	for _, v := range valores {
-		if v.T1 != 0 || v.T2 != 0 || v.T3 != 0 || v.T4 != 0 {
+		if (!math.IsNaN(v.T1) && v.T1 != 0) ||
+			(!math.IsNaN(v.T2) && v.T2 != 0) ||
+			(!math.IsNaN(v.T3) && v.T3 != 0) ||
+			(!math.IsNaN(v.T4) && v.T4 != 0) {
 			return false
 		}
 	}
@@ -330,16 +377,16 @@ func TrimestresComDados(itr []InformeTrimestral) []bool {
 	for _, informe := range itr {
 		for _, v := range informe.Valores {
 			i := (v.Ano - minAno) * 4
-			if !colunas[i+0] && v.T1 != 0.0 {
+			if !colunas[i+0] && !math.IsNaN(v.T1) && v.T1 != 0.0 {
 				colunas[i+0] = true
 			}
-			if v.T2 != 0.0 {
+			if !math.IsNaN(v.T2) && v.T2 != 0.0 {
 				colunas[i+1] = true
 			}
-			if v.T3 != 0.0 {
+			if !math.IsNaN(v.T3) && v.T3 != 0.0 {
 				colunas[i+2] = true
 			}
-			if v.T4 != 0.0 {
+			if !math.IsNaN(v.T4) && v.T4 != 0.0 {
 				colunas[i+3] = true
 			}
 		}
@@ -417,11 +464,11 @@ func ÚltimoTrimestre(ano int, valores []ValoresTrimestrais) int {
 		if valor.Ano != ano {
 			continue
 		}
-		if math.IsNaN(valor.T4) {
+		if !math.IsNaN(valor.T4) {
 			return 4
-		} else if math.IsNaN(valor.T3) {
+		} else if !math.IsNaN(valor.T3) {
 			return 3
-		} else if math.IsNaN(valor.T2) {
+		} else if !math.IsNaN(valor.T2) {
 			return 2
 		}
 	}
@@ -449,10 +496,10 @@ func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 			continue
 		}
 		idx := 4 * (valor.Ano - min)
-		valores[idx+0] = valor.T1
-		valores[idx+1] = valor.T2
-		valores[idx+2] = valor.T3
-		valores[idx+3] = valor.T4
+		valores[idx+0] = nanToZero(valor.T1)
+		valores[idx+1] = nanToZero(valor.T2)
+		valores[idx+2] = nanToZero(valor.T3)
+		valores[idx+3] = nanToZero(valor.T4)
 	}
 
 	// Funcão auxiliar para somar valores do índice 'from' até 'to' (inclusivo).
@@ -487,6 +534,13 @@ func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 	}
 
 	return valoresAcum
+}
+
+func nanToZero(val float64) float64 {
+	if math.IsNaN(val) {
+		return 0.0
+	}
+	return val
 }
 
 // ManterÚltimoTrimestre mantém apenas o último trimestre não nulo de cada ano

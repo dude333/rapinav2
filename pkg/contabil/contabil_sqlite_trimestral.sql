@@ -29,10 +29,10 @@ calculado AS (
 		ano,
 		codigo,
 		descr,
-		COALESCE(q1, 0) AS t1,
-		CASE WHEN data_ini_exerc <> '' AND q1 IS NOT NULL AND q2 IS NOT NULL THEN q2-q1 ELSE COALESCE(q2, 0) END AS t2,
-		CASE WHEN data_ini_exerc <> '' AND q2 IS NOT NULL AND q3 IS NOT NULL THEN q3-q2 ELSE COALESCE(q3, 0) END AS t3,
-		CASE WHEN data_ini_exerc <> '' AND q4 IS NOT NULL THEN q4-COALESCE(q3, 0) ELSE COALESCE(q4_anual, 0) END AS t4
+		COALESCE(q1, NULL) AS t1,
+		CASE WHEN data_ini_exerc <> '' AND q1 IS NOT NULL AND q2 IS NOT NULL THEN q2-q1 ELSE COALESCE(q2, NULL) END AS t2,
+		CASE WHEN data_ini_exerc <> '' AND q2 IS NOT NULL AND q3 IS NOT NULL THEN q3-q2 ELSE COALESCE(q3, NULL) END AS t3,
+		CASE WHEN data_ini_exerc <> '' AND q4 IS NOT NULL THEN q4-COALESCE(q3, 0) ELSE COALESCE(q4_anual, NULL) END AS t4
 		FROM acumulado
 ),
 agrupado AS (

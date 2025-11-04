@@ -253,7 +253,7 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 		for _, valor := range informe.Valores {
 			col = initCol + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
 			if opts.anual {
-				total := valor.T1 + valor.T2 + valor.T3 + valor.T4
+				total := add(add(valor.T1, valor.T2), add(valor.T3, valor.T4))
 				if strings.HasPrefix(informe.Codigo, "1") || strings.HasPrefix(informe.Codigo, "2") {
 					progress.Trace("informe.Valores[0]: %+v", informe.Valores[0])
 					total = valor.T(ifElse(valor.Ano == últimoAno, últimoTrimestre, 4))
@@ -264,12 +264,12 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 						total = ttm[idx].T(últimoTrimestre)
 					}
 				}
-				x.PrintCell(row, col, number, total)
+				x.PrintCell(row, col, number, nanToZero(total))
 			} else {
-				x.PrintCell(row, col+seq4(0), number, valor.T1)
-				x.PrintCell(row, col+seq4(1), number, valor.T2)
-				x.PrintCell(row, col+seq4(2), number, valor.T3)
-				x.PrintCell(row, col+seq4(3), number, valor.T4)
+				x.PrintCell(row, col+seq4(0), number, nanToZero(valor.T1))
+				x.PrintCell(row, col+seq4(1), number, nanToZero(valor.T2))
+				x.PrintCell(row, col+seq4(2), number, nanToZero(valor.T3))
+				x.PrintCell(row, col+seq4(3), number, nanToZero(valor.T4))
 			}
 		}
 		row++
@@ -477,6 +477,23 @@ func ifElse[T any](cond bool, a, b T) T {
 	return b
 }
 
+func add(a, b float64) float64 {
+	if math.IsNaN(a) {
+		return b
+	}
+	if math.IsNaN(b) {
+		return a
+	}
+	return a + b
+}
+
+func nanToZero(val float64) float64 {
+	if math.IsNaN(val) {
+		return 0.0
+	}
+	return val
+}
+
 // excelSummaryReport cria e formata o relatório resumido em planilha Excel com
 // base nos dados fornecidos. O parâmetro 'decrescente' indica se o relatório
 // deve ser criado em ordem crescente (false) ou decrescente (true) de ano.
@@ -542,37 +559,39 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 				row := initRow
 				if opts.anual {
 					// TODO: ajustar período para TTM para o último ano
-					x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
-					sumCols[col-colB] += valor.T1 + valor.T2 + valor.T3 + valor.T4
+					total := add(add(valor.T1, valor.T2), add(valor.T3, valor.T4))
+					x.PrintCell(row, col, estilo, nanToZero(total))
+					sumCols[col-colB] += nanToZero(total)
 					continue
 				}
-				x.PrintCell(row, col+seq4(0), estilo, valor.T1)
-				x.PrintCell(row, col+seq4(1), estilo, valor.T2)
-				x.PrintCell(row, col+seq4(2), estilo, valor.T3)
-				x.PrintCell(row, col+seq4(3), estilo, valor.T4)
+				x.PrintCell(row, col+seq4(0), estilo, nanToZero(valor.T1))
+				x.PrintCell(row, col+seq4(1), estilo, nanToZero(valor.T2))
+				x.PrintCell(row, col+seq4(2), estilo, nanToZero(valor.T3))
+				x.PrintCell(row, col+seq4(3), estilo, nanToZero(valor.T4))
 
-				sumCols[col+seq4(0)-colB] += valor.T1
-				sumCols[col+seq4(1)-colB] += valor.T2
-				sumCols[col+seq4(2)-colB] += valor.T3
-				sumCols[col+seq4(3)-colB] += valor.T4
+				sumCols[col+seq4(0)-colB] += nanToZero(valor.T1)
+				sumCols[col+seq4(1)-colB] += nanToZero(valor.T2)
+				sumCols[col+seq4(2)-colB] += nanToZero(valor.T3)
+				sumCols[col+seq4(3)-colB] += nanToZero(valor.T4)
 			} else {
 				col := initCol
 				row := initRow + slices.Index(anos, valor.Ano)*ifElse(opts.anual, 1, 4)
 				if opts.anual {
 					// TODO: ajustar período para TTM para o último ano
-					x.PrintCell(row, col, estilo, valor.T1+valor.T2+valor.T3+valor.T4)
-					sumRows[row-row2] += valor.T1 + valor.T2 + valor.T3 + valor.T4
+					total := add(add(valor.T1, valor.T2), add(valor.T3, valor.T4))
+					x.PrintCell(row, col, estilo, nanToZero(total))
+					sumRows[row-row2] += nanToZero(total)
 					continue
 				}
-				x.PrintCell(row+seq4(0), col, estilo, valor.T1)
-				x.PrintCell(row+seq4(1), col, estilo, valor.T2)
-				x.PrintCell(row+seq4(2), col, estilo, valor.T3)
-				x.PrintCell(row+seq4(3), col, estilo, valor.T4)
+				x.PrintCell(row+seq4(0), col, estilo, nanToZero(valor.T1))
+				x.PrintCell(row+seq4(1), col, estilo, nanToZero(valor.T2))
+				x.PrintCell(row+seq4(2), col, estilo, nanToZero(valor.T3))
+				x.PrintCell(row+seq4(3), col, estilo, nanToZero(valor.T4))
 
-				sumRows[row+seq4(0)-row2] += valor.T1
-				sumRows[row+seq4(1)-row2] += valor.T2
-				sumRows[row+seq4(2)-row2] += valor.T3
-				sumRows[row+seq4(3)-row2] += valor.T4
+				sumRows[row+seq4(0)-row2] += nanToZero(valor.T1)
+				sumRows[row+seq4(1)-row2] += nanToZero(valor.T2)
+				sumRows[row+seq4(2)-row2] += nanToZero(valor.T3)
+				sumRows[row+seq4(3)-row2] += nanToZero(valor.T4)
 			}
 		}
 	}
@@ -678,13 +697,13 @@ func trimEmpty(x Excel, row, col int, sumRows, sumCols []float64, vert bool) {
 	if !vert {
 		// Trim empty columns
 		for i := len(sumCols) - 1; i >= 0; i-- {
-			if sumCols[i] != 0.0 {
+			if sumCols[i] != 0.0 && !math.IsNaN(sumCols[i]) {
 				break
 			}
 			_ = x.RemoveCol(col + i)
 		}
 		for i := 0; i < len(sumCols); i++ {
-			if sumCols[i] != 0.0 {
+			if sumCols[i] != 0.0 && !math.IsNaN(sumCols[i]) {
 				break
 			}
 			_ = x.RemoveCol(col)
@@ -692,13 +711,13 @@ func trimEmpty(x Excel, row, col int, sumRows, sumCols []float64, vert bool) {
 	} else {
 		// Trim empty rows
 		for i := len(sumRows) - 1; i >= 0; i-- {
-			if sumRows[i] != 0.0 {
+			if sumRows[i] != 0.0 && !math.IsNaN(sumRows[i]) {
 				break
 			}
 			_ = x.RemoveRow(row + i)
 		}
 		for i := 0; i < len(sumRows); i++ {
-			if sumRows[i] != 0.0 {
+			if sumRows[i] != 0.0 && !math.IsNaN(sumRows[i]) {
 				break
 			}
 			_ = x.RemoveRow(row)

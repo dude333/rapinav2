@@ -5,6 +5,7 @@
 package rapina
 
 import (
+	"math"
 	"reflect"
 	"testing"
 )
@@ -173,6 +174,29 @@ func TestSubVTs(t *testing.T) {
 	}
 }
 
+func compareVTs(a, b []ValoresTrimestrais) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Ano != b[i].Ano ||
+			!compareFloat(a[i].T1, b[i].T1) ||
+			!compareFloat(a[i].T2, b[i].T2) ||
+			!compareFloat(a[i].T3, b[i].T3) ||
+			!compareFloat(a[i].T4, b[i].T4) {
+			return false
+		}
+	}
+	return true
+}
+
+func compareFloat(a, b float64) bool {
+	if math.IsNaN(a) && math.IsNaN(b) {
+		return true
+	}
+	return a == b
+}
+
 func TestDivVTs(t *testing.T) {
 	type args struct {
 		v1 []ValoresTrimestrais
@@ -197,12 +221,12 @@ func TestDivVTs(t *testing.T) {
 				v1: []ValoresTrimestrais{{2011, 2, 2, 2, 2}, {2012, 5, 5, 5, 5}, {2023, 100, 100, 100, 100}},
 				v2: []ValoresTrimestrais{{2011, 1, 1, 1, 1}, {2023, 10, 10, 10, 10}},
 			},
-			want: []ValoresTrimestrais{{2011, 2, 2, 2, 2}, {2012, 0, 0, 0, 0}, {2023, 10, 10, 10, 10}},
+			want: []ValoresTrimestrais{{2011, 2, 2, 2, 2}, {2012, math.NaN(), math.NaN(), math.NaN(), math.NaN()}, {2023, 10, 10, 10, 10}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DivVTs(tt.args.v1, tt.args.v2); !reflect.DeepEqual(got, tt.want) {
+			if got := DivVTs(tt.args.v1, tt.args.v2); !compareVTs(got, tt.want) {
 				t.Errorf("AddVTs() = %v, want %v", got, tt.want)
 			}
 		})
