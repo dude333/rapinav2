@@ -42,7 +42,7 @@ type Excel interface {
 	FreezePane(cell string) error
 	SetFont(size float64, bold, wrap bool) (int, error)
 	SetNumber(size float64, bold bool, format string) (int, error)
-	PrintCell(row, col, style int, value interface{})
+	PrintCell(row, col, style int, value any)
 	RemoveRow(row int) error
 	RemoveCol(col int) error
 	SaveAs(name string) error

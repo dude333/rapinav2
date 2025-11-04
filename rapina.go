@@ -288,7 +288,10 @@ func equalizarValores(ano int, v1, v2 ValoresTrimestrais) (ValoresTrimestrais, b
 		if !ok || (v1Tn != 0.0 && v2Tn != 0.0) {
 			return 0.0, false
 		}
-		if v1Tn != 0.0 && v2Tn == 0.0 {
+		if math.IsNaN(v1Tn) && math.IsNaN(v2Tn) {
+			return math.NaN(), false
+		}
+		if v1Tn != 0.0 && (v2Tn == 0.0 || math.IsNaN(v2Tn)) {
 			return v1Tn, true
 		}
 		return v2Tn, true
@@ -452,7 +455,7 @@ func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 		valores[idx+3] = valor.T4
 	}
 
-	// Helper to sum values from index 'from' to 'to' (inclusive)
+	// Funcão auxiliar para somar valores do índice 'from' até 'to' (inclusivo).
 	somaValores := func(from, to int) float64 {
 		if from < 0 || to >= len(valores) || from > to {
 			return 0.0
@@ -465,17 +468,13 @@ func TTM(acct []ValoresTrimestrais) []ValoresTrimestrais {
 		return total
 	}
 
-	// Calculate TTM for each quarter
+	// Calcula o TTM para cada trimestre.
 	valoresAcum := make([]ValoresTrimestrais, 0, max-min+1)
 
 	for ano := min; ano <= max; ano++ {
 		idx := 4 * (ano - min)
 
-		// For each quarter, calculate the sum of the last 4 quarters
-		// T1: sum of quarters from (idx-3) to (idx+0)
-		// T2: sum of quarters from (idx-2) to (idx+1)
-		// T3: sum of quarters from (idx-1) to (idx+2)
-		// T4: sum of quarters from (idx+0) to (idx+3)
+		// Para cada trimestre, calcula o somatório dos últimos 4 trimestres.
 		vt := ValoresTrimestrais{
 			Ano: ano,
 			T1:  somaValores(idx-3, idx+0),
