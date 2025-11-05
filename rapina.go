@@ -549,7 +549,7 @@ func ManterÚltimoTrimestre(vts []ValoresTrimestrais) []ValoresTrimestrais {
 	for i, v := range vts {
 		t := ÚltimoTrimestre(v.Ano, vts)
 		w[i].Ano = v.Ano
-		w[i].SetT(t, v.T(t))
+		w[i].SetT(4, v.T(t))
 	}
 	return w
 }
