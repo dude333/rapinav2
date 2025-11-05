@@ -1,6 +1,7 @@
 BUILDDIR     := cmd/*.go
 SOURCEDIR    := .
-SOURCES      := $(shell find $(SOURCEDIR) -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.go' -a -not -name '*_test.go')
+SOURCES      := $(shell find "$(SOURCEDIR)" \( -name '*.css' -o -name '*.js' -o -name '*.html' -o -name '*.go' \) -a -not -name '*_test.go')
+
 
 BINARYDIR    := .
 BINARY       := rapinav2
@@ -14,10 +15,18 @@ export GO111MODULE=on
 # Setup the -ldflags option for go build here, interpolate the variable values
 LDFLAGS      := -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD_TIME}"
 
+# Auto-detect compiler toolchain
+COMPILER_CMD :=
+ifneq ($(shell which gcc 2>/dev/null),)
+	COMPILER_CMD = CC=gcc CXX=g++
+else ifneq ($(shell which zig 2>/dev/null),)
+	COMPILER_CMD = CC="zig cc" CXX="zig c++"
+endif
+
 .DEFAULT_GOAL:= $(BINARY)
 
 $(BINARY): $(SOURCES)
-	CC="zig cc" CXX="zig c++" go build $(LDFLAGS) -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
+	$(COMPILER_CMD) CGO_ENABLED=1 go build $(LDFLAGS) -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
 
 win: $(SOURCES)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc-win32 CXX=x86_64-w64-mingw32-cpp-win32 CGO_LDFLAGS="-lssp -w" go build $(LDFLAGS) -o $(BINARYDIR)/$(WINBINARY) $(BUILDDIR)
