@@ -147,7 +147,7 @@ func insertDataIntoDatabase(db *sqlx.DB, data []EmissorData) (err error) {
 		return err
 	}
 
-	stmt, err := tx.Prepare("INSERT INTO isin(key, ticker, cnpj, nome) VALUES(?, ?, ?, ?)")
+	stmt, err := tx.Prepare("INSERT OR IGNORE INTO isin(key, ticker, cnpj, nome) VALUES(?, ?, ?, ?)")
 	if err != nil {
 		return err
 	}
@@ -155,6 +155,7 @@ func insertDataIntoDatabase(db *sqlx.DB, data []EmissorData) (err error) {
 
 	progress.Running("Inserindo dados no banco de dados")
 	for _, d := range data {
+		progress.Debug("Inserindo: %+v", d)
 		_, err = stmt.Exec(d.Ticker, d.Ticker, d.CNPJ, d.Nome)
 		if err != nil {
 			progress.RunFail()
