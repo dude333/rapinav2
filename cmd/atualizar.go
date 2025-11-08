@@ -43,7 +43,7 @@ func atualizar(_ *cobra.Command, _ []string) {
 	var anoi, anof int
 
 	if flags.atualizar.tudo {
-		anoi = 2010
+		anoi = 2011
 		anof = time.Now().Year()
 	} else if flags.atualizar.ano >= 2009 {
 		progress.Status("{%d}", flags.atualizar.ano)
