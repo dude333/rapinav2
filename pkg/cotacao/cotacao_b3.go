@@ -99,7 +99,11 @@ func (b *B3) processarSériesHistóricas(ctx context.Context, arquivo string, re
 		result <- Resultado{Error: err}
 		return
 	}
-	defer fh.Close()
+	defer func() {
+		if err := fh.Close(); err != nil {
+			result <- Resultado{Error: err}
+		}
+	}()
 
 	stream := transform.NewReader(fh, charmap.ISO8859_1.NewDecoder())
 	scanner := bufio.NewScanner(stream)

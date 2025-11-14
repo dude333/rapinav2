@@ -76,7 +76,11 @@ func downloadFile(url, filepath string, verbose bool) error {
 			fmt.Fprintf(os.Stderr, "File download - error: %s (%s)\n", err, url)
 			continue
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				fmt.Fprintf(os.Stderr, "error closing body: %v\n", err)
+			}
+		}()
 
 		// Check server response
 		if resp.StatusCode != http.StatusOK {

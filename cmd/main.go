@@ -10,7 +10,9 @@ func main() {
 	// defer profile.Start(profile.MemProfileRate(2048)).Stop()
 	defer func() {
 		if _db != nil {
-			_db.Close()
+			if err := _db.Close(); err != nil {
+				panic(err)
+			}
 		}
 	}()
 

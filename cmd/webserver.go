@@ -183,13 +183,13 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-done:
-			fmt.Fprintf(w, "event: close\ndata: [>] Importação concluída\n\n")
+			_, _ = fmt.Fprintf(w, "event: close\ndata: [>] Importação concluída\n\n")
 			flush()
 			progress.Status("Importação concluída")
 			alreadyIn = false
 			return
 		case <-ticker.C:
-			fmt.Fprintf(w, ": keep-alive")
+			_, _ = fmt.Fprintf(w, ": keep-alive")
 			flush()
 		}
 	}

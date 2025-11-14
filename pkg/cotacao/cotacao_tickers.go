@@ -69,7 +69,11 @@ func downloadBinaryPayload(url string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			progress.Error(err)
+		}
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("falha ao baixar arquivo, status code: %d", resp.StatusCode)
@@ -98,7 +102,11 @@ func extractEmissorData(zipContent *[]byte) ([]EmissorData, error) {
 			if err != nil {
 				return nil, err
 			}
-			defer rc.Close()
+			defer func() {
+				if err := rc.Close(); err != nil {
+					progress.Error(err)
+				}
+			}()
 
 			csvReader := csv.NewReader(rc)
 			// csvReader.Comma = ';'
@@ -151,7 +159,11 @@ func insertDataIntoDatabase(db *sqlx.DB, data []EmissorData) (err error) {
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+	defer func() {
+		if err := stmt.Close(); err != nil {
+			progress.Error(err)
+		}
+	}()
 
 	progress.Running("Inserindo dados no banco de dados")
 	for _, d := range data {
@@ -176,7 +188,11 @@ func getURL() (string, error) {
 		fmt.Println("Error fetching data:", err)
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			progress.Error(err)
+		}
+	}()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

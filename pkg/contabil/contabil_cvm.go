@@ -55,7 +55,9 @@ func (l LocalInfra) DownloadAndUnzip(urlString string, filtros []string) ([]Arqu
 	}
 
 	zipHash, err := ext.FileHash(zip)
-	os.Remove(zip)
+	if err := os.Remove(zip); err != nil {
+		progress.Warning("Não foi possível remover o arquivo temporário '%s': %v", zip, err)
+	}
 
 	return arquivos, zipHash, err
 }

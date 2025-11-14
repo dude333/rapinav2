@@ -7,6 +7,7 @@ package contabil
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"sort"
 	"strconv"
 	"strings"
@@ -44,7 +45,9 @@ type Sqlite struct {
 func NewSqlite(db *sqlx.DB, configs ...Option) (*Sqlite, error) {
 	var s Sqlite
 	s.cfg = &cfg{}
-	s.cfg.apply(configs...)
+	if err := s.cfg.apply(configs...); err != nil {
+		return nil, err
+	}
 
 	s.db = db
 
@@ -296,13 +299,14 @@ func insertContas(ctx context.Context, db *sqlx.DB, id int, dfp *dominio.Demonst
 		// Erros no banco de dados estão sendo ignorados ("INSERT or IGNORE INTO").
 		// Verificar PRIMARY KEY da tabela 'contas'.
 		if err != nil {
-			sqliteErr := err.(sqlite3.Error)
-			if sqliteErr.Code != sqlite3.ErrConstraint {
-				_ = tx.Rollback()
-				return err
+			var sqliteErr sqlite3.Error
+			if errors.As(err, &sqliteErr) {
+				if sqliteErr.Code != sqlite3.ErrConstraint {
+					_ = tx.Rollback()
+					return err
+				}
+				progress.ErrorMsg("%s: %d, %s, %#v", err, id, dfp.Nome, conta)
 			}
-			progress.ErrorMsg("%s: %d, %s, %#v", err, id, dfp.Nome, conta)
-
 		}
 	}
 
@@ -311,18 +315,18 @@ func insertContas(ctx context.Context, db *sqlx.DB, id int, dfp *dominio.Demonst
 	return tx.Commit()
 }
 
-func deleteEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
-	query := `DELETE FROM contas WHERE id_empresa=?`
-	_, err := db.ExecContext(ctx, query, &id)
-	if err != nil && err != sql.ErrNoRows {
-		return err
-	}
-
-	query = `DELETE FROM empresas WHERE id=?`
-	_, err = db.ExecContext(ctx, query, &id)
-
-	return err
-}
+// func deleteEmpresa(ctx context.Context, db *sqlx.DB, id int) error {
+// 	query := `DELETE FROM contas WHERE id_empresa=?`
+// 	_, err := db.ExecContext(ctx, query, &id)
+// 	if err != nil && err != sql.ErrNoRows {
+// 		return err
+// 	}
+//
+// 	query = `DELETE FROM empresas WHERE id=?`
+// 	_, err = db.ExecContext(ctx, query, &id)
+//
+// 	return err
+// }
 
 const _ver_ = 17
 

@@ -13,20 +13,19 @@ import (
 	"strings"
 )
 
-//
 // UnzipVerbosity will decompress a zip archive, moving all files and folders
 // within the zip file (parameter 1) to an output directory (parameter 2).
 // Source: https://golangcode.com/unzip-files-in-go/
-//
-func Unzip(src, dest string, filters []string, verbose bool) ([]string, error) {
-
-	var filenames []string
-
+func Unzip(src, dest string, filters []string, verbose bool) (filenames []string, err error) {
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return filenames, err
 	}
-	defer r.Close()
+	defer func() {
+		if cerr := r.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	for _, f := range r.File {
 
@@ -40,7 +39,11 @@ func Unzip(src, dest string, filters []string, verbose bool) ([]string, error) {
 			if err != nil {
 				return filenames, err
 			}
-			defer rc.Close()
+			defer func() {
+				if cerr := rc.Close(); cerr != nil && err == nil {
+					err = cerr
+				}
+			}()
 
 			// Store filename/path for returning and using later on
 			fpath, err := sanitizeArchivePath(dest, f.Name)
@@ -85,7 +88,9 @@ func Unzip(src, dest string, filters []string, verbose bool) ([]string, error) {
 				}
 
 				// Close the file without defer to close before next iteration of loop
-				outFile.Close()
+				if err := outFile.Close(); err != nil {
+					return filenames, err
+				}
 
 				if err != nil {
 					return filenames, err

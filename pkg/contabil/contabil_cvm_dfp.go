@@ -25,7 +25,9 @@ import (
 func NewDFPImporter(configs ...Option) (CVM, error) {
 	var cvm CVMImporter
 	cvm.cfg = &cfg{}
-	cvm.cfg.apply(configs...)
+	if err := cvm.cfg.apply(configs...); err != nil {
+		return nil, err
+	}
 	cvm.nome = "dfp/itr"
 	cvm.infra = &LocalInfra{dirDados: cvm.cfg.tempDir}
 	cvm.url = urlArquivoDFP
@@ -74,7 +76,7 @@ func processarArquivoDFP(_ context.Context, arquivo Arquivo, results chan<- domi
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer func() { _ = fh.Close() }()
 
 	leitorCSV := csv.NewReader(transform.NewReader(fh, charmap.ISO8859_1.NewDecoder()))
 	leitorCSV.Comma = ';'

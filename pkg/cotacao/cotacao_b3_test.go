@@ -29,7 +29,7 @@ func Test_b3_Importar(t *testing.T) {
 	count := 10
 	for result := range b3.Importar(ctx, dia) {
 		if result.Error != nil {
-			t.Logf(result.Error.Error())
+			t.Log(result.Error)
 			return
 		}
 		progress.Status("%v", result.Ativo)

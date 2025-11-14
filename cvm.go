@@ -32,7 +32,6 @@ import (
 	"os"
 	"path"
 	"slices"
-	"time"
 
 	"github.com/dude333/rapinav2/pkg/infra"
 	"github.com/dude333/rapinav2/pkg/progress"
@@ -155,7 +154,11 @@ func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, dfp *DFP) error {
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer func() {
+		if err := fh.Close(); err != nil {
+			progress.Error(err)
+		}
+	}()
 
 	csv := &csvDFP{sep: ";"}
 
@@ -182,28 +185,28 @@ func ProcessarArquivoDFP(ctx context.Context, arq Arquivo, dfp *DFP) error {
 
 // FRE ------------------------------------------------------------------------
 
-func (c *CVM) importarFRE(ctx context.Context, ano int) (<-chan CvmDataSource, error) {
-	ch := make(chan CvmDataSource)
-	go func() {
-		defer close(ch)
-		for i := 1; i <= 10; i++ {
-			if ctx.Err() != nil {
-				return
-			}
-			ch <- &FRE{}
-			time.Sleep(time.Second)
-		}
-	}()
-	return ch, nil
-}
+// func (c *CVM) importarFRE(ctx context.Context, ano int) (<-chan CvmDataSource, error) {
+// 	ch := make(chan CvmDataSource)
+// 	go func() {
+// 		defer close(ch)
+// 		for i := 1; i <= 10; i++ {
+// 			if ctx.Err() != nil {
+// 				return
+// 			}
+// 			ch <- &FRE{}
+// 			time.Sleep(time.Second)
+// 		}
+// 	}()
+// 	return ch, nil
+// }
 
-type FRE struct{}
+// type FRE struct{}
 
-func (fre *FRE) Salvar(ctx context.Context, db *sqlx.DB) error {
-	// Salvar FRE no bando de dados
-	progress.Status("FRE")
-	return nil
-}
+// func (fre *FRE) Salvar(ctx context.Context, db *sqlx.DB) error {
+// 	// Salvar FRE no bando de dados
+// 	progress.Status("FRE")
+// 	return nil
+// }
 
 // --------------------------------------------------------------------------A-
 
@@ -279,7 +282,12 @@ func DownloadAndUnzip(urlString string, tempDir string, filtros []string) ([]Arq
 	}
 
 	zipHash, err := infra.FileHash(zip)
-	os.Remove(zip)
+	if err != nil {
+		progress.Error(err)
+	}
+	if err := os.Remove(zip); err != nil {
+		progress.Error(err)
+	}
 
 	return arquivos, zipHash, err
 }

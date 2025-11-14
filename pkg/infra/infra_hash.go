@@ -14,12 +14,16 @@ import (
 // fnvHash is a global var set to speed up Hash
 var fnvHash = fnv.New64a()
 
-func FileHash(filename string) (string, error) {
+func FileHash(filename string) (h string, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	fnvHash.Reset()
 	if _, err = io.Copy(fnvHash, f); err != nil {

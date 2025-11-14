@@ -5,11 +5,9 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"time"
 
-	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/cotacao"
 	"github.com/dude333/rapinav2/pkg/progress"
@@ -77,15 +75,15 @@ func atualizar(_ *cobra.Command, _ []string) {
 	}
 }
 
-func atualizar2(cmd *cobra.Command, _ []string) {
-	cvm, err := rapina.NewCVM(db(), flags.tempDir, flags.atualizar.force)
-	if err != nil {
-		progress.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Minute)
-	err = cvm.Importar(ctx, flags.atualizar.ano)
-	cancel()
-	if err != nil {
-		progress.Fatal(err)
-	}
-}
+// func atualizar2(cmd *cobra.Command, _ []string) {
+// 	cvm, err := rapina.NewCVM(db(), flags.tempDir, flags.atualizar.force)
+// 	if err != nil {
+// 		progress.Fatal(err)
+// 	}
+// 	ctx, cancel := context.WithTimeout(cmd.Context(), 20*time.Minute)
+// 	err = cvm.Importar(ctx, flags.atualizar.ano)
+// 	cancel()
+// 	if err != nil {
+// 		progress.Fatal(err)
+// 	}
+// }

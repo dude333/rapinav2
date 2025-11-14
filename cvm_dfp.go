@@ -65,19 +65,19 @@ func keyDFP(empresa *DFPEmpresa) (string, error) {
 	return key, nil
 }
 
-// nextKeyDFP retora a chave com a próxima chave:
-// "CNPJANO;1" => "CNPJANO;2"
-func nextKeyDFP(k string) string {
-	ks := strings.Split(k, ";")
-	if len(ks) != 2 {
-		return k
-	}
-	ver, err := strconv.Atoi(ks[1])
-	if err != nil {
-		return k
-	}
-	return ks[0] + strconv.Itoa(ver+1)
-}
+// // nextKeyDFP retora a chave com a próxima chave:
+// // "CNPJANO;1" => "CNPJANO;2"
+// func nextKeyDFP(k string) string {
+// 	ks := strings.Split(k, ";")
+// 	if len(ks) != 2 {
+// 		return k
+// 	}
+// 	ver, err := strconv.Atoi(ks[1])
+// 	if err != nil {
+// 		return k
+// 	}
+// 	return ks[0] + strconv.Itoa(ver+1)
+// }
 
 // AppendConta adiciona uma conta ao DFP
 func (dfp *DFP) AppendConta(e *DFPEmpresa) bool {
