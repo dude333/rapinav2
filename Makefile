@@ -18,15 +18,15 @@ LDFLAGS      := -ldflags "-w -s -X main.version=${VERSION} -X main.build=${BUILD
 # Auto-detect compiler toolchain
 COMPILER_CMD :=
 ifneq ($(shell which gcc 2>/dev/null),)
-	COMPILER_CMD = CC=gcc CXX=g++
+	COMPILER_CMD = CC=gcc CXX=g++ CGO_ENABLED=1
 else ifneq ($(shell which zig 2>/dev/null),)
-	COMPILER_CMD = CC="zig cc" CXX="zig c++"
+	COMPILER_CMD = CC="zig cc" CXX="zig c++" CGO_ENABLED=1
 endif
 
 .DEFAULT_GOAL:= $(BINARY)
 
 $(BINARY): $(SOURCES)
-	$(COMPILER_CMD) CGO_ENABLED=1 go build $(LDFLAGS) -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
+	$(COMPILER_CMD) go build $(LDFLAGS) -o $(BINARYDIR)/$(BINARY) $(BUILDDIR)
 
 win: $(SOURCES)
 	GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc-win32 CXX=x86_64-w64-mingw32-cpp-win32 CGO_LDFLAGS="-lssp -w" go build $(LDFLAGS) -o $(BINARYDIR)/$(WINBINARY) $(BUILDDIR)
@@ -34,7 +34,13 @@ win: $(SOURCES)
 osx: $(SOURCES)
 	GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 CC=o64-clang CXX=o64-clang++ CGO_LDFLAGS="-w" go build $(LDFLAGS) -o $(BINARYDIR) $(BUILDDIR)
 
+test:
+	$(COMPILER_CMD) go test ./...
+
+linter:
+	$(COMPILER_CMD) golangci-lint run ./...
+
 clean:
 	rm -f $(BINARY) $(WINBINARY)
 
-.PHONY: run win osx clean
+.PHONY: run win osx clean test linter
