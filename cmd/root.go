@@ -142,6 +142,14 @@ func initConfig() {
 		progress.Fatal(err)
 	}
 
+	if viper.IsSet("googleSheetsDir") {
+		flags.relatorio.googlesheetsDir = viper.GetString("googleSheetsDir")
+	}
+	progress.Debug("googleSheetsDir = %s", flags.relatorio.googlesheetsDir)
+	if err := createDir(flags.relatorio.googlesheetsDir); err != nil {
+		progress.Fatal(err)
+	}
+
 	fmt.Printf("\n\n")
 }
 

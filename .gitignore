@@ -35,3 +35,7 @@ on
 *.xlsx
 golangci*.y*ml
 cover.out
+
+# Credentials and token files
+credentials.json
+token.json

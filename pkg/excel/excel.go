@@ -71,7 +71,7 @@ func (x *Excel) FreezePane(cell string) error {
 	})
 }
 
-func (x *Excel) SetFont(size float64, bold, wrap bool) (int, error) {
+func (x *Excel) SetFont(size float64, bold, wrap bool, family ...string) (int, error) {
 	return x.file.NewStyle(&excelize.Style{
 		Font: &excelize.Font{
 			Size: size,
@@ -83,7 +83,7 @@ func (x *Excel) SetFont(size float64, bold, wrap bool) (int, error) {
 	})
 }
 
-func (x *Excel) SetNumber(size float64, bold bool, format string) (int, error) {
+func (x *Excel) SetNumber(size float64, bold bool, format string, family ...string) (int, error) {
 	return x.file.NewStyle(&excelize.Style{
 		CustomNumFmt: &format,
 		Font: &excelize.Font{

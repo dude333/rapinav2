@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
@@ -16,6 +17,7 @@ import (
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
 	"github.com/dude333/rapinav2/pkg/excel"
+	"github.com/dude333/rapinav2/pkg/googlesheets"
 	"github.com/dude333/rapinav2/pkg/progress"
 )
 
@@ -35,23 +37,61 @@ const (
 	_customerFracFmt = `_(0.00_);[RED]_((0.00);_(* "-"_);_(@_)`
 )
 
-type Excel interface {
+// Spreadsheet define as operações para manipular uma planilha.
+type Spreadsheet interface {
+	// NewSheet cria uma nova guia com o nome fornecido e a torna ativa.
+	// Todas as escritas pendentes da guia anterior são enviadas primeiro.
 	NewSheet(sheetName string) error
+
+	// SetZoom registra a escala de zoom desejada (porcentagem, ex: 100 para 100%).
+	// Observação: a API REST do Sheets v4 não expõe campo de zoom, portanto este
+	// método é um no-op que retorna nil; existe para que implementações que
+	// chamem a API Apps Script ou uma versão futura da API possam honrá-lo.
 	SetZoom(zoomScale float64) error
+
+	// SetColWidth define a largura (em pixels) para colunas consecutivas, a partir
+	// do índice da coluna 0. widths[i] é aplicada à coluna no índice i.
+	// As alterações são agrupadas e aplicadas no próximo flush.
 	SetColWidth(widths []float64)
+
+	// FreezePane congela linhas e colunas até (mas não incluindo) a célula no
+	// endereço em notação A1, ex: "B2" congela a linha 1 e a coluna A.
 	FreezePane(cell string) error
-	SetFont(size float64, bold, wrap bool) (int, error)
-	SetNumber(size float64, bold bool, format string) (int, error)
+
+	// SetFont registra um formato de célula de texto simples e retorna um índice
+	// de estilo para uso com PrintCell.
+	SetFont(size float64, bold, wrap bool, family ...string) (int, error)
+
+	// SetNumber registra um formato de célula numérico com um padrão de formato de
+	// número personalizado (ex: "#,##0.00") e retorna um índice de estilo para
+	// uso em PrintCell.
+	SetNumber(size float64, bold bool, format string, family ...string) (int, error)
+
+	// PrintCell escreve value na célula em coordenadas zero-based (row, col)
+	// usando o estilo identificado por style (retornado por SetFont / SetNumber).
+	// As escritas são agrupadas e enviadas no próximo flush.
 	PrintCell(row, col, style int, value any)
+
+	// RemoveRow exclui a linha zero-based da guia ativa.
+	// Escritas pendentes são enviadas primeiro.
 	RemoveRow(row int) error
+
+	// RemoveCol exclui a coluna zero-based da guia ativa.
+	// Escritas pendentes são enviadas primeiro.
 	RemoveCol(col int) error
+
+	// SaveAs renomeia a planilha para name e envia todas as escritas pendentes.
 	SaveAs(name string) error
+
+	// Close envia quaisquer operações pendentes restantes e libera recursos.
 	Close() error
 }
 
 type flagsRelatorio struct {
-	outputDir string
-	crescente bool
+	outputDir       string
+	crescente       bool
+	googlesheets    bool
+	googlesheetsDir string
 }
 
 // relatorioCmd represents the relatorio command
@@ -72,6 +112,7 @@ type reportOpts struct {
 func init() {
 	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", ".", "Diretório do relatório")
 	relatorioCmd.Flags().BoolVarP(&flags.relatorio.crescente, "crescente", "c", false, "Mostrar trimestres em ordem crescente")
+	relatorioCmd.Flags().BoolVarP(&flags.relatorio.googlesheets, "googlesheets", "s", false, "Usar Google Sheets")
 
 	rootCmd.AddCommand(relatorioCmd)
 }
@@ -101,12 +142,30 @@ func menuRelatório(_ *cobra.Command, _ []string) {
 // criarRelatórios gera e salva relatórios da empresa em planilhas Excel.
 // Os relatórios podem ser consolidados ou, caso não existam, individuais.
 func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
-	filename, err := prepareFilename(flags.relatorio.outputDir, empresa.Nome)
+	var outputDir string
+	if flags.relatorio.googlesheets {
+		if flags.relatorio.googlesheetsDir == "" {
+			flags.relatorio.googlesheetsDir = flags.relatorio.outputDir
+		}
+		outputDir = flags.relatorio.googlesheetsDir
+	} else {
+		outputDir = flags.relatorio.outputDir
+	}
+
+	filename, err := prepareFilename(outputDir, empresa.Nome, flags.relatorio.googlesheets)
 	if err != nil {
 		progress.Fatal(err)
 	}
 
-	var x Excel = excel.New()
+	var x Spreadsheet
+	if flags.relatorio.googlesheets {
+		x, err = googlesheets.New(context.Background(), googlesheets.Config{})
+		if err != nil {
+			progress.Fatal(err)
+		}
+	} else {
+		x = excel.New()
+	}
 	defer func() {
 		if err := x.Close(); err != nil {
 			progress.Error(err)
@@ -138,13 +197,15 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
 }
 
 // criarPlanilhas gera e salva relatório consolidado/individual em Excel.
-func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.ContabilServices, consolidado bool) bool {
-	titulo := "consolid"
+func criarPlanilhas(x Spreadsheet, empresa rapina.Empresa, dfp *contabil.ContabilServices, consolidado bool) bool {
+	titulo := "consolid" // manter título curto para não ultrapassar o limite de 31 caracteres do nome da aba
+	msg := "consolidado"
 	if !consolidado {
 		titulo = "individ"
+		msg = "individual"
 	}
 
-	progress.Running("Relatório de dados " + titulo)
+	progress.Running("Relatório de dados " + msg)
 	itr, err := dfp.DadosTrimestrais(empresa.CNPJ, consolidado)
 	if err != nil {
 		progress.Fatal(err)
@@ -182,7 +243,7 @@ func criarPlanilhas(x Excel, empresa rapina.Empresa, dfp *contabil.ContabilServi
 	return true
 }
 
-func newSheet(x Excel, name string) {
+func newSheet(x Spreadsheet, name string) {
 	if err := x.NewSheet(name); err != nil {
 		progress.Fatal(err)
 	}
@@ -192,15 +253,15 @@ func newSheet(x Excel, name string) {
 // planilha Excel com base nos dados fornecidos. O parâmetro 'decrescente'
 // indica se o relatório deve ser criado em ordem crescente (false) ou
 // decrescente (true) de ano.
-func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
+func excelReport(x Spreadsheet, itr []rapina.InformeTrimestral, opts reportOpts) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
 
-	normalFont, _ := x.SetFont(10.0, false, false)
-	titleFont, _ := x.SetFont(10.0, true, false)
-	numberNormal, _ := x.SetNumber(10.0, false, _customerNumFmt)
-	numberBold, _ := x.SetNumber(10.0, true, _customerNumFmt)
+	normalFont, _ := x.SetFont(10.0, false, false, "Alegreya Sans SC")
+	titleFont, _ := x.SetFont(10.0, true, false, "Alegreya Sans SC")
+	numberNormal, _ := x.SetNumber(10.0, false, _customerNumFmt, "Alegreya Sans SC")
+	numberBold, _ := x.SetNumber(10.0, true, _customerNumFmt, "Alegreya Sans SC")
 
 	// ===== Relatório - início =====
 	anos := rapina.RangeAnos(itr, opts.decrescente)
@@ -279,7 +340,7 @@ func excelReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
 	widths := make([]float64, col+3)
 	widths[0], widths[1] = colWidths(itr)
 	for i := 2; i < col+3; i++ {
-		widths[i] = 12
+		widths[i] = ifElse(flags.relatorio.googlesheets, 10.0, 12.0)
 	}
 	x.SetColWidth(widths)
 
@@ -497,15 +558,15 @@ func nanToZero(val float64) float64 {
 // excelSummaryReport cria e formata o relatório resumido em planilha Excel com
 // base nos dados fornecidos. O parâmetro 'decrescente' indica se o relatório
 // deve ser criado em ordem crescente (false) ou decrescente (true) de ano.
-func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts) {
+func excelSummaryReport(x Spreadsheet, itr []rapina.InformeTrimestral, opts reportOpts) {
 	if err := x.SetZoom(90.0); err != nil {
 		progress.Fatal(err)
 	}
 
-	number, _ := x.SetNumber(10.0, false, _customerNumFmt)
-	percent, _ := x.SetNumber(10.0, false, _customerPercFmt)
-	frac, _ := x.SetNumber(10.0, false, _customerFracFmt)
-	titleFont, _ := x.SetFont(10.0, true, opts.vertical)
+	number, _ := x.SetNumber(10.0, false, _customerNumFmt, "Alegreya Sans SC")
+	percent, _ := x.SetNumber(10.0, false, _customerPercFmt, "Alegreya Sans SC")
+	frac, _ := x.SetNumber(10.0, false, _customerFracFmt, "Alegreya Sans SC")
+	titleFont, _ := x.SetFont(10.0, true, opts.vertical, "Alegreya Sans SC")
 
 	anos := rapina.RangeAnos(itr, opts.decrescente)
 	últimoAno := ifElse(opts.decrescente, anos[0], anos[len(anos)-1])
@@ -523,7 +584,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 	// -----------------[ Funções auxiliares ]-----------------
 
 	printHeader := func(row, col int) {
-		x.PrintCell(row, col, titleFont, ifElse(opts.vertical, "Trimestre", "Descrição"))
+		x.PrintCell(row, col, titleFont, ifElse(opts.vertical, "Período", "Descrição"))
 		if opts.vertical {
 			row++
 		} else {
@@ -733,7 +794,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 	widths := make([]float64, cols)
 	widths[0] = ifElse(opts.vertical, 8.5, 18.0)
 	for i := 1; i < cols; i++ {
-		widths[i] = 12.0
+		widths[i] = ifElse(flags.relatorio.googlesheets, 10.0, 12.0)
 	}
 	x.SetColWidth(widths)
 	trimEmpty(x, rowHeaderStart, colHeaderStart, sumRows, sumCols, opts.vertical)
@@ -741,7 +802,7 @@ func excelSummaryReport(x Excel, itr []rapina.InformeTrimestral, opts reportOpts
 }
 
 // trimEmpty remove linhas e colunas vazias.
-func trimEmpty(x Excel, row, col int, sumRows, sumCols []float64, vert bool) {
+func trimEmpty(x Spreadsheet, row, col int, sumRows, sumCols []float64, vert bool) {
 	if !vert {
 		// Trim empty columns
 		for i := len(sumCols) - 1; i >= 0; i-- {

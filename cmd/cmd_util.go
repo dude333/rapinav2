@@ -82,7 +82,7 @@ func escolherEmpresa(empresas []rapina.Empresa) (rapina.Empresa, bool) {
 }
 
 // prepareFilename cleans up the filename and returns the path/filename
-func prepareFilename(path, name string) (fpath string, err error) {
+func prepareFilename(path, name string, isGoogleSheets bool) (fpath string, err error) {
 	clean := func(r rune) rune {
 		switch r {
 		case ' ', ',', '/', '\\':
@@ -93,8 +93,13 @@ func prepareFilename(path, name string) (fpath string, err error) {
 	path = strings.TrimSuffix(path, "/")
 	name = strings.TrimSuffix(name, ".")
 	name = strings.Map(clean, name)
-	fpath = filepath.FromSlash(path + "/" + name + ".xlsx")
 
+	if isGoogleSheets {
+		fpath = path + "/" + name
+		return fpath, nil
+	}
+
+	fpath = filepath.FromSlash(path + "/" + name + ".xlsx")
 	const max = 50
 	var x int
 	for x = 1; x <= max; x++ {
