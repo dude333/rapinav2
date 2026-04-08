@@ -37,6 +37,8 @@ var servidorCmd = &cobra.Command{
 
 func init() {
 	servidorCmd.Flags().StringVarP(&flags.servidor.porta, "porta", "p", "8005", "Porta tcp do servidor")
+	// Usando variável do relatório (flags.relatorio.googlesheets)
+	servidorCmd.Flags().BoolVarP(&flags.relatorio.googlesheets, "googlesheets", "s", false, "Usar Google Sheets")
 
 	rootCmd.AddCommand(servidorCmd)
 }
@@ -57,6 +59,9 @@ func webserver(_ *cobra.Command, _ []string) {
 	http.Handle("/relatorios/", logHandler(stripPrefixHandler("/relatorios", fsRelat)))
 
 	addr := ":8080"
+	if flags.servidor.porta != "" {
+		addr = ":" + flags.servidor.porta
+	}
 	progress.Status("Iniciando servidor em %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
