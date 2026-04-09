@@ -54,6 +54,14 @@ type Config struct {
 	// TokenFile é o caminho onde o token OAuth2 é armazenado após o primeiro
 	// login interativo. Padrão: "token.json".
 	TokenFile string
+
+	// TokenPort é a porta para o redirect URI do OAuth. Se 0, usa porta automática.
+	// Padrão: 0 (porta automática).
+	TokenPort int
+
+	// OAuthURL é a URL externa para o redirect URI do OAuth (ex: https://seu-dominio.com).
+	// Se vazio, usa localhost. Padrão: "" (vazio, usa localhost).
+	OAuthURL string
 }
 
 func (c *Config) applyDefaults() {
@@ -826,7 +834,7 @@ func buildServices(ctx context.Context, cfg Config) (*sheets.Service, *drive.Ser
 
 	tok, err := tokenFromFile(cfg.TokenFile)
 	if err != nil {
-		tok, err = tokenFromWeb(ctx, oauthCfg)
+		tok, err = tokenFromWeb(ctx, oauthCfg, cfg.TokenPort, cfg.OAuthURL)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -872,13 +880,26 @@ func saveToken(file string, tok *oauth2.Token) error {
 	return json.NewEncoder(f).Encode(tok)
 }
 
-func tokenFromWeb(ctx context.Context, cfg *oauth2.Config) (*oauth2.Token, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+func tokenFromWeb(ctx context.Context, cfg *oauth2.Config, tokenPort int, oauthURL string) (*oauth2.Token, error) {
+	var addr string
+	if tokenPort > 0 {
+		addr = fmt.Sprintf("127.0.0.1:%d", tokenPort)
+	} else {
+		addr = "127.0.0.1:0"
+	}
+	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("googlesheets: erro ao iniciar servidor local: %w", err)
 	}
 	port := listener.Addr().(*net.TCPAddr).Port
-	redirectURL := fmt.Sprintf("http://localhost:%d", port)
+
+	// Determina a URL de redirecionamento para OAuth
+	var redirectURL string
+	if oauthURL != "" {
+		redirectURL = oauthURL
+	} else {
+		redirectURL = fmt.Sprintf("http://localhost:%d", port)
+	}
 
 	cfg.RedirectURL = redirectURL
 

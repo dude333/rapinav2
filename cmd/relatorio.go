@@ -92,6 +92,8 @@ type flagsRelatorio struct {
 	crescente       bool
 	googlesheets    bool
 	googlesheetsDir string
+	tokenport       int
+	oauthurl        string
 }
 
 // relatorioCmd represents the relatorio command
@@ -113,6 +115,8 @@ func init() {
 	relatorioCmd.Flags().StringVarP(&flags.relatorio.outputDir, "dir", "d", ".", "Diretório do relatório")
 	relatorioCmd.Flags().BoolVarP(&flags.relatorio.crescente, "crescente", "c", false, "Mostrar trimestres em ordem crescente")
 	relatorioCmd.Flags().BoolVarP(&flags.relatorio.googlesheets, "googlesheets", "s", false, "Usar Google Sheets")
+	relatorioCmd.Flags().IntVarP(&flags.relatorio.tokenport, "tokenport", "k", 0, "Porta para autenticação OAuth (0 = porta automática)")
+	relatorioCmd.Flags().StringVarP(&flags.relatorio.oauthurl, "oauthurl", "u", "", "URL externa para autenticação OAuth (ex: https://seu-dominio.com)")
 
 	rootCmd.AddCommand(relatorioCmd)
 }
@@ -159,7 +163,10 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
 
 	var x Spreadsheet
 	if flags.relatorio.googlesheets {
-		x, err = googlesheets.New(context.Background(), googlesheets.Config{})
+		x, err = googlesheets.New(context.Background(), googlesheets.Config{
+			TokenPort: flags.relatorio.tokenport,
+			OAuthURL:  flags.relatorio.oauthurl,
+		})
 		if err != nil {
 			progress.Fatal(err)
 		}

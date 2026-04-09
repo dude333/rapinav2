@@ -37,8 +37,10 @@ var servidorCmd = &cobra.Command{
 
 func init() {
 	servidorCmd.Flags().StringVarP(&flags.servidor.porta, "porta", "p", "8005", "Porta tcp do servidor")
-	// Usando variável do relatório (flags.relatorio.googlesheets)
+	// Usando variável do relatório (flags.relatorio)
 	servidorCmd.Flags().BoolVarP(&flags.relatorio.googlesheets, "googlesheets", "s", false, "Usar Google Sheets")
+	servidorCmd.Flags().IntVarP(&flags.relatorio.tokenport, "tokenport", "k", 0, "Porta para autenticação OAuth (0 = porta automática)")
+	servidorCmd.Flags().StringVarP(&flags.relatorio.oauthurl, "oauthurl", "u", "", "URL externa para autenticação OAuth (ex: https://seu-dominio.com)")
 
 	rootCmd.AddCommand(servidorCmd)
 }

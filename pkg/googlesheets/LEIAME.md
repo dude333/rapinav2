@@ -102,11 +102,113 @@ token.json
 
 ---
 
+## Configuração do Nginx para OAuth
+
+Se você executar a aplicação atrás de um proxy reverso (nginx), é necessário configurar o servidor para que o redirect URI do OAuth funcione corretamente. O pacote cria um servidor HTTP local para receber o código de autorização do Google.
+
+### Configuração do Nginx
+
+Adicione um bloco `server` ao seu arquivo de configuração do nginx (ex.: `/etc/nginx/sites-available/Default`):
+
+```nginx
+server {
+    listen 80;
+    server_name seu-dominio.com;
+
+    # Proxy reverso para a aplicação
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $server_name;
+        proxy_set_header X-Forwarded-Port $server_port;
+    }
+
+    # Rota específica para autenticação OAuth
+    location ~* /oauth2 {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### Registrando o Redirect URI no Google Cloud
+
+Após configurar o nginx, você precisa registrar o redirect URI correto nas credenciais OAuth:
+
+1. Acesse [Google Cloud Console](https://console.cloud.google.com/) → **APIs e serviços → Credenciais**.
+2. Clique em seu **ID do cliente OAuth** (tipo: Aplicativo de desktop).
+3. Na seção **URIs autorizados para redirecionamento**, adicione:
+   - Se usar porta automática: `http://seu-dominio.com`
+   - Se usar porta específica (ex: 8080): `http://seu-dominio.com:8080`
+
+### Executando com Port Específico
+
+Se preferir usar uma porta específica para o redirect URI, execute com a flag `--tokenport`:
+
+```bash
+relatorio relat --googlesheets --tokenport 8080
+```
+
+### Verificação do Redirect URI
+
+Durante a primeira execução, o programa exibirá algo como:
+
+```
+Abra esta URL no seu navegador para autorizar o acesso:
+
+  https://accounts.google.com/o/oauth2/auth?...&redirect_uri=http://localhost:8080
+
+Aguardando autorização...
+```
+
+Se você estiver usando nginx:
+
+- A URL exibida continuará mostrando `localhost:8080` (ou a porta configurada)
+- **Cuidado:** Se acessar o programa através do domínio público (ex: `seu-dominio.com`), você precisará atualizar o redirect URI no Google Cloud para corresponder
+
+### Certificado SSL/TLS
+
+Para produção, configure SSL/TLS no nginx:
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name seu-dominio.com;
+
+    ssl_certificate /caminho/para/certificado.crt;
+    ssl_certificate_key /caminho/para/chave.key;
+
+    # ... resto da configuração acima ...
+}
+
+# Redirecionar HTTP para HTTPS
+server {
+    listen 80;
+    server_name seu-dominio.com;
+    return 301 https://$server_name$request_uri;
+}
+```
+
+Nesse caso, registre o redirect URI como:
+
+- `https://seu-dominio.com` ou
+- `https://seu-dominio.com:porta` (se usar porta não-padrão)
+
+````
+
+---
+
 ## Instalação
 
 ```bash
 go get github.com/yourusername/googlesheets
-```
+````
 
 > Substitua `github.com/yourusername/googlesheets` pelo caminho de módulo real definido no seu `go.mod`.
 
