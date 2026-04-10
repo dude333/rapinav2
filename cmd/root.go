@@ -31,9 +31,12 @@ var flags = struct {
 }{}
 
 const (
-	configFileName = "rapina.yaml"
-	dataSrcDefault = ".dados" + string(os.PathSeparator) + "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
-	tempDirDefault = ".dados" + string(os.PathSeparator)
+	sep                    = string(os.PathSeparator)
+	configFileName         = "rapina.yaml"
+	dataSrcDefault         = ".dados" + sep + "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
+	tempDirDefault         = ".dados" + sep + "temp"
+	reportDirDefault       = ".dados" + sep + "reports"
+	googleSheetsDirDefault = "/rapina"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -99,8 +102,8 @@ func initConfig() {
 	progress.SetDebug(flags.debug)
 	progress.SetTrace(flags.trace)
 
+	// Setup viper configuration
 	if flags.cfgFile != "" {
-		// Use config file from the flag.
 		viper.SetConfigFile(flags.cfgFile)
 	} else {
 		viper.AddConfigPath(".")
@@ -108,49 +111,61 @@ func initConfig() {
 	}
 
 	viper.SetConfigType("yaml")
+	viper.AutomaticEnv()
 
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
+	// Read config file if it exists
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			progress.Warning("Erro ao ler arquivo de configuração: %v", err)
+		}
+	} else {
 		progress.Debug("Arquivo de configuração: %v", viper.ConfigFileUsed())
 	}
 
-	flags.dataSrc = dataSrcDefault
-	if viper.IsSet("dataSrc") {
-		flags.dataSrc = viper.GetString("dataSrc")
-	}
-	progress.Debug("dataSrc = %s", flags.dataSrc)
-	if err := createDir(flags.dataSrc); err != nil {
-		progress.Fatal(err)
-	}
+	// Initialize all config directories
+	initConfigPath(&flags.dataSrc, "dataSrc", dataSrcDefault)
+	initConfigPath(&flags.tempDir, "tempDir", tempDirDefault)
+	initConfigPath(&flags.relatorio.outputDir, "relatorio.outputDir", reportDirDefault)
 
-	flags.tempDir = tempDirDefault
-	if viper.IsSet("tempDir") {
-		flags.tempDir = viper.GetString("tempDir")
-	}
-	progress.Debug("tempDir = %s", flags.tempDir)
-	if err := createDir(flags.tempDir); err != nil {
-		progress.Fatal(err)
-	}
-
-	if viper.IsSet("reportDir") {
-		flags.relatorio.outputDir = viper.GetString("reportDir")
-	}
-	progress.Debug("reportDir = %s", flags.relatorio.outputDir)
-	if err := createDir(flags.relatorio.outputDir); err != nil {
-		progress.Fatal(err)
-	}
-
-	if viper.IsSet("googleSheetsDir") {
-		flags.relatorio.googlesheetsDir = viper.GetString("googleSheetsDir")
-	}
-	progress.Debug("googleSheetsDir = %s", flags.relatorio.googlesheetsDir)
-	if err := createDir(flags.relatorio.googlesheetsDir); err != nil {
-		progress.Fatal(err)
-	}
+	// Initialize flags from config file
+	initFlag(&flags.relatorio.googlesheetsDir, "relatorio.googleSheetsDir")
+	initFlag(&flags.relatorio.crescente, "relatorio.crescente")
+	initFlag(&flags.relatorio.tokenport, "relatorio.tokenport")
+	initFlag(&flags.relatorio.oauthurl, "relatorio.oauthurl")
 
 	fmt.Printf("\n\n")
+}
+
+// initConfigPath loads a config path from viper with a default value, then creates the directory.
+func initConfigPath(ptr *string, key, defaultValue string) {
+	*ptr = defaultValue
+	if viper.IsSet(key) {
+		*ptr = viper.GetString(key)
+	}
+	progress.Debug("initConfigPath: %s = %s", key, *ptr)
+	if err := createDir(*ptr); err != nil {
+		progress.Fatal(err)
+	}
+}
+
+// initFlag loads a config value from viper into the provided pointer if the key is set.
+func initFlag[T any](ptr *T, key string) {
+	if !viper.IsSet(key) {
+		return
+	}
+	if viper.IsSet(key) {
+		switch v := any(ptr).(type) {
+		case *string:
+			*v = viper.GetString(key)
+		case *int:
+			*v = viper.GetInt(key)
+		case *bool:
+			*v = viper.GetBool(key)
+		default:
+			progress.FatalMsg("Tipo de flag não suportado: %s", key)
+		}
+		progress.Debug("initFlag: %s = %v", key, *ptr)
+	}
 }
 
 var _db *sqlx.DB
@@ -171,6 +186,5 @@ func db() *sqlx.DB {
 
 func createDir(filePath string) error {
 	dirPath := filepath.Dir(filePath)
-	progress.Debug("dirPath: %s", dirPath)
 	return os.MkdirAll(dirPath, os.ModePerm)
 }
