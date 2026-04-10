@@ -42,7 +42,9 @@ Exemplos:
 
 Para criar uma planilha com os dados financeiros trimestrais de um empresa, execute o seguinte comando:
 
-`rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c]`
+`rapinav2 relatorio [-d <DIRETORIO>]  [--crescente|-c] [--googlesheets|-s]`
+
+**Opcional:** use o parâmetro `-s` para salvar os relatórios no _Google Drive_. Veja o passo a passo abaixo de como configurar o acesso ao _Google Sheets_ e _Google Drive_.
 
 As empresas serão listadas em ordem alfabética. Basta navegar com as setas, ou use a tecla <kbd>/</kbd> para procurar uma empresa.
 
@@ -52,7 +54,7 @@ Exemplos:
 - `rapinav2 relatorio -d ./relats`: cria o relatório no diretório `relats`.
 - `rapinav2 relatorio -d ./relats -c`: cria o relatório no diretório `relats`, com os trimestres listados na ordem crescente.
 
-Os relatório será gravado com o nome da empresa. Exemplos:
+Os relatórios serão gravados com o nome da empresa. Exemplos:
 
 ```
 3R_PETROLEUM_ÓLEO_E_GÁS_S.A.xlsx
@@ -66,15 +68,18 @@ RAIA_DROGASIL_S.A.xlsx
 
 ### Servidor Web
 
-Para criar os relatório em uma interface web, execute o comando `servidor`:
+Para criar os relatórios em uma interface web, execute o comando `servidor`:
 
 ```sh
-$ ./rapinav2 servidor
+$ ./rapinav2 servidor [--googlesheets|-s]
 
-[>] Iniciando servidor em :8080
+[>] Iniciando servidor em :8005
 
 ```
-E acesse a página através do endereço http://localhost:8080, onde é possível criar relatórios das empresas selecionadas e atualizar os dados (do ano corrente e do ano anterior).
+
+**Opcional:** use o parâmetro `-s` para salvar os relatórios no _Google Drive_. Veja o passo a passo abaixo de como configurar o acesso ao _Google Sheets_ e _Google Drive_.
+
+E acesse a página através do endereço http://localhost:8005, onde é possível criar relatórios das empresas selecionadas e atualizar os dados (do ano corrente e do ano anterior).
 
 [![webserver.png](https://i.postimg.cc/Y9h1vNqD/webserver.png)](https://postimg.cc/PpnLcwD1)
 
@@ -84,18 +89,21 @@ E acesse a página através do endereço http://localhost:8080, onde é possíve
 
 Personalize os parâmetros criando o arquivo `rapina.yaml` no mesmo diretório do executável (`rapinav2` ou `rapinav2.exe`) usando os seguintes parâmetros:
 
-| Parâmetro   | Descrição                                                                        |
-| ----------- | -------------------------------------------------------------------------------- |
-| `dataSrc`   | Arquivo onde serão gravados os dados coletados <br> Default: ./.dados            |
-| `tempDir`   | Diretório onde os arquivos temporários serão armazernados <br> Default: ./.dados |
-| `reportDir` | Diretório onde os relatórios serão salvos <br> Default: ./                       |
+| Parâmetro                   | Descrição                                                                   |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `dataSrc`                   | Arquivo onde serão gravados os dados coletados <br> Default: ./.dados       |
+| `tempDir`                   | Pasta onde os arquivos temporários serão armazenados <br> Default: ./.dados |
+| `relatorio.outputDir`       | Pasta onde os relatórios serão salvos <br> Default: ./                      |
+| `relatorio.googleSheetsDir` | Pasta do _Google Drive_ onde os relatórios serão salvos                     |
 
-Exemplo:
+Exemplo do _rapina.yaml_:
 
 ```yaml
-dataSrc: "/home/user1/dados/rapinav2.db"
-tempDir: "/home/user1/dados"
-reportDir: "/home/user1/relatorios"
+dataSrc: "dados/rapina/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL"
+tempDir: "dados/rapina"
+relatorio:
+  outputDir: "dados/reports"
+  googlesheetsDir: "/rapina"
 ```
 
 ## Build
@@ -109,10 +117,79 @@ Para compilar o código fonte, siga estas instruções:
 ```bash
 git clone github.com/dude333/rapinav2
 cd rapinav2
+go mod tidy
 go build -o rapinav2 cmd/*
 ```
 
 O arquivo `rapinav2`, ou `rapinav2.exe` no Windows, será criado.
+
+---
+
+## Passo a passo: configurando o acesso ao Google Cloud
+
+Siga estes passos uma única vez para obter o arquivo `credentials.json` que o Rapina usa para se autenticar em seu nome.
+
+### Passo 1 — Criar um projeto no Google Cloud
+
+1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
+2. Clique no seletor de projetos no topo da página e escolha **Novo projeto**.
+3. Dê um nome ao projeto (ex.: `rapina`) e clique em **Criar**.
+4. Certifique-se de que o novo projeto está selecionado no seletor antes de continuar.
+
+### Passo 2 — Habilitar as APIs necessárias
+
+É preciso habilitar duas APIs: **Google Sheets API** e **Google Drive API**.
+
+1. No menu lateral, acesse **APIs e serviços → Biblioteca**.
+2. Pesquise por **Google Sheets API**, clique sobre ela e depois em **Ativar**.
+3. Volte à Biblioteca, pesquise por **Google Drive API**, clique sobre ela e depois em **Ativar**.
+
+### Passo 3 — Configurar a tela de consentimento OAuth
+
+> Esta etapa define o que o usuário vê quando a aplicação solicita permissão. Como somente você usará esta aplicação, é possível mantê-la no modo _Teste_ indefinidamente.
+
+1. Acesse **APIs e serviços → Tela de consentimento OAuth**.
+2. Escolha **Externo** como tipo de usuário e clique em **Criar**.
+3. Preencha os campos obrigatórios:
+   - **Nome do app** — qualquer nome, ex.: `rapina`
+   - **E-mail de suporte ao usuário** — seu endereço de e-mail
+   - **Informações de contato do desenvolvedor** — seu endereço de e-mail
+4. Clique em **Salvar e continuar** em todas as telas seguintes até chegar ao **Resumo**, depois clique em **Voltar ao painel**.
+5. No painel da tela de consentimento, clique em **Publicar app** — ou mantenha no modo _Teste_ e adicione sua conta como usuário de teste na sub-etapa abaixo.
+
+   **Se permanecer no modo Teste:** clique em **Adicionar usuários** em _Usuários de teste_ e adicione a conta Google com a qual você irá se autenticar. Apenas os usuários listados conseguem concluir o fluxo OAuth enquanto o app estiver nesse modo.
+
+### Passo 4 — Criar uma credencial OAuth 2.0
+
+1. Acesse **APIs e serviços → Credenciais**.
+2. Clique em **Criar credenciais → ID do cliente OAuth**.
+3. Em _Tipo de aplicativo_, escolha **Aplicativo de desktop**.
+4. Dê um nome (ex.: `googlesheets-cli`) e clique em **Criar**.
+5. Na caixa de diálogo que aparecer, clique em **Fazer download do JSON**.
+6. Renomeie o arquivo baixado para `credentials.json` e coloque-o no diretório de trabalho a partir do qual você executa o programa.
+
+> **Mantenha o `credentials.json` em segredo.**
+
+### Passo 5 — Primeira execução (login interativo)
+
+Na primeira execução, o programa exibirá uma URL como:
+
+```
+Authorise this application by visiting:
+
+  https://accounts.google.com/o/oauth2/auth?...
+
+```
+
+1. Abra a URL no seu navegador.
+2. Escolha a conta Google que será a proprietária das planilhas.
+3. Revise as permissões ("Ver, editar, criar e excluir apenas os arquivos específicos do Google Drive usados com este app") e clique em **Permitir**.
+
+O programa armazenará o token resultante em `token.json`. Execuções posteriores carregam o token automaticamente, sem necessidade de interação.
+
+> **Mantenha o `token.json` em segredo.** Ele concede acesso em seu nome.
+
+---
 
 ## Dados
 
