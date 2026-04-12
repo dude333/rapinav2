@@ -187,6 +187,8 @@ func ListFilesInFolder(ctx context.Context, cfg Config, folderPath string) ([]*d
 		return nil, fmt.Errorf("googlesheets: list files in folder: %w", err)
 	}
 
+	progress.Status("Encontrados %d arquivos na pasta %q do Google Drive.", len(list.Files), folderPath)
+
 	return list.Files, nil
 }
 
@@ -880,13 +882,42 @@ func buildServices(ctx context.Context, cfg Config) (*sheets.Service, *drive.Ser
 			return nil, nil, err
 		}
 		if saveErr := saveToken(cfg.TokenFile, tok); saveErr != nil {
-			fmt.Fprintf(os.Stderr,
-				"googlesheets: aviso: não foi possível salvar o token em %q: %v\n",
-				cfg.TokenFile, saveErr)
+			progress.ErrorMsg("googlesheets: não foi possível salvar o token em %q: %v\n", cfg.TokenFile, saveErr)
 		}
 	}
 
-	httpClient := oauthCfg.Client(ctx, tok)
+	// Tenta validar o token fazendo um refresh explícito antes de usar.
+	// Se o refresh token foi revogado (invalid_grant), refaz o fluxo interativo.
+	ts := oauthCfg.TokenSource(ctx, tok)
+	freshTok, err := ts.Token()
+	if err != nil {
+		// Verifica se o erro indica falta de refresh token ou expiração sem volta
+		isExpiredNoRefresh := strings.Contains(err.Error(), "refresh token is not set")
+
+		if isInvalidGrant(err) || isExpiredNoRefresh {
+			progress.Warning("googlesheets: token inválido ou sem capacidade de refresh, reautenticando...")
+
+			_ = os.Remove(cfg.TokenFile) // Limpa o arquivo problemático
+
+			// Agora o tokenFromWeb PRECISA usar oauth2.AccessTypeOffline e oauth2.ApprovalForce
+			tok, err = tokenFromWeb(ctx, oauthCfg, cfg.TokenPort, cfg.OAuthURL)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if saveErr := saveToken(cfg.TokenFile, tok); saveErr != nil {
+				progress.ErrorMsg("googlesheets: erro ao salvar: %v\n", saveErr)
+			}
+
+			// Atualiza as variáveis para o restante da função
+			freshTok = tok
+			ts = oauthCfg.TokenSource(ctx, freshTok)
+		} else {
+			return nil, nil, fmt.Errorf("googlesheets: erro crítico ao validar token: %w", err)
+		}
+	}
+
+	httpClient := oauth2.NewClient(ctx, oauth2.ReuseTokenSource(freshTok, ts))
 
 	sheetsSrv, err := sheets.NewService(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
@@ -899,6 +930,16 @@ func buildServices(ctx context.Context, cfg Config) (*sheets.Service, *drive.Ser
 	}
 
 	return sheetsSrv, driveSrv, nil
+}
+
+// isInvalidGrant retorna true quando o erro OAuth indica token revogado ou expirado.
+func isInvalidGrant(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "invalid_grant") ||
+		strings.Contains(msg, "token has been expired or revoked")
 }
 
 func tokenFromFile(file string) (*oauth2.Token, error) {
@@ -945,7 +986,7 @@ func tokenFromWeb(ctx context.Context, cfg *oauth2.Config, tokenPort int, oauthU
 	cfg.RedirectURL = redirectURL
 
 	state := "state-token"
-	authURL := cfg.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	authURL := cfg.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
@@ -975,7 +1016,7 @@ func tokenFromWeb(ctx context.Context, cfg *oauth2.Config, tokenPort int, oauthU
 		}
 	}()
 
-	fmt.Printf("\nAbra esta URL no seu navegador para autorizar o acesso:\n\n  %s\n\nAguardando autorização...\n", authURL)
+	progress.Status("\nAbra esta URL no seu navegador para autorizar o acesso:\n\n  %s\n\nAguardando autorização...", authURL)
 
 	var code string
 	select {
@@ -995,6 +1036,6 @@ func tokenFromWeb(ctx context.Context, cfg *oauth2.Config, tokenPort int, oauthU
 		return nil, fmt.Errorf("googlesheets: erro ao trocar código de autorização: %w", err)
 	}
 
-	fmt.Println("Autorização bem-sucedida.")
+	progress.Status("Autorização bem-sucedida.")
 	return tok, nil
 }
