@@ -14,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -278,6 +279,16 @@ func handleFiles(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+
+	// Sort files by modification time (newest first)
+	sort.Slice(filesList, func(i, j int) bool {
+		ti, err1 := time.Parse("2006-01-02 15:04:05", filesList[i].ModTime)
+		tj, err2 := time.Parse("2006-01-02 15:04:05", filesList[j].ModTime)
+		if err1 != nil || err2 != nil {
+			return false
+		}
+		return tj.Before(ti)
+	})
 
 	t, err := template.ParseFS(assets, "assets/templates/files.html")
 	if err != nil {
