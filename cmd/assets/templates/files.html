@@ -13,9 +13,13 @@
       {{range .}}
       <tr>
         <td>
-          <a href="relatorios/{{if .IsDir}}/{{.Name}}{{else}}{{.Name}}{{end}}"
-            >{{.Name}}</a
-          >
+          {{if .Link}}
+            <a href="{{.Link}}" target="_blank">{{.Name}}</a>
+          {{else}}
+            <a href="relatorios/{{if .IsDir}}/{{.Name}}{{else}}{{.Name}}{{end}}"
+              >{{.Name}}</a
+            >
+          {{end}}
         </td>
         <td class="right">{{if .IsDir}}-{{else}}{{.Size}}{{end}}</td>
         <td class="center">{{.ModTime}}</td>

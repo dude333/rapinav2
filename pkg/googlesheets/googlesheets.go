@@ -149,6 +149,47 @@ func Open(ctx context.Context, cfg Config, spreadsheetID string) (*Sheet, error)
 	return out, nil
 }
 
+// ListFilesInFolder autentica o usuário e retorna uma lista de arquivos na pasta
+// especificada do Google Drive. folderPath é o caminho completo da pasta,
+// como "/rapina" ou "root" para a pasta raiz.
+func ListFilesInFolder(ctx context.Context, cfg Config, folderPath string) ([]*drive.File, error) {
+	cfg.applyDefaults()
+
+	_, driveSrv, err := buildServices(ctx, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the folder ID
+	parentID := "root"
+	if folderPath != "" && folderPath != "/" && folderPath != "root" {
+		parts := strings.Split(strings.Trim(folderPath, "/"), "/")
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			query := fmt.Sprintf("name='%s' and mimeType='application/vnd.google-apps.folder' and '%s' in parents and trashed=false", part, parentID)
+			list, err := driveSrv.Files.List().Q(query).Fields("files(id)").Context(ctx).Do()
+			if err != nil {
+				return nil, fmt.Errorf("googlesheets: search folder %q: %w", part, err)
+			}
+			if len(list.Files) == 0 {
+				return nil, fmt.Errorf("googlesheets: folder %q not found", part)
+			}
+			parentID = list.Files[0].Id
+		}
+	}
+
+	// List files in the folder
+	query := fmt.Sprintf("'%s' in parents and trashed=false", parentID)
+	list, err := driveSrv.Files.List().Q(query).Fields("files(id,name,modifiedTime,size,mimeType)").Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("googlesheets: list files in folder: %w", err)
+	}
+
+	return list.Files, nil
+}
+
 // ---------------------------------------------------------------------------
 // Tipos internos
 // ---------------------------------------------------------------------------
@@ -953,5 +994,7 @@ func tokenFromWeb(ctx context.Context, cfg *oauth2.Config, tokenPort int, oauthU
 	if err != nil {
 		return nil, fmt.Errorf("googlesheets: erro ao trocar código de autorização: %w", err)
 	}
+
+	fmt.Println("Autorização bem-sucedida.")
 	return tok, nil
 }

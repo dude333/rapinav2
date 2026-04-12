@@ -19,6 +19,7 @@ import (
 
 	rapina "github.com/dude333/rapinav2"
 	"github.com/dude333/rapinav2/pkg/contabil"
+	"github.com/dude333/rapinav2/pkg/googlesheets"
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/spf13/cobra"
 )
@@ -215,34 +216,67 @@ type File struct {
 	Size    string
 	Mode    os.FileMode
 	IsDir   bool
+	Link    string // URL for Google Drive files
 }
 
 func handleFiles(w http.ResponseWriter, _ *http.Request) {
+	var filesList []File
+
+	// Add local files
 	path := flags.relatorio.outputDir
-	files, err := os.ReadDir(path)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if localFiles, err := os.ReadDir(path); err == nil {
+		for _, f := range localFiles {
+			info, err := f.Info()
+			if err != nil {
+				continue
+			}
+			filesList = append(filesList, File{
+				Name:    f.Name(),
+				Size:    humanize(info.Size()),
+				Mode:    info.Mode(),
+				ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
+				IsDir:   f.IsDir(),
+				Link:    "", // Local files don't have external links
+			})
+		}
 	}
 
-	if len(files) == 0 {
+	// Add Google Drive files if enabled
+	if flags.relatorio.googlesheets {
+		cfg := googlesheets.Config{
+			CredentialsFile: "credentials.json",
+			TokenFile:       "token.json",
+			TokenPort:       flags.relatorio.tokenport,
+			OAuthURL:        flags.relatorio.oauthurl,
+		}
+		driveFiles, err := googlesheets.ListFilesInFolder(context.Background(), cfg, flags.relatorio.googlesheetsDir)
+		if err != nil {
+			progress.ErrorMsg("Error listing Google Drive files: %v", err)
+		} else {
+			for _, f := range driveFiles {
+				size := f.Size
+				modTime := ""
+				if f.ModifiedTime != "" {
+					if t, err := time.Parse(time.RFC3339, f.ModifiedTime); err == nil {
+						modTime = t.Format("2006-01-02 15:04:05")
+					}
+				}
+				link := fmt.Sprintf("https://docs.google.com/spreadsheets/d/%s", f.Id)
+				filesList = append(filesList, File{
+					Name:    f.Name,
+					Size:    humanize(size),
+					Mode:    0, // Not applicable for Drive files
+					ModTime: modTime,
+					IsDir:   false, // Assume files, not folders
+					Link:    link,
+				})
+			}
+		}
+	}
+
+	if len(filesList) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
-	}
-
-	var filesList []File
-	for _, f := range files {
-		info, err := f.Info()
-		if err != nil {
-			continue
-		}
-		filesList = append(filesList, File{
-			Name:    f.Name(),
-			Size:    humanize(info.Size()),
-			Mode:    info.Mode(),
-			ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
-			IsDir:   f.IsDir(),
-		})
 	}
 
 	t, err := template.ParseFS(assets, "assets/templates/files.html")
