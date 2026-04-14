@@ -1,0 +1,13 @@
+<svg height="24" width="24" viewBox="0 0 16 16"
+    xmlns="http://www.w3.org/2000/svg" class="yLKXEe W9y3zc" mask-id="ucc-1"
+    xmlns:bx="https://boxy-svg.com">
+    <defs>
+        <linearGradient gradientUnits="userSpaceOnUse" x1="8.047" y1="5.378" x2="8.047" y2="7.143" id="gradient-0">
+            <stop offset="0" style="stop-color: rgb(0, 0, 0)"></stop>
+            <stop offset="1" style="stop-color: rgb(0% 0% 0%)"></stop>
+        </linearGradient>
+    </defs>
+    <bx:title>Google Planilhas</bx:title>
+    <path d="M14.222 0H1.778C.8 0 .008.8.008 1.778L0 4.444v9.778C0 15.2.8 16 1.778 16h12.444C15.2 16 16 15.2 16 14.222V1.778C16 .8 15.2 0 14.222 0zm0 7.111h-7.11v7.111H5.332v-7.11H1.778V5.332h3.555V1.778h1.778v3.555h7.111v1.778z" style="fill: rgb(52, 168, 83);"></path>
+    <path d="M 5.303 1.772 L 7.127 1.772 L 7.132 5.326 L 14.269 5.326 L 14.269 7.125 L 7.135 7.125 L 7.146 14.238 L 5.322 14.238 L 5.311 7.125 L 1.762 7.125 L 1.762 5.326 L 5.308 5.326 L 5.303 1.772 Z" style="fill: rgb(255, 255, 255); stroke-width: 1px;"></path>
+</svg>

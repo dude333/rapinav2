@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rapina — Relatórios Financeiros</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦅</text></svg>" />
+
+  <!-- SlimSelect -->
+  <link rel="stylesheet" href="assets/styles/slimselect.css">
+  <script src="assets/scripts/slimselect.js"></script>
+
+  <link rel="stylesheet" href="assets/styles/style.css">
+  <script type="module" src="assets/scripts/script.js"></script>
+
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img
+        src="assets/images/rapina_logo.png"
+        alt="Rapina"
+        width="45%"
+        class="shadow" />
+  </div>
+</header>
+
+<div id="status-bar">
+  <div class="dot" id="sse-dot"></div>
+  <span id="sse-status">Desconectado</span>
+</div>
+
+<div class="card">
+  <h2>Empresas</h2>
+  <select id="select-empresas" multiple placeholder="Selecione as empresas..."></select>
+</div>
+
+<div class="card">
+  <h2>Destino</h2>
+  <div class="radio-group">
+    <label><input type="radio" name="output" value="local" checked> 💾 Local (Excel)</label>
+    <label><input type="radio" name="output" value="googledrive"> ☁️ Google Drive</label>
+  </div>
+  <div class="btn-row">
+    <button class="btn-primary"   id="btn-relatorio">Gerar Relatório</button>
+    <button class="btn-secondary" id="btn-update-db">Atualizar Base (DFP)</button>
+    <button class="btn-secondary" id="btn-refresh-files">↻ Atualizar Arquivos</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="console-header">
+    <h2>Console</h2>
+    <button class="btn-secondary" style="padding:.3rem .7rem;font-size:.75rem" id="btn-clear-console">Limpar</button>
+  </div>
+  <div id="console"></div>
+</div>
+
+<div class="card">
+  <h2>Arquivos Gerados</h2>
+  <div id="file-list"><p class="empty">Carregando...</p></div>
+</div>
+</body>
+</html>

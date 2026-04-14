@@ -1,129 +1,160 @@
-const $options = document.getElementById("allOptions");
-const $terminalDiv = document.getElementById("terminal");
-const $filesDiv = document.getElementById("files");
-
-const _customEvent = new CustomEvent("reloadFiles");
-$filesDiv.dispatchEvent(_customEvent);
-
-// Select -----------------------------------------------------------------------
-
-function setOpts(newVal) {
-  const obj = slimSelect
-    .getData()
-    .filter((e) => e.selected)
-    .map((e) => {
-      return { cnpj: e.value, nome: e.text };
-    });
-  $options.value = JSON.stringify(obj);
-}
-
-const slimSelect = new SlimSelect({
-  select: "#empresas",
-  settings: {
-    placeholderText: "Selecione as empresas",
-    searchText: "Nenhum item encontrado",
-    searchPlaceholder: "Procurar",
-    searchHighlight: false,
-  },
-  events: {
-    afterChange: (newVal) => setOpts(newVal),
-  },
+const slim = new SlimSelect({
+  select: '#select-empresas',
+  settings: { searchPlaceholder: 'Buscar empresa...', placeholderText: 'Selecione as empresas...' }
 });
 
-setTimeout(() => {
-  setOpts();
-}, 100);
+let eventSource = null;
+let busy = false;
 
-// Terminal -------------------------------------------------------------------
+function connectSSE() {
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource('/api/stream');
 
-document.body.addEventListener("htmx:afterSwap", function (event) {
-  if (event.detail.elt.id === "terminal") {
-    let responseData = event.detail.xhr.responseText;
-    let processedData = formatData(responseData);
-    $terminalDiv.innerHTML = processedData;
-  }
-});
+  eventSource.onopen = () => setSSEStatus('connected', 'Conectado');
 
-let currentColor = "0";
-function formatData(data) {
-  if (data.trim().length === 0) {
-    return data;
-  }
-  // Replace ANSI escape codes with HTML span elements for colors
-  const formattedData = data
-    .replace(/\x1b\[(\d+)m/g, (_, colorCode) => {
-      currentColor = colorCode;
-      return "";
-    })
-    .replace(/\r|\n/g, "<br />");
+  eventSource.onmessage = (e) => {
+    const msg = e.data;
+    let cls = '';
+    if (/erro|error|falha/i.test(msg)) cls = 'err';
+    else if (/aviso|warn/i.test(msg))  cls = 'warn';
+    logLine(msg, cls);
+  };
 
-  if (!formattedData) {
-    return "";
-  }
+  // Evento "close" sinaliza fim do processamento (broadcast de [done])
+  eventSource.addEventListener('close', (e) => {
+    setBusy(false);
+    logLine('✔ ' + e.data, 'info');
+    loadFiles();
+  });
 
-  return `<span class="color${currentColor}m">` + formattedData + "</span>";
+  eventSource.onerror = () => {
+    setSSEStatus('', 'Reconectando...');
+    setTimeout(connectSSE, 3000);
+  };
 }
 
-// Submit form (criar relatórios) --------------------------------------------
+function setSSEStatus(cls, text) {
+  document.getElementById('sse-dot').className = 'dot ' + cls;
+  document.getElementById('sse-status').textContent = text;
+}
 
-document
-  .querySelector("form.container")
-  .addEventListener("htmx:beforeRequest", (event) => {
-    if ((event.ta = document.getElementById("submit"))) {
-      disableButtons(true);
-      $terminalDiv.innerHTML = "Criando relatórios...<br />";
-      //   $options
-      //     .map((e) => "* " + e.cnpj + ": " + e.nome + "<br />")
-      //     .join("\n");
-    }
-  });
-document
-  .querySelector("form.container")
-  .addEventListener("htmx:afterRequest", (_) => {
-    disableButtons(false);
-    htmx.trigger($filesDiv, "reloadFiles");
-  });
+function logLine(text, cls) {
+  const el = document.getElementById('console');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = text;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
 
-// Atualizar banco de dados --------------------------------------------------
+document.getElementById('btn-clear-console').addEventListener('click', () => {
+  document.getElementById('console').innerHTML = '';
+});
 
-function startEventSource(event) {
-  event.preventDefault();
+function setBusy(state) {
+  busy = state;
+  document.getElementById('btn-relatorio').disabled = state;
+  document.getElementById('btn-update-db').disabled = state;
+  if (state) setSSEStatus('busy', 'Processando...');
+  else setSSEStatus('connected', 'Conectado');
+}
 
-  console.log("Starting EventSource...");
+async function loadEmpresas() {
+  try {
+    const res = await fetch('/api/empresas');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const empresas = await res.json();
+    slim.setData(empresas.map(e => ({ text: e.nome, value: e.cnpj })));
+  } catch(err) {
+    logLine('Erro ao carregar empresas: ' + err.message, 'err');
+  }
+}
 
-  const eventSource = new EventSource("/update");
-  disableButtons(true);
-
-  eventSource.onmessage = function (event) {
-    if (event.data.trim().length === 0) {
+async function loadFiles() {
+  const container = document.getElementById('file-list');
+  try {
+    const res = await fetch('/api/files');
+    if (res.status === 204) {
+      container.innerHTML = '<p class="empty">Nenhum arquivo encontrado.</p>';
       return;
     }
-    $terminalDiv.innerHTML += formatData(event.data);
-  };
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const files = await res.json();
 
-  eventSource.addEventListener("close", function (event) {
-    console.log("Server has closed the connection.");
-    eventSource.close();
-    running = false;
-    disableButtons(false);
-    $terminalDiv.innerHTML += "<br />[>] Importação concluída";
-  });
+    let html = '<div class="file-table">'  
+      + '<div class="file-row header">'
+      + '<div class="cell" data-title="Nome">Nome</div><div class="cell" data-title="Tamanho">Tamanho</div><div class="cell" data-title="Modificado">Modificado</div>'
+      + '</div>';
 
-  eventSource.onerror = function (event) {
-    console.error("EventSource failed:", event);
-    eventSource.close();
-    disableButtons(false);
-    running = false;
-  };
+    for (const f of files) {
+      const icon = f.link ? '<div class="icon-googlesheets"></div> ' : '<div class="icon-xlsx"></div> ';
+      const link  = '<a href="' + (f.link || ('/relatorios/' + f.name)) + '" target="_blank" rel="noopener">' + escHtml(f.name) + '</a>';
+      html += '<div class="file-row">' 
+        + '<div class="cell" data-title="Nome">' + icon + link + '</div>'
+        + '<div class="cell" data-title="Tamanho">' + escHtml(f.size) + '</div>'
+        + '<div class="cell" data-title="Modificado">' + escHtml(f.modTime) + '</div>'
+        + '</div>';
+    }
+    html += '</div>';
+
+   container.innerHTML = html;
+  } catch(err) {
+    container.innerHTML = '<p class="empty">Erro ao carregar arquivos.</p>';
+    logLine('Erro ao carregar arquivos: ' + err.message, 'err');
+  }
 }
 
-// Botões ---------------------------------------------------------------------
-
-function disableButtons(disable) {
-  const buttonsInDiv = document.querySelectorAll("#buttons button");
-  buttonsInDiv.forEach((button) => {
-    button.disabled = disable;
-    button.style.cursor = disable ? "not-allowed" : "pointer";
-    button.style.opacity = disable ? "0.5" : "1";
-  });
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+document.getElementById('btn-relatorio').addEventListener('click', async () => {
+  const selecionados = slim.getSelected();
+  if (!selecionados || selecionados.length === 0) {
+    logLine('⚠ Selecione ao menos uma empresa.', 'warn');
+    return;
+  }
+  // Reconstrói objetos {cnpj, nome} a partir dos itens selecionados no SlimSelect
+  const allOptions = slim.getData().filter(o => selecionados.includes(o.value));
+  const empresas = allOptions.map(o => ({ cnpj: o.value, nome: o.text }));
+  const output = document.querySelector('input[name=output]:checked').value;
+
+  setBusy(true);
+  logLine('Gerando relatórios para ' + empresas.length + ' empresa(s)...', 'info');
+
+  try {
+    const res = await fetch('/api/relatorios', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ empresas, output }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'HTTP ' + res.status);
+    }
+  } catch(err) {
+    logLine('Erro: ' + err.message, 'err');
+    setBusy(false);
+  }
+});
+
+document.getElementById('btn-update-db').addEventListener('click', async () => {
+  setBusy(true);
+  logLine('Atualizando base de dados (DFP)...', 'info');
+  try {
+    const res = await fetch('/api/update-db', { method: 'POST' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'HTTP ' + res.status);
+    }
+  } catch(err) {
+    logLine('Erro: ' + err.message, 'err');
+    setBusy(false);
+  }
+});
+
+document.getElementById('btn-refresh-files').addEventListener('click', loadFiles);
+
+connectSSE();
+loadEmpresas();
+loadFiles();

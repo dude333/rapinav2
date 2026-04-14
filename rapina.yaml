@@ -1,8 +1,9 @@
 dataSrc: "./.dados/rapina/rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
 tempDir: "./.dados/rapina"
+assetsDir: "./cmd/assets"
 relatorio:
   outputDir: "./.dados/reports"
   googlesheetsDir: "/rapina"
   crescente: false
-  tokenport: 8086
-  oauthurl: "https://rapina-oauth.dude333.com"
+  #tokenport: 8086
+  #oauthurl: "https://rapina-oauth.dude333.com"

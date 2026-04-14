@@ -6,16 +6,14 @@ package main
 
 import (
 	"context"
-	"embed"
+	_ "embed"
 	"encoding/json"
 	"fmt"
-	"html/template"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"sort"
-	"strings"
+	"sync"
 	"time"
 
 	rapina "github.com/dude333/rapinav2"
@@ -24,6 +22,10 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/spf13/cobra"
 )
+
+// ---------------------------------------------------------------------------
+// Comando "servidor"
+// ---------------------------------------------------------------------------
 
 type flagsServidor struct {
 	porta string
@@ -47,162 +49,393 @@ func init() {
 	rootCmd.AddCommand(servidorCmd)
 }
 
-//go:embed assets
-var assets embed.FS
-
-func webserver(_ *cobra.Command, _ []string) {
-	http.HandleFunc("/", displayEmpresas)
-	http.HandleFunc("/select", handleSelection)
-	http.HandleFunc("/update", handleUpdate)
-	http.HandleFunc("/files", handleFiles)
-
-	fs := http.FileServer(http.FS(assets))
-	http.Handle("/assets/", logHandler(fs))
-
-	fsRelat := http.FileServer(http.Dir(flags.relatorio.outputDir))
-	http.Handle("/relatorios/", logHandler(stripPrefixHandler("/relatorios", fsRelat)))
-
-	addr := ":8080"
-	if flags.servidor.porta != "" {
-		addr = ":" + flags.servidor.porta
-	}
-	progress.Status("Iniciando servidor em %s", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
-}
-
-func displayEmpresas(w http.ResponseWriter, _ *http.Request) {
-	dfp, err := contabil.NewService(db(), flags.tempDir)
-	if err != nil {
-		progress.Fatal(err)
-	}
-
-	empresas, err := dfp.Empresas()
-	if err != nil {
-		progress.Fatal(err)
-	}
-
-	t, err := template.ParseFS(assets, "assets/templates/empresas.html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := t.Execute(w, empresas); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func handleSelection(w http.ResponseWriter, r *http.Request) {
-	var selectedEmpresas []rapina.Empresa
-
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	objs := r.Form["allOptions"]
-	if err := json.Unmarshal([]byte(objs[0]), &selectedEmpresas); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	progress.SetOutput(w)
-	dfp, err := contabil.NewService(db(), flags.tempDir)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		progress.Fatal(err)
-	}
-
-	for _, empresa := range selectedEmpresas {
-		criarRelatórios(empresa, dfp)
-	}
-}
+// ---------------------------------------------------------------------------
+// SSE writer (compatível com progress.SetOutput — usado em handleUpdate)
+// ---------------------------------------------------------------------------
 
 type sseWriter struct {
-	w  io.Writer
-	w2 io.Writer
+	w  http.ResponseWriter
+	w2 *os.File
 }
 
 func (sw sseWriter) Write(p []byte) (n int, err error) {
 	if sw.w2 != nil {
 		_, _ = sw.w2.Write(p)
 	}
-	return sw.w.Write([]byte("data: " + string(p) + "\n\n"))
+	n, err = fmt.Fprintf(sw.w, "data: %s\n\n", string(p))
+	if f, ok := sw.w.(http.Flusher); ok {
+		f.Flush()
+	}
+	return n, err
 }
 
-var alreadyIn = false
+// ---------------------------------------------------------------------------
+// SSE hub — distribui mensagens para clientes em /api/stream
+// ---------------------------------------------------------------------------
 
-func handleUpdate(w http.ResponseWriter, r *http.Request) {
-	log.Println("***************************************************")
-	if alreadyIn {
-		log.Println("Cancelando update")
-		_, cancel := context.WithCancel(r.Context())
-		cancel()
+type sseHub struct {
+	mu      sync.Mutex
+	clients map[chan string]struct{}
+}
+
+func newSSEHub() *sseHub {
+	return &sseHub{clients: make(map[chan string]struct{})}
+}
+
+func (h *sseHub) subscribe() chan string {
+	ch := make(chan string, 64)
+	h.mu.Lock()
+	h.clients[ch] = struct{}{}
+	h.mu.Unlock()
+	return ch
+}
+
+func (h *sseHub) unsubscribe(ch chan string) {
+	h.mu.Lock()
+	delete(h.clients, ch)
+	h.mu.Unlock()
+}
+
+func (h *sseHub) broadcast(msg string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for ch := range h.clients {
+		select {
+		case ch <- msg:
+		default:
+		}
+	}
+}
+
+// hubWriter implementa io.Writer e encaminha linhas para o hub SSE
+type hubWriter struct {
+	hub *sseHub
+	buf []byte
+}
+
+func (hw *hubWriter) Write(p []byte) (int, error) {
+	hw.buf = append(hw.buf, p...)
+	for {
+		idx := -1
+		for i, b := range hw.buf {
+			if b == '\n' {
+				idx = i
+				break
+			}
+		}
+		if idx == -1 {
+			break
+		}
+		line := string(hw.buf[:idx])
+		hw.buf = hw.buf[idx+1:]
+		if line != "" {
+			hw.hub.broadcast(line)
+			_, _ = os.Stdout.WriteString(line + "\n")
+		}
+	}
+	return len(p), nil
+}
+
+// ---------------------------------------------------------------------------
+// Servidor web principal
+// ---------------------------------------------------------------------------
+
+func webserver(_ *cobra.Command, _ []string) {
+	hub := newSSEHub()
+	hw := &hubWriter{hub: hub}
+
+	// Redireciona progress para o hub SSE
+	progress.SetOutput(hw)
+
+	http.HandleFunc("/", handleIndex)
+	http.HandleFunc("/api/empresas", handleEmpresas)
+	http.HandleFunc("/api/relatorios", makeHandleRelatorios(hub))
+	http.HandleFunc("/api/files", makeHandleFiles())
+	http.HandleFunc("/api/update-db", makeHandleUpdateDB(hub))
+	http.HandleFunc("/api/stream", makeHandleStream(hub))
+
+	// Serve arquivos locais gerados em /relatorios/
+	fsRelat := http.FileServer(http.Dir(flags.relatorio.outputDir))
+	http.Handle("/relatorios/", logHandler(stripPrefixHandler("/relatorios", fsRelat)))
+
+	// Serve assets embutidos (CSS, JS)
+	fsAssets := http.FileServer(http.Dir(flags.assetsDir))
+	http.Handle("/assets/", logHandler(stripPrefixHandler("/assets", fsAssets)))
+
+	addr := ":" + flags.servidor.porta
+	progress.Status("Iniciando servidor em http://localhost%s", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
+}
+
+// ---------------------------------------------------------------------------
+// Handlers
+// ---------------------------------------------------------------------------
+
+// GET /
+func handleIndex(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
 		return
 	}
-	alreadyIn = true
-	w.Header().Set("Content-Type", "text/event-stream;  charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(indexHTML))
+}
 
-	progress.SetOutput(sseWriter{w: w, w2: os.Stdout})
+// GET /api/empresas
+func handleEmpresas(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
 
 	dfp, err := contabil.NewService(db(), flags.tempDir)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		panic(err)
+		jsonError(w, "erro ao criar serviço contábil: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	f, ok := w.(http.Flusher)
-	if !ok {
-		progress.Warning("Servidor não suporta flush")
+	empresas, err := dfp.Empresas()
+	if err != nil {
+		jsonError(w, "erro ao listar empresas: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
-	flush := func() {
-		if ok {
-			f.Flush()
+
+	type empresaJSON struct {
+		CNPJ string `json:"cnpj"`
+		Nome string `json:"nome"`
+	}
+
+	result := make([]empresaJSON, 0, len(empresas))
+	for _, e := range empresas {
+		result = append(result, empresaJSON{CNPJ: e.CNPJ, Nome: e.Nome})
+	}
+
+	writeJSON(w, result)
+}
+
+// POST /api/relatorios
+func makeHandleRelatorios(hub *sseHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "método não permitido", http.StatusMethodNotAllowed)
+			return
 		}
-	}
 
-	done := make(chan bool, 1)
-	defer close(done)
+		var req struct {
+			Empresas []rapina.Empresa `json:"empresas"`
+			Output   string           `json:"output"` // "local" | "googledrive"
+		}
 
-	anof := time.Now().Year()
-	anoi := anof - 1
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			jsonError(w, "corpo inválido: "+err.Error(), http.StatusBadRequest)
+			return
+		}
 
-	importar := func(trimestral bool) {
-		for ano := anof; ano >= anoi; ano-- {
-			err := dfp.Import(ano, trimestral)
+		go func() {
+			if req.Output == "googledrive" {
+				flags.relatorio.googlesheets = true
+			}
+
+			dfp, err := contabil.NewService(db(), flags.tempDir)
 			if err != nil {
 				progress.Error(err)
-				continue
+				hub.broadcast("[done]")
+				return
+			}
+
+			for _, empresa := range req.Empresas {
+				criarRelatórios(empresa, dfp)
+			}
+
+			hub.broadcast("[done]")
+		}()
+
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"status":"iniciado"}`))
+	}
+}
+
+// GET /api/files
+func makeHandleFiles() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "método não permitido", http.StatusMethodNotAllowed)
+			return
+		}
+
+		type fileInfo struct {
+			Name    string `json:"name"`
+			Size    string `json:"size"`
+			ModTime string `json:"modTime"`
+			IsDir   bool   `json:"isDir"`
+			Link    string `json:"link,omitempty"`
+		}
+
+		var files []fileInfo
+
+		// Arquivos locais
+		if entries, err := os.ReadDir(flags.relatorio.outputDir); err == nil {
+			for _, entry := range entries {
+				info, err := entry.Info()
+				if err != nil {
+					continue
+				}
+				files = append(files, fileInfo{
+					Name:    entry.Name(),
+					Size:    humanize(info.Size()),
+					ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
+					IsDir:   entry.IsDir(),
+				})
+			}
+		}
+
+		// Arquivos no Google Drive
+		if flags.relatorio.googlesheets {
+			cfg := googlesheets.Config{
+				CredentialsFile: "credentials.json",
+				TokenFile:       "token.json",
+				TokenPort:       flags.relatorio.tokenport,
+				OAuthURL:        flags.relatorio.oauthurl,
+			}
+			driveFiles, err := googlesheets.ListFilesInFolder(context.Background(), cfg, flags.relatorio.googlesheetsDir)
+			if err != nil {
+				progress.ErrorMsg("Erro ao listar arquivos do Google Drive: %v", err)
+			} else {
+				for _, f := range driveFiles {
+					modTime := ""
+					if f.ModifiedTime != "" {
+						if t, err := time.Parse(time.RFC3339, f.ModifiedTime); err == nil {
+							modTime = t.Format("2006-01-02 15:04:05")
+						}
+					}
+					files = append(files, fileInfo{
+						Name:    f.Name,
+						Size:    humanize(f.Size),
+						ModTime: modTime,
+						Link:    fmt.Sprintf("https://docs.google.com/spreadsheets/d/%s", f.Id),
+					})
+				}
+			}
+		}
+
+		// Ordena por data de modificação (mais recente primeiro)
+		sort.Slice(files, func(i, j int) bool {
+			ti, err1 := time.Parse("2006-01-02 15:04:05", files[i].ModTime)
+			tj, err2 := time.Parse("2006-01-02 15:04:05", files[j].ModTime)
+			if err1 != nil || err2 != nil {
+				return false
+			}
+			return tj.Before(ti)
+		})
+
+		if len(files) == 0 {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		writeJSON(w, files)
+	}
+}
+
+// POST /api/update-db
+var alreadyIn = false
+
+func makeHandleUpdateDB(hub *sseHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "método não permitido", http.StatusMethodNotAllowed)
+			return
+		}
+
+		if alreadyIn {
+			log.Println("Cancelando update — já em execução")
+			_, cancel := context.WithCancel(r.Context())
+			cancel()
+			return
+		}
+		alreadyIn = true
+
+		go func() {
+			defer func() { alreadyIn = false }()
+
+			dfp, err := contabil.NewService(db(), flags.tempDir)
+			if err != nil {
+				progress.Error(err)
+				hub.broadcast("[done]")
+				return
+			}
+
+			anof := time.Now().Year()
+			anoi := anof - 1
+
+			importar := func(trimestral bool) {
+				for ano := anof; ano >= anoi; ano-- {
+					if err := dfp.Import(ano, trimestral); err != nil {
+						progress.Error(err)
+						continue
+					}
+				}
+			}
+
+			importar(false)
+			importar(true)
+
+			hub.broadcast("[done]")
+		}()
+
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"status":"iniciado"}`))
+	}
+}
+
+// GET /api/stream (SSE)
+func makeHandleStream(hub *sseHub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("X-Accel-Buffering", "no")
+
+		ch := hub.subscribe()
+		defer hub.unsubscribe(ch)
+
+		f, ok := w.(http.Flusher)
+		flush := func() {
+			if ok {
+				f.Flush()
+			}
+		}
+
+		ticker := time.NewTicker(300 * time.Millisecond)
+		defer ticker.Stop()
+
+		ctx := r.Context()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg, ok := <-ch:
+				if !ok {
+					return
+				}
+				if msg == "[done]" {
+					_, _ = fmt.Fprintf(w, "event: close\ndata: [>] Concluído\n\n")
+					flush()
+					return
+				}
+				_, _ = fmt.Fprintf(w, "data: %s\n\n", msg)
+				flush()
+			case <-ticker.C:
+				_, _ = fmt.Fprintf(w, ": keep-alive\n\n")
+				flush()
 			}
 		}
 	}
-
-	go func() {
-		importar(false)
-		importar(true)
-		progress.SetOutput(os.Stdout)
-		done <- true
-	}()
-
-	ticker := time.NewTicker(300 * time.Millisecond)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-done:
-			_, _ = fmt.Fprintf(w, "event: close\ndata: [>] Importação concluída\n\n")
-			flush()
-			progress.Status("Importação concluída")
-			alreadyIn = false
-			return
-		case <-ticker.C:
-			_, _ = fmt.Fprintf(w, ": keep-alive")
-			flush()
-		}
-	}
 }
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 func logHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -211,108 +444,28 @@ func logHandler(next http.Handler) http.Handler {
 	})
 }
 
-type File struct {
-	Name    string
-	ModTime string
-	Size    string
-	Mode    os.FileMode
-	IsDir   bool
-	Link    string // URL for Google Drive files
-}
-
-func handleFiles(w http.ResponseWriter, _ *http.Request) {
-	var filesList []File
-
-	// Add local files
-	path := flags.relatorio.outputDir
-	if localFiles, err := os.ReadDir(path); err == nil {
-		for _, f := range localFiles {
-			info, err := f.Info()
-			if err != nil {
-				continue
-			}
-			filesList = append(filesList, File{
-				Name:    f.Name(),
-				Size:    humanize(info.Size()),
-				Mode:    info.Mode(),
-				ModTime: info.ModTime().Format("2006-01-02 15:04:05"),
-				IsDir:   f.IsDir(),
-				Link:    "", // Local files don't have external links
-			})
-		}
-	}
-
-	// Add Google Drive files if enabled
-	if flags.relatorio.googlesheets {
-		cfg := googlesheets.Config{
-			CredentialsFile: "credentials.json",
-			TokenFile:       "token.json",
-			TokenPort:       flags.relatorio.tokenport,
-			OAuthURL:        flags.relatorio.oauthurl,
-		}
-		driveFiles, err := googlesheets.ListFilesInFolder(context.Background(), cfg, flags.relatorio.googlesheetsDir)
-		if err != nil {
-			progress.ErrorMsg("Error listing Google Drive files: %v", err)
-		} else {
-			for _, f := range driveFiles {
-				size := f.Size
-				modTime := ""
-				if f.ModifiedTime != "" {
-					if t, err := time.Parse(time.RFC3339, f.ModifiedTime); err == nil {
-						modTime = t.Format("2006-01-02 15:04:05")
-					}
-				}
-				link := fmt.Sprintf("https://docs.google.com/spreadsheets/d/%s", f.Id)
-				filesList = append(filesList, File{
-					Name:    f.Name,
-					Size:    humanize(size),
-					Mode:    0, // Not applicable for Drive files
-					ModTime: modTime,
-					IsDir:   false, // Assume files, not folders
-					Link:    link,
-				})
-			}
-		}
-	}
-
-	if len(filesList) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
-	// Sort files by modification time (newest first)
-	sort.Slice(filesList, func(i, j int) bool {
-		ti, err1 := time.Parse("2006-01-02 15:04:05", filesList[i].ModTime)
-		tj, err2 := time.Parse("2006-01-02 15:04:05", filesList[j].ModTime)
-		if err1 != nil || err2 != nil {
-			return false
-		}
-		return tj.Before(ti)
-	})
-
-	t, err := template.ParseFS(assets, "assets/templates/files.html")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := t.Execute(w, filesList); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
 func stripPrefixHandler(prefix string, handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		trimmedPath := strings.TrimPrefix(r.URL.Path, prefix)
-		r.URL.Path = trimmedPath
+		r.URL.Path = r.URL.Path[len(prefix):]
 		handler.ServeHTTP(w, r)
 	})
+}
+
+func writeJSON(w http.ResponseWriter, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func jsonError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
 func humanize(b int64) string {
 	const unit = 1000
 	if b < unit {
-		return fmt.Sprintf("%d  B", b)
+		return fmt.Sprintf("%d B", b)
 	}
 	div, exp := int64(unit), 0
 	for n := b / unit; n >= unit; n /= unit {
@@ -321,3 +474,10 @@ func humanize(b int64) string {
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
+
+// ---------------------------------------------------------------------------
+// HTML embutido (mobile-first)
+// ---------------------------------------------------------------------------
+
+//go:embed assets/pages/index.html
+var indexHTML string

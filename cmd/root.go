@@ -22,6 +22,7 @@ var flags = struct {
 	cfgFile   string
 	dataSrc   string // banco de dados sqlite (ex.: "file:/var/local/rapina.db")
 	tempDir   string // arquivos temporários
+	assetsDir string // arquivos estáticos para o servidor web (CSS, JS, HTML)
 	servidor  flagsServidor
 	relatorio flagsRelatorio
 	atualizar flagsAtualizar
@@ -35,6 +36,7 @@ const (
 	configFileName         = "rapina.yaml"
 	dataSrcDefault         = ".dados" + sep + "rapina.db?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000"
 	tempDirDefault         = ".dados" + sep + "temp"
+	assetsDirDefault       = "./cmd/assets"
 	reportDirDefault       = ".dados" + sep + "reports"
 	googleSheetsDirDefault = "/rapina"
 )
@@ -125,6 +127,7 @@ func initConfig() {
 	// Initialize all config directories
 	initConfigPath(&flags.dataSrc, "dataSrc", dataSrcDefault)
 	initConfigPath(&flags.tempDir, "tempDir", tempDirDefault)
+	initConfigPath(&flags.assetsDir, "assetsDir", assetsDirDefault)
 	initConfigPath(&flags.relatorio.outputDir, "relatorio.outputDir", reportDirDefault)
 
 	// Initialize flags from config file
