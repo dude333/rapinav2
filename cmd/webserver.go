@@ -177,8 +177,9 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(indexHTML))
+
+	//w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, flags.assetsDir+"/pages/index.html")
 }
 
 // GET /api/empresas
@@ -474,10 +475,3 @@ func humanize(b int64) string {
 	}
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
-
-// ---------------------------------------------------------------------------
-// HTML embutido (mobile-first)
-// ---------------------------------------------------------------------------
-
-//go:embed assets/pages/index.html
-var indexHTML string
