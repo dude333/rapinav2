@@ -53,7 +53,7 @@ func derefValue(val any) any {
 		return nil
 	}
 	rv := reflect.ValueOf(val)
-	for rv.Kind() == reflect.Ptr {
+	for rv.Kind() == reflect.Pointer {
 		if rv.IsNil() {
 			return nil
 		}

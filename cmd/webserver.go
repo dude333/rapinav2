@@ -53,6 +53,7 @@ func init() {
 // SSE writer (compatível com progress.SetOutput — usado em handleUpdate)
 // ---------------------------------------------------------------------------
 
+/*
 type sseWriter struct {
 	w  http.ResponseWriter
 	w2 *os.File
@@ -68,6 +69,7 @@ func (sw sseWriter) Write(p []byte) (n int, err error) {
 	}
 	return n, err
 }
+*/
 
 // ---------------------------------------------------------------------------
 // SSE hub — distribui mensagens para clientes em /api/stream

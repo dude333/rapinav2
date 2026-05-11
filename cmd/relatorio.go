@@ -186,7 +186,7 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
 	hasIndividual := criarPlanilhas(x, empresa, dfp, false)
 
 	if !hasConsolidated && !hasIndividual {
-		progress.Warning(fmt.Sprintf("Nenhum dado disponível para %s", empresa.Nome))
+		progress.Warning("Nenhum dado disponível para %s", empresa.Nome)
 		return
 	}
 
@@ -198,9 +198,9 @@ func criarRelatórios(empresa rapina.Empresa, dfp *contabil.ContabilServices) {
 
 	status := fmt.Sprintf("Relatório salvo como: %s", filename)
 	line := strings.Repeat("-", min(len(status), 80))
-	progress.Status(line)
-	progress.Status(status)
-	progress.Status(line + "\n\n")
+	progress.Status("%s", line)
+	progress.Status("%s", status)
+	progress.Status("%s\n\n", line)
 }
 
 // criarPlanilhas gera e salva relatório consolidado/individual em Excel.

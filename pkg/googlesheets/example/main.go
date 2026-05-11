@@ -21,7 +21,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("googlesheets.New: %v", err)
 	}
-	defer ss.Close()
+	defer func() {
+		_ = ss.Close()
+	}()
 
 	// --- Style definitions ---
 	headerStyle, _ := ss.SetFont(12, true, false)

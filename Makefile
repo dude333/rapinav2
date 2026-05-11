@@ -45,6 +45,9 @@ test:
 	$(COMPILER_CMD) go test ./...
 
 linter:
+	CGO_ENABLED=1 \
+	CC="zig cc -target x86_64-linux-gnu" \
+	CXX="zig c++ -target x86_64-linux-gnu" \
 	$(COMPILER_CMD) golangci-lint run ./...
 
 clean:

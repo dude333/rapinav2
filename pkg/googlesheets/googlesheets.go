@@ -698,7 +698,7 @@ func (s *Sheet) flush() error {
 		Context(s.ctx).Do()
 	if err != nil {
 		if isAllUnfrozenDeletionError(err) {
-			progress.Warning(fmt.Sprintf("googlesheets: ignorado erro deleteDimension: %v", err))
+			progress.Warning("googlesheets: ignorado erro deleteDimension: %v", err)
 			return nil
 		}
 		return fmt.Errorf("googlesheets: flush: %w", err)
@@ -947,7 +947,11 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			progress.ErrorMsg("erro ao fechar arquivo %s: %v", file, err)
+		}
+	}()
 	tok := &oauth2.Token{}
 	return tok, json.NewDecoder(f).Decode(tok)
 }
@@ -958,7 +962,11 @@ func saveToken(file string, tok *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			progress.ErrorMsg("erro ao fechar arquivo %s: %v", file, err)
+		}
+	}()
 	return json.NewEncoder(f).Encode(tok)
 }
 
@@ -1005,7 +1013,10 @@ func tokenFromWeb(ctx context.Context, cfg *oauth2.Config, tokenPort int, oauthU
 				errCh <- fmt.Errorf("googlesheets: autorização negada: %s", msg)
 				return
 			}
-			fmt.Fprintln(w, "<html><body><h2>Autorização concluída. Pode fechar esta aba.</h2></body></html>")
+			_, err = fmt.Fprintln(w, "<html><body><h2>Autorização concluída. Pode fechar esta aba.</h2></body></html>")
+			if err != nil {
+				progress.Error(err)
+			}
 			codeCh <- code
 		}),
 	}
