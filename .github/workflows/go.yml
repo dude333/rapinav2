@@ -13,39 +13,29 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.22.5"]
+        go: ["1.25.x"]
         platform: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     env:
       CGO_ENABLED: 1
     steps:
-      - if: github.actor == 'nektos/act'
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - if: github.actor == 'nektos/act' && runner.os == 'Linux'
         name: act workaround
         run: apt update && apt install -y zstd gcc git
+
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go }}
+          cache: true
+          cache-dependency-path: go.sum
+
       - name: Show go version
         run: go version
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: go mod package cache
-        uses: actions/cache@v3
-        with:
-          # In order:
-          # * Module download cache
-          # * Build cache (Linux)
-          # * Build cache (Mac)
-          # * Build cache (Windows)
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/Library/Caches/go-build
-            %LocalAppData%\go-build
-          key: ${{ runner.os }}-go-${{ matrix.go }}-${{ hashFiles('**/go.mod') }}
-          restore-keys: |
-            ${{ runner.os }}-go-${{ matrix.go }}
+
       - name: Run tests
         run: go test -short -cover ./...
 
@@ -55,9 +45,18 @@ jobs:
     env:
       CGO_ENABLED: 1
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25.x"
+          cache: true
+          cache-dependency-path: go.sum
+
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           args: --timeout=4m
@@ -69,7 +68,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go_version: [1.22.x]
+        go_version: ["1.25.x"]
 
     runs-on: ubuntu-latest
 
@@ -78,13 +77,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Get current date
         id: date
         run: echo "date=$(date +'%F')" >> "$GITHUB_OUTPUT"
+
       - name: Get current git tag or commit
         id: tag
         run: echo "tag=$(git describe --tags --always)" >> "$GITHUB_OUTPUT"
+
       - name: Build with xgo
         uses: crazy-max/ghaction-xgo@v2
         with:
@@ -99,6 +101,7 @@ jobs:
           race: false
           ldflags: -s -w -X main.build=${{ steps.date.outputs.date }} -X main.version=${{ steps.tag.outputs.tag }}
           buildmode: default
+
       - name: Run UPX
         uses: crazy-max/ghaction-upx@v2
         with:
@@ -106,15 +109,18 @@ jobs:
             ./build/rapinav2-*linux*
             ./build/rapinav2-*windows*
           args: "-9"
+
       - name: Checksum
         run: |
           cd build
           sha1sum rapinav2* > sha1sum.txt
+
       - name: Generate changelog
         id: changelog
         uses: metcalfc/changelog-generator@v4.6.2
         with:
           myToken: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
