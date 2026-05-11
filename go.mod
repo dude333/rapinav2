@@ -17,7 +17,7 @@ require (
 require (
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/dude333/rslp-go v0.0.3
-	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
+	golang.org/x/oauth2 v0.36.0
 	google.golang.org/api v0.56.0
 )
 
