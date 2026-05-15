@@ -14,6 +14,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	rapina "github.com/dude333/rapinav2"
@@ -22,6 +23,13 @@ import (
 	"github.com/dude333/rapinav2/pkg/progress"
 	"github.com/spf13/cobra"
 )
+
+// ---------------------------------------------------------------------------
+// Controle de execução
+// ---------------------------------------------------------------------------
+var updateDBRunning int32 // 0 = idle, 1 = running
+var updateDBJobID uint64
+var updateDBStartedUnix int64 // store Unix seconds, atomic
 
 // ---------------------------------------------------------------------------
 // Comando "servidor"
@@ -76,12 +84,31 @@ func (sw sseWriter) Write(p []byte) (n int, err error) {
 // ---------------------------------------------------------------------------
 
 type sseHub struct {
-	mu      sync.Mutex
-	clients map[chan string]struct{}
+	mu            sync.Mutex
+	clients       map[chan string]struct{}
+	broadcastChan chan string
 }
 
 func newSSEHub() *sseHub {
-	return &sseHub{clients: make(map[chan string]struct{})}
+	h := &sseHub{
+		clients:       make(map[chan string]struct{}),
+		broadcastChan: make(chan string, 64),
+	}
+	go h.run()
+	return h
+}
+
+func (h *sseHub) run() {
+	for msg := range h.broadcastChan {
+		h.mu.Lock()
+		for ch := range h.clients {
+			select {
+			case ch <- msg:
+			default:
+			}
+		}
+		h.mu.Unlock()
+	}
 }
 
 func (h *sseHub) subscribe() chan string {
@@ -96,17 +123,13 @@ func (h *sseHub) unsubscribe(ch chan string) {
 	h.mu.Lock()
 	delete(h.clients, ch)
 	h.mu.Unlock()
+	close(ch)
+	for range ch {
+	} // esvazia mensagens restantes
 }
 
 func (h *sseHub) broadcast(msg string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	for ch := range h.clients {
-		select {
-		case ch <- msg:
-		default:
-		}
-	}
+	h.broadcastChan <- msg
 }
 
 // hubWriter implementa io.Writer e encaminha linhas para o hub SSE
@@ -341,8 +364,6 @@ func makeHandleFiles() http.HandlerFunc {
 }
 
 // POST /api/update-db
-var alreadyIn = false
-
 func makeHandleUpdateDB(hub *sseHub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -350,16 +371,30 @@ func makeHandleUpdateDB(hub *sseHub) http.HandlerFunc {
 			return
 		}
 
-		if alreadyIn {
-			log.Println("Cancelando update — já em execução")
-			_, cancel := context.WithCancel(r.Context())
-			cancel()
+		// Tenta adquirir a flag de execução
+		if !atomic.CompareAndSwapInt32(&updateDBRunning, 0, 1) {
+			// Already running, inform client so it can subscribe or re subscribe to SSE
+			w.WriteHeader(http.StatusAccepted)
+			writeJSON(w, map[string]any{
+				"status":      "already_running",
+				"message":     "Atualização já em execução, conecte no stream para acompanhar em tempo real",
+				"stream":      "/api/stream",
+				"jobId":       atomic.LoadUint64(&updateDBJobID),
+				"startedUnix": atomic.LoadInt64(&updateDBStartedUnix),
+			})
 			return
 		}
-		alreadyIn = true
 
-		go func() {
-			defer func() { alreadyIn = false }()
+		jobID := atomic.AddUint64(&updateDBJobID, 1)
+		atomic.StoreInt64(&updateDBStartedUnix, time.Now().Unix())
+
+		// Broadcast do marcador de início do job, para que clientes conectados saibam que uma atualização começou
+		hub.broadcast(fmt.Sprintf("[update-db] iniciado, jobId=%d", jobID))
+
+		go func(jobID uint64) {
+			defer func() {
+				atomic.StoreInt32(&updateDBRunning, 0)
+			}()
 
 			dfp, err := contabil.NewService(db(), flags.tempDir)
 			if err != nil {
@@ -384,10 +419,16 @@ func makeHandleUpdateDB(hub *sseHub) http.HandlerFunc {
 			importar(true)
 
 			hub.broadcast("[done]")
-		}()
+		}(jobID)
 
 		w.WriteHeader(http.StatusAccepted)
-		_, _ = w.Write([]byte(`{"status":"iniciado"}`))
+		writeJSON(w, map[string]any{
+			"status":      "started",
+			"message":     "Atualização iniciada, acompanhe no stream",
+			"stream":      "/api/stream",
+			"jobId":       jobID,
+			"startedUnix": atomic.LoadInt64(&updateDBStartedUnix),
+		})
 	}
 }
 
@@ -409,6 +450,16 @@ func makeHandleStream(hub *sseHub) http.HandlerFunc {
 			}
 		}
 
+		// Immediately inform the client about current server state
+		if atomic.LoadInt32(&updateDBRunning) == 1 {
+			jobID := atomic.LoadUint64(&updateDBJobID)
+			startedUnix := atomic.LoadInt64(&updateDBStartedUnix)
+			_, _ = fmt.Fprintf(w, "event: status\ndata: {\"updateDbRunning\":true,\"jobId\":%d,\"updateDbStartedUnix\":%d}\n\n", jobID, startedUnix)
+		} else {
+			_, _ = fmt.Fprintf(w, "event: status\ndata: {\"updateDbRunning\":false}\n\n")
+		}
+		flush()
+
 		ticker := time.NewTicker(300 * time.Millisecond)
 		defer ticker.Stop()
 
@@ -417,6 +468,7 @@ func makeHandleStream(hub *sseHub) http.HandlerFunc {
 			select {
 			case <-ctx.Done():
 				return
+
 			case msg, ok := <-ch:
 				if !ok {
 					return
@@ -428,6 +480,7 @@ func makeHandleStream(hub *sseHub) http.HandlerFunc {
 				}
 				_, _ = fmt.Fprintf(w, "data: %s\n\n", msg)
 				flush()
+
 			case <-ticker.C:
 				_, _ = fmt.Fprintf(w, ": keep-alive\n\n")
 				flush()

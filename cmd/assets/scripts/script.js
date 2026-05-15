@@ -20,6 +20,19 @@ function connectSSE() {
     logLine(msg, cls);
   };
 
+  // Evento "status" para sinalizar início/fim de processos específicos (ex: update-db)
+  eventSource.addEventListener("status", (e) => {
+    const st = JSON.parse(e.data);
+    if (st.updateDbRunning) {
+      setBusy(true);
+      const elapsed = Math.floor((Date.now() - st.updateDbStartedUnix * 1000) / 1000);
+      logLine(`Atualização em execução (jobId=${st.jobId}, tempo decorrido: ${elapsed}s)`);
+    } else {
+      setBusy(false);
+    }
+  });
+
+
   // Evento "close" sinaliza fim do processamento (broadcast de [done])
   eventSource.addEventListener('close', (e) => {
     setBusy(false);
@@ -42,7 +55,7 @@ function logLine(text, cls) {
   const el = document.getElementById('console');
   const line = document.createElement('div');
   if (cls) line.className = cls;
-  line.textContent = text;
+  line.textContent = text.replace(/\x1b\[([0-9;]*)m/g, ''); // remove ESC codes
   el.appendChild(line);
   el.scrollTop = el.scrollHeight;
 }
